@@ -1,0 +1,124 @@
+name: Pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+env:
+  GHCR_IMAGE: ghcr.io/mauricenino/minecraft-server
+  DOCKERHUB_IMAGE: mauricenino/minecraft-server
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Ruff lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Pyright type check
+        run: uv run pyright src/
+
+      - name: Run tests
+        run: uv run pytest
+
+  deploy-image:
+    name: Build & Push
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version: [21, 23, 25]
+        java-flavor: [temurin, corretto, microsoft, azul, graalvm]
+        is-main: [ "${{ github.ref == 'refs/heads/main' }}" ]
+        exclude:
+          # Version 23 does not exist for microsoft
+          - java-flavor: microsoft
+            java-version: 23
+          # On non-main branches, only build Java 25 Temurin to save resources
+          - is-main: false
+            java-version: 21
+          - is-main: false
+            java-version: 23
+          - is-main: false
+            java-flavor: corretto
+          - is-main: false
+            java-flavor: microsoft
+          - is-main: false
+            java-flavor: azul
+          - is-main: false
+            java-flavor: graalvm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ${{ env.GHCR_IMAGE }}
+            ${{ env.DOCKERHUB_IMAGE }}
+          tags: |
+            # Only on main: latest for Java 25 Temurin
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && matrix.java-version == 25 && matrix.java-flavor == 'temurin' }}
+            # Only on main: java${version}-${flavor}
+            type=raw,value=java${{ matrix.java-version }}-${{ matrix.java-flavor }},enable=${{ github.ref == 'refs/heads/main' }}
+            # On branches: branch name (for the default combo)
+            type=ref,event=branch,enable=${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          build-args: |
+            JAVA_VERSION=${{ matrix.java-version }}
+            JAVA_FLAVOR=${{ matrix.java-flavor }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

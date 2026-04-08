@@ -1,0 +1,7 @@
+storage-method: mariadb
+data:
+  address: luckperms-mariadb
+  database: luckperms
+  username: root
+  password: luckperms
+messaging-service: pluginmsg

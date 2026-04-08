@@ -1,0 +1,173 @@
+services:
+  luckperms-mariadb:
+    image: mariadb:latest
+    volumes:
+      - luckperms-data:/var/lib/mysql
+    expose:
+      - 3306
+    environment:
+      MARIADB_DATABASE: luckperms
+      MARIADB_ROOT_PASSWORD: luckperms
+
+  proxy:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/proxy:/data/runtime
+    ports:
+      - "25565:25565"
+    depends_on:
+      - luckperms-mariadb
+    env_file: .env
+    environment:
+      TYPE: VELOCITY
+      VERSION: latest
+      MEMORY: 512M
+      PLUGINS: |
+        modrinth:luckperms@latest
+        modrinth:modmapcompanion@0.10.0
+        hangar:ViaVersion@latest
+        hangar:ViaBackwards@latest
+        hangar:Maintenance@latest
+        url:https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/velocity
+        url:https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/velocity
+      CONFIG_PATHS: |
+        velocity_toml -> velocity.toml
+        luckperms -> plugins/LuckPerms/config.yml
+        !replace:forwarding_secret -> forwarding.secret
+      CONFIG_velocity_toml: |
+        bind = "0.0.0.0:25565"
+        motd = "A Minecraft Server configured by MauriceNino"
+        show-max-players = 50
+        player-info-forwarding-mode = "modern"
+
+        [!replace:servers]
+        lobby = "lobby:25565"
+        survival = "survival:25565"
+        creative = "creative:25565"
+        try = ["lobby"]
+
+        [!replace:forced-hosts]
+      CONFIG_luckperms: |
+        server: proxy
+      CONFIG_forwarding_secret: |
+        $[FORWARDING_SECRET]
+      APPLIED_TEMPLATES: |
+        all
+      RCON_PASSWORD: rcon
+
+  lobby:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    expose:
+      - 25565
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/lobby:/data/runtime
+    depends_on:
+      - luckperms-mariadb
+    env_file: .env
+    environment:
+      TYPE: PAPER
+      VERSION: 1.21.4
+      MEMORY: 1G
+      ACCEPT_EULA: "true"
+      PLUGINS: |
+        modrinth:luckperms@latest
+        modrinth:modmapcompanion@0.10.0!
+        url:https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+      CONFIG_PATHS: |
+        server_properties -> server.properties
+        luckperms -> plugins/LuckPerms/config.yml
+      CONFIG_server_properties: |
+        difficulty=peaceful
+        gamemode=adventure
+        spawn-protection=16
+        pvp=false
+      CONFIG_luckperms: |
+        server: lobby
+      APPLIED_TEMPLATES: |
+        all
+        backends
+        single-world
+        void-world
+      RCON_PASSWORD: rcon
+
+  creative:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    expose:
+      - 25565
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/creative:/data/runtime
+    depends_on:
+      - luckperms-mariadb
+    env_file: .env
+    environment:
+      TYPE: PAPER
+      VERSION: 1.21.11
+      MEMORY: 1G
+      ACCEPT_EULA: "true"
+      PLUGINS: |
+        modrinth:luckperms@latest
+        modrinth:modmapcompanion@0.10.0!
+        url:https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+      CONFIG_PATHS: |
+        server_properties -> server.properties
+        luckperms -> plugins/LuckPerms/config.yml
+      CONFIG_server_properties: |
+        difficulty=normal
+        gamemode=creative
+        pvp=false
+      CONFIG_luckperms: |
+        server: creative
+      APPLIED_TEMPLATES: |
+        all
+        backends
+        single-world
+        flat-world
+      RCON_PASSWORD: rcon
+
+  survival:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    expose:
+      - 25565
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/survival:/data/runtime
+    depends_on:
+      - luckperms-mariadb
+    env_file: .env
+    environment:
+      TYPE: PAPER
+      VERSION: 26.1.1
+      BUILD: experimental
+      MEMORY: 1G
+      ACCEPT_EULA: "true"
+      PLUGINS: |
+        modrinth:luckperms@latest!
+        modrinth:modmapcompanion@0.10.0!
+        spiget:sleepmost.60623@latest!
+      CONFIG_PATHS: |
+        server_properties -> server.properties
+        luckperms -> plugins/LuckPerms/config.yml
+      CONFIG_server_properties: |
+        difficulty=hard
+        gamemode=survival
+        pvp=true
+      CONFIG_luckperms: |
+        server: survival
+      APPLIED_TEMPLATES: |
+        all
+        backends
+      RCON_PASSWORD: rcon
+
+volumes:
+  luckperms-data:

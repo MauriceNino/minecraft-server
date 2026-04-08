@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "minecraft-server"
+version = "1.0.0"
+description = "A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "MauriceNino" }]
+
+dependencies = [
+    "rich>=13.9",
+    "httpx>=0.28",
+    "pyyaml>=6.0",
+    "tomlkit>=0.13",
+    "click>=8.1",
+    "ruamel-yaml>=0.18",
+    "mcrcon>=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-httpx>=0.35",
+    "ruff>=0.8",
+    "pyright>=1.1",
+]
+
+[project.scripts]
+mc-orchestrator = "orchestrator.__main__:main"
+mc-rcon = "orchestrator.rcon.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/orchestrator"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+    "N",   # pep8-naming
+    "ANN", # flake8-annotations
+    "ASYNC", # flake8-async
+    "S",   # flake8-bandit (security)
+    "T20", # flake8-print
+    "PT",  # flake8-pytest-style
+]
+ignore = [
+    "ANN401", # dynamically typed expressions (Any)
+    "S101",   # assert used (needed in tests)
+    "S311",   # pseudo-random generators (not crypto)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["orchestrator"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
