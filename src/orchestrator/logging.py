@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import sys
+import traceback
+from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -26,9 +29,12 @@ THEME = Theme(
 console = Console(theme=THEME, width=150, force_terminal=True)
 
 _LOG_FORMAT = "%(message)s"
+_VERBOSE_ENABLED = True
 
+def setup_logging(*, verbose: bool = True) -> None:
+    global _VERBOSE_ENABLED
+    _VERBOSE_ENABLED = verbose
 
-def setup_logging(*, verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -37,7 +43,7 @@ def setup_logging(*, verbose: bool = False) -> None:
         handlers=[
             RichHandler(
                 console=console,
-                rich_tracebacks=True,
+                rich_tracebacks=verbose,
                 show_path=False,
                 markup=True,
             )
@@ -47,6 +53,32 @@ def setup_logging(*, verbose: bool = False) -> None:
     # Suppress noisy HTTP request logs from httpx / httpcore
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+def log_exception(exc: Exception, message: str, *, prefix: str = "Error") -> None:
+    """Log an exception concisely in production or with full traceback in verbose mode."""
+    if _VERBOSE_ENABLED:
+        logging.getLogger("orchestrator").exception(message)
+    else:
+        _, _, tb = sys.exc_info()
+        stack = traceback.extract_tb(tb)
+        last_frame = stack[-1] if stack else None
+
+        error_msg = f"[error]{prefix}:[/error] {message}\n"
+        error_msg += f"  [bold red]{type(exc).__name__}:[/bold red] {exc}"
+        if last_frame:
+            # Shorten absolute path to relative or filename for cleaner output
+            path = last_frame.filename
+            cwd = str(Path.cwd())
+            if path.startswith(cwd):
+                path = path[len(cwd) :].lstrip("/")
+            elif "/src/" in path:
+                path = path.partition("/src/")[2]
+            error_msg += f"\n  [dim]at {path}:{last_frame.lineno}[/dim]"
+
+        console.print()
+        console.print(error_msg)
+        console.print()
 
 
 def get_logger(name: str) -> logging.Logger:

@@ -8,7 +8,7 @@ from rich.table import Table
 from orchestrator.cli import Config
 from orchestrator.constants import SERVER_LOCK_FILENAME, USER_AGENT
 from orchestrator.lockfile import ServerLockfile, make_lock_key
-from orchestrator.logging import console, get_logger, log_phase
+from orchestrator.logging import console, get_logger, log_exception, log_phase
 from orchestrator.plugins import _build_providers
 from orchestrator.plugins.base import PluginSpec
 from orchestrator.plugins.resolver import parse_plugin_lines
@@ -38,8 +38,8 @@ async def check_plugin_updates(config: Config) -> None:
                 f"Platform: [platform]{config.platform.value}[/platform] "
                 f"/ Version: [version.new]{mc_version}[/version.new]"
             )
-        except Exception:
-            log.exception("Failed to resolve platform version")
+        except Exception as e:
+            log_exception(e, "Failed to resolve platform version")
             return
 
         specs = parse_plugin_lines(config.plugin_lines)

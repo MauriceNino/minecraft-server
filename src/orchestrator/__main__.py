@@ -8,7 +8,15 @@ import click
 from orchestrator.cli import Config, load_config
 from orchestrator.constants import SERVER_LOCK_FILENAME, PlatformType
 from orchestrator.fs_orchestrator import orchestrate_templates
-from orchestrator.logging import console, get_logger, log_header, log_phase, phase_console, setup_logging
+from orchestrator.logging import (
+    console,
+    get_logger,
+    log_exception,
+    log_header,
+    log_phase,
+    phase_console,
+    setup_logging,
+)
 from orchestrator.merger import apply_config_overrides
 from orchestrator.plugins import ServerLockfile, download_plugins
 from orchestrator.plugins.check import check_plugin_updates
@@ -154,8 +162,8 @@ def cli(ctx: click.Context) -> None:
             sys.exit(130)
         except SystemExit:
             raise
-        except Exception:
-            log.exception("Fatal error during orchestration")
+        except Exception as e:
+            log_exception(e, "Fatal error during orchestration")
             sys.exit(1)
 
 
@@ -168,8 +176,8 @@ def reapply_cmd() -> None:
         sys.exit(130)
     except SystemExit:
         raise
-    except Exception:
-        log.exception("Fatal error during reapply")
+    except Exception as e:
+        log_exception(e, "Fatal error during reapply")
         sys.exit(1)
 
 
@@ -182,8 +190,8 @@ def check_updates_cmd() -> None:
         sys.exit(130)
     except SystemExit:
         raise
-    except Exception:
-        log.exception("Fatal error during check-updates")
+    except Exception as e:
+        log_exception(e, "Fatal error during check-updates")
         sys.exit(1)
 
 

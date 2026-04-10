@@ -39,12 +39,7 @@ async def _resolve_and_download(
     client: httpx.AsyncClient,
 ) -> None:
     lock_key = make_lock_key(spec.provider, spec.identifier)
-
-    try:
-        resolved = await provider.resolve(spec, platform_type, mc_version, client)
-    except Exception:
-        log.exception("Failed to resolve plugin %s:%s", spec.provider, spec.identifier)
-        raise
+    resolved = await provider.resolve(spec, platform_type, mc_version, client)
 
     old_entry = lockfile.get_plugin(lock_key)
     old_version = old_entry.version if old_entry else None
@@ -58,12 +53,8 @@ async def _resolve_and_download(
 
     log_version_change(spec.identifier, old_version, resolved.version)
 
-    try:
-        downloaded_path = await provider.download(resolved, plugins_dir, client)
-        lockfile.update_plugin(lock_key, resolved, downloaded_path)
-    except Exception:
-        log.exception("Failed to download plugin %s", resolved.display_name)
-        raise
+    downloaded_path = await provider.download(resolved, plugins_dir, client)
+    lockfile.update_plugin(lock_key, resolved, downloaded_path)
 
 
 async def download_plugins(
