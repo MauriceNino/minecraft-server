@@ -23,7 +23,6 @@ class Config:
     templates_dir: Path
     runtime_dir: Path
     plugins_dir: Path
-    cache_dir: Path
 
     # Plugin specs (raw lines)
     plugin_lines: list[str]
@@ -162,7 +161,6 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     templates_dir = data_dir / "templates"
     runtime_dir = data_dir / "runtime"
     plugins_dir = runtime_dir / "plugins"
-    cache_dir = data_dir / ".cache"
 
     plugin_lines = _parse_multiline(env.get("PLUGINS", ""))
     applied_templates = _parse_multiline(env.get("APPLIED_TEMPLATES", ""))
@@ -223,7 +221,6 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         templates_dir=templates_dir,
         runtime_dir=runtime_dir,
         plugins_dir=plugins_dir,
-        cache_dir=cache_dir,
         plugin_lines=plugin_lines,
         config_overrides=config_overrides,
         applied_templates=applied_templates,

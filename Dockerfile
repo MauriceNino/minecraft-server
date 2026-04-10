@@ -42,6 +42,10 @@ apt-get update
 # Install download tools
 apt-get install -y --no-install-recommends wget ca-certificates tar
 
+# Create non-root user
+groupadd -g 1000 minecraft
+useradd -u 1000 -g minecraft -m -s /bin/bash minecraft
+
 # Normalize architecture strings across different vendors
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" = "amd64" ]; then JAVA_ARCH="x64"; ZULU_ARCH="x86";
@@ -91,7 +95,9 @@ EOF
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /data
-RUN mkdir -p templates runtime .cache
+RUN mkdir -p templates runtime && chown -R minecraft:minecraft /data
+
+USER 1000:1000
 
 VOLUME ["/data/templates", "/data/runtime"]
 EXPOSE 25565 25575

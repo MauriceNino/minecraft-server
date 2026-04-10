@@ -71,7 +71,6 @@ async def _async_main() -> None:
     )
 
     server_jar = await download_platform(
-        cache_dir=config.cache_dir,
         runtime_dir=config.runtime_dir,
         platform_type=config.platform,
         resolved_version=resolved_version,

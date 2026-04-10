@@ -45,14 +45,12 @@ async def resolve_platform(platform_type: PlatformType, version: str, build: str
 
 
 async def download_platform(
-    cache_dir: Path,
     runtime_dir: Path,
     platform_type: PlatformType,
     resolved_version: ResolvedVersion,
     lockfile: ServerLockfile,
 ) -> Path:
     provider = get_platform_provider(platform_type)
-    cache_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     runtime_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
 
     jar_path = runtime_dir / resolved_version.filename

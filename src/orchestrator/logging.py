@@ -31,6 +31,7 @@ console = Console(theme=THEME, width=150, force_terminal=True)
 _LOG_FORMAT = "%(message)s"
 _VERBOSE_ENABLED = True
 
+
 def setup_logging(*, verbose: bool = True) -> None:
     global _VERBOSE_ENABLED
     _VERBOSE_ENABLED = verbose

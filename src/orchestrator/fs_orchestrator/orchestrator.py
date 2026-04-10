@@ -66,9 +66,7 @@ def _collect_and_execute_deletes(node: TemplateNode, runtime_base: Path) -> None
             _collect_and_execute_deletes(child, target)
 
 
-def _merge_tree(
-    node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_replace: bool, in_force: bool
-) -> None:
+def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_replace: bool, in_force: bool) -> None:
     for child in node.children:
         target = runtime_base / child.clean_name
         is_replace = in_replace or (child.sigil == DirSigil.REPLACE)
@@ -85,9 +83,7 @@ def _merge_tree(
             _merge_file(child, target, runtime_dir, is_replace, is_force)
 
 
-def _merge_file(
-    node: TemplateNode, target: Path, runtime_dir: Path, in_replace: bool, in_force: bool
-) -> None:
+def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace: bool, in_force: bool) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
 
     suffix = target.suffix.lower()
