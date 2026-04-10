@@ -3,9 +3,7 @@
 ARG PYTHON_VERSION=3.12
 
 # Builder
-FROM python:${PYTHON_VERSION}-slim AS builder
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS builder
 
 WORKDIR /build
 
@@ -18,7 +16,7 @@ RUN uv venv /opt/venv && \
     uv pip install --no-cache --python=/opt/venv .
 
 # Runtime
-FROM python:${PYTHON_VERSION}-slim AS runtime
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS runtime
 
 ARG JAVA_VERSION=25
 ARG JAVA_FLAVOR=temurin

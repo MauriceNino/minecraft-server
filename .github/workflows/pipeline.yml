@@ -14,6 +14,8 @@ jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
 
@@ -165,3 +167,89 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    name: Create Release
+    needs: [deploy-image, deploy-docs]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Generate Grouped Release Notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 1. Try to find the most recent tag in the repository
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # 2. Get the log based on whether a tag was found
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found. Grabbing all commits since the beginning."
+            git log --pretty=format:"%s _by @%cn_ (%h)" > raw_commits.txt
+          else
+            echo "Comparing changes from $PREVIOUS_TAG to HEAD..."
+            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"%s _by @%cn_ (%h)" > raw_commits.txt
+          fi
+
+          echo "Generating patchnotes for commits:"
+          cat raw_commits.txt
+          
+          # 3. Clean up old text files
+          rm -f feats.txt fixes.txt docs.txt chores.txt others.txt notes.txt
+          
+          # 4. Sort the commits into categories
+          while IFS= read -r line; do
+            [ -z "$line" ] || [ "${line#*:}" = "$line" ] && continue
+
+            # Remove everything after '(' and then after ':'
+            type="${line%%(*}"
+            type="${type%%:*}"
+
+            # Remove everything before ':' and the space after it
+            desc="${line#*:}"
+            desc="${desc# }"
+
+            case "$type" in
+              feat)
+                target="feats.txt" ;;
+              fix)
+                target="fixes.txt" ;;
+              docs)
+                target="docs.txt" ;;
+              chore|refactor|style|test|ci)
+                target="chores.txt" ;;
+              *)
+                continue ;; # Skip unknown types
+            esac
+
+            echo "- $desc" >> "$target"
+          done < raw_commits.txt
+
+          # 5. Compile the final Markdown release notes
+          append_section() {
+            if [ -f "$1" ]; then
+              printf "### %s\n$(cat "$1")\n\n" "$2" >> notes.txt
+            fi
+          }
+
+          append_section "feats.txt"  "🚀 Features"
+          append_section "fixes.txt"  "🐛 Bug Fixes"
+          append_section "docs.txt"   "📚 Documentation"
+          append_section "chores.txt" "🧹 Maintenance"
+
+          # 6. Generate the unique tag name
+          TAG_NAME=$(date +'%Y.%-m.%-d')-$(git rev-parse --short HEAD)
+          echo "Generated Tag: $TAG_NAME"
+          
+          # 7. Create the tag locally and push it
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          
+          # 8. Create the GitHub Release targeting the new tag
+          gh release create $TAG_NAME --title "$TAG_NAME" --notes-file notes.txt
