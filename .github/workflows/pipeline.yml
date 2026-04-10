@@ -238,10 +238,14 @@ jobs:
             fi
           }
 
+          touch notes.txt
           append_section "feats.txt"  "🚀 Features"
           append_section "fixes.txt"  "🐛 Bug Fixes"
           append_section "docs.txt"   "📚 Documentation"
           append_section "chores.txt" "🧹 Maintenance"
+
+          echo "Generated Patchnotes:"
+          cat notes.txt
 
           # 6. Generate the unique tag name
           TAG_NAME=$(date +'%Y.%-m.%-d')-$(git rev-parse --short HEAD)
