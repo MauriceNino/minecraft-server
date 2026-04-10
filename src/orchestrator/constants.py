@@ -56,6 +56,7 @@ MERGEABLE_EXTENSIONS: frozenset[str] = frozenset(
         ".json",
         ".toml",
         ".properties",
+        ".conf",
     }
 )
 
