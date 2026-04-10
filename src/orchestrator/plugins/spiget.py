@@ -43,7 +43,7 @@ class SpigetProvider(AbstractPluginProvider):
         project_info = await self._get_plugin_info(client, resource_id)
         version = str(project_info["version"]["id"]) if spec.version in ("latest", "experimental") else spec.version
 
-        if not any(version == v.get("id") for v in project_info.get("versions", [])):
+        if not any(version == str(v.get("id")) for v in project_info.get("versions", [])):
             raise RuntimeError(f"Version {version} not found for {spec.identifier}")
 
         if not spec.force and platform_type not in (PlatformType.PAPER, PlatformType.FOLIA):
