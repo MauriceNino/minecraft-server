@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "index",
+    "---Setup---",
+    "docker",
+    "environment",
+    "---Providers---",
+    "platforms",
+    "plugins",
+    "---Server Configuration---",
+    "templates",
+    "config",
+    "sigils",
+    "merging",
+    "---Helpers---",
+    "scripts"
+  ]
+}

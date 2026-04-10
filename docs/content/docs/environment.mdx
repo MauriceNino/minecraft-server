@@ -1,0 +1,34 @@
+---
+title: Environment Variables
+description: Globals and inline configuration via CONFIG_PATHS
+---
+
+## Core Variables
+
+- **`DATA_DIR`**
+  - **Description:** The root directory where `templates`, `runtime`, and `.cache` folders are mapped inside the container.
+  - **Default:** `/data`
+
+- **`VERBOSE`**
+  - **Description:** Enables verbose debug log output from the Python orchestrator script.
+  - **Default:** `false`
+
+- **`ACCEPT_EULA`**
+  - **Description:** Minecraft backend servers (Paper, Folia) require EULA acceptance. Set this to true to automatically write the `eula.txt`.
+  - **Default:** `false`
+
+## RCON Variables
+
+If RCON is enabled, the orchestrator automatically configures the server files to expose RCON.
+
+- **`RCON_ENABLED`**
+  - **Description:** Toggles the automatic RCON injection process.
+  - **Default:** `true`
+
+- **`RCON_PORT`**
+  - **Description:** The local port mapped for RCON inside the container.
+  - **Default:** `25575`
+
+- **`RCON_PASSWORD`**
+  - **Description:** The password for RCON.
+  - **Default:** A securely generated random UUID (`uuid.uuid4()`). *You do not need to know this password to use `mc-rcon` interactively inside the container.*

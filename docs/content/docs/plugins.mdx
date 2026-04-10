@@ -1,0 +1,50 @@
+---
+title: Plugin Providers
+description: Downloading and managing stateless plugins
+---
+
+Plugins are resolved and downloaded before your server starts. This happens deterministically across different providers, bringing all your plugin ecosystems into a single API.
+
+## Defining Plugins
+
+You declare plugins via the `PLUGINS` environment variable. It accepts a multiline string where each line represents one plugin.
+- **Format:** `provider:identifier@version`
+- **Default:** (Empty, no plugins downloaded)
+
+```yaml
+environment:
+  PLUGINS: |
+    modrinth:luckperms@latest
+    hangar:ViaVersion@latest
+    spiget:12345
+    url:https://custom.host/plugin-1.0.jar
+```
+
+## Providers
+
+### Modrinth (`modrinth:`)
+The modern, fast, open plugin repository.
+- Uses the project slug/ID.
+- **Smart Filtering:** It dynamically filters matching files based on your server `TYPE`. (E.g. requests only "paper" loader tags if running Paper).
+- Responds to `version=latest` and `version=experimental`.
+
+### Hangar (`hangar:`)
+The official PaperMC plugin repository.
+- Uses the project namespace (slug).
+- Maps automatically to the Hangar API platform identifiers (`PAPER` or `VELOCITY`).
+
+### SpigotMC (`spiget:`)
+Proxies queries to SpigotMC via the Spiget API.
+- Because SpigotMC does not expose clean slugs, you **must use the resource ID number**. (e.g., `spiget:12345`).
+- Fetches the highest suitable uploaded artifact.
+
+### Direct URLs (`url:`)
+Sometimes plugins aren't hosted on public repositories. You can specify a direct URL.
+- Must end with `.jar` (typically) or respond with correct `Content-Disposition` headers containing the filename.
+
+## Intelligent Caching & Removal
+
+During the download phase, `MauriceNino/minecraft-server` builds and manages a `.plugin-lock.json` file inside its runtime directory.
+
+- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the 10MB download is skipped instantly.
+- **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **automatically deletes the `.jar` from your container**, keeping your runtime completely stateless and synchronized.

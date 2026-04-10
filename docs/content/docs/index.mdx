@@ -1,0 +1,20 @@
+---
+title: Introduction
+description: Overview of MauriceNino/minecraft-server features and philosophy
+---
+
+Welcome to **MauriceNino/minecraft-server**.
+
+This project provides a modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.
+
+## Why MauriceNino/minecraft-server?
+
+Running stateless Minecraft servers dynamically inside Docker typically requires tedious bash scripts, messy volume mounts and complex deployment pipelines. 
+
+`MauriceNino/minecraft-server` handles:
+- **Server Jars download**: Paper, Velocity, and Folia.
+- **Dynamic Plugin Retrieval**: Directly downloading from Hangar, Modrinth, Spiget, or direct URLs.
+- **Template Orchestration & Config Merging**: Allows a replace-then-merge flow of directories with rich configuration overriding (`!force:`, `!replace:`, `!delete:`).
+- **Auto-RCON setup**: Seamlessly handles internal RCON configuration.
+
+Let's dive in!

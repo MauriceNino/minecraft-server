@@ -1,0 +1,42 @@
+---
+title: Helper Scripts
+description: Utilities provided inside your containers
+---
+
+Beyond the orchestrator execution pipeline, your container comes bundled with custom scripts that leverage the `orchestrator` module for day-to-day operations.
+
+## `mc-rcon`
+
+Connecting to Minecraft containers and dispatching commands via stdin or log-tailing can be flaky. `mc-rcon` acts as an robust, interactive wrapper.
+
+Because the orchestrator already injects its `RCON_PASSWORD` setup dynamically, `mc-rcon` pulls these environment credentials and connects flawlessly.
+
+**Usage:**
+```bash
+# Interactive REPL:
+$ docker exec -it CONTAINER_NAME mc-rcon
+
+# One-shot command:
+$ docker exec CONTAINER_NAME mc-rcon "say Hello from auto RCON!"
+```
+
+## `mc-orchestrator`
+
+This is the main entry point to start the server processes, but it features powerful subcommands. 
+
+### `mc-orchestrator reapply`
+Re-runs the template interpolation and `CONFIG_PATHS` overrides without rebooting the container lifecycle or downloading Jars. \
+This is incredibly powerful for injecting configuration updates remotely without a disruptive server restart.
+
+**Usage:**
+```bash
+$ docker exec CONTAINER_NAME mc-orchestrator reapply
+```
+
+### `mc-orchestrator check-updates`
+Pings `Modrinth`, `Hangar`, and `Spiget` APIs and compares the latest platform releases against your current `.plugin-lock.json`, outputting an actionable report of behind-the-curve plugins.
+
+**Usage:**
+```bash
+$ docker exec CONTAINER_NAME mc-orchestrator check-updates
+```

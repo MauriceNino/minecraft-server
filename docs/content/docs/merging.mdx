@@ -1,0 +1,191 @@
+---
+title: Deep Merging
+description: How different file extensions are deeply merged together
+---
+
+When the orchestrator successfully intercepts a file (either via [Templates](./templates) or [Config Injection](./config)), and that file already exists in the runtime container, it intelligently deep-merges them based on the extension!
+
+**Environment Variable Interpolation**
+During the merge phase, the orchestrator automatically scans for environment variable placeholders formatted as `$[VARIABLE_NAME]` in your payload files. These placeholders are directly interpolated and replaced with their actual runtime environment variable values before any merging logic hits the file!
+
+It actively supports preserving comments across all formats! You can also use key-level [sigils](./sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
+
+### YAML (`.yml`, `.yaml`)
+
+Because the orchestrator relies on `ruamel.yaml`, your structural comments remain entirely untouched. 
+
+In this example, we change the port via standard merging, `!delete:` the legacy rules completely, and `!replace:` the entire advanced dictionary (wiping out old properties that aren't explicitly inside the new template block).
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+```yaml
+# server config
+server:
+  port: 25565
+  # Should we enable online mode?
+  online-mode: true
+  legacy_rules: true
+  advanced:
+    cache: true
+    debug: false
+```
+</div>
+<div>
+**Template**
+```yaml
+server:
+  port: 25566
+  "!delete:legacy_rules": ""
+  "!replace:advanced":
+    cache: false
+```
+</div>
+</div>
+
+**Result (in Runtime)**
+```yaml
+# server config
+server:
+  port: 25565 # [!code --]
+  port: 25566 # [!code ++]
+  # Should we enable online mode?
+  online-mode: true
+  legacy_rules: true # [!code --]
+  advanced: # [!code --]
+    cache: true # [!code --]
+    debug: false # [!code --]
+  advanced: # [!code ++]
+    cache: false # [!code ++]
+```
+
+### JSON (`.json`)
+
+JSON supports the exact same nested behavior. Here we `!replace` the features dict completely and `!delete` a deprecated key, while seamlessly deep merging `new_system`.
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+```json
+{
+  "max_players": 20,
+  "features": {
+    "flight": false,
+    "rcon": false
+  },
+  "old_system": true,
+  "new_system": false
+}
+```
+</div>
+<div>
+**Template Payload**
+```json
+{
+  "!replace:features": {
+    "rcon": true
+  },
+  "!delete:old_system": null,
+  "new_system": true
+}
+```
+</div>
+</div>
+
+**Result (in Runtime)**
+```json
+{
+  "max_players": 20,
+  "features": {
+    "flight": false, // [!code --]
+    "rcon": false,   // [!code --]
+    "rcon": true     // [!code ++]
+  },
+  "old_system": true,  // [!code --]
+  "new_system": false, // [!code --]
+  "new_system": true   // [!code ++]
+}
+```
+
+### TOML (`.toml`)
+
+TOML supports sigils on both flat keys and table structures. Below we change the debug flag naturally, `!delete:` the legacy flag, and `!replace:` the entire database table layout.
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+```toml
+# Main settings
+[core]
+debug = false # Change to true to log everything
+legacy = true
+
+[database]
+uri = "localhost:5432"
+timeout = 30
+```
+</div>
+<div>
+**Template Payload**
+```toml
+[core]
+debug = true
+"!delete:legacy" = true
+
+["!replace:database"]
+uri = "remote:5432"
+```
+</div>
+</div>
+
+**Result (in Runtime)**
+```toml
+# Main settings
+[core]
+debug = false # Change to true to log everything # [!code --]
+debug = true  # Change to true to log everything # [!code ++]
+legacy = true # [!code --]
+
+[database] # [!code --]
+uri = "localhost:5432" # [!code --]
+timeout = 30 # [!code --]
+
+[database] # [!code ++]
+uri = "remote:5432" # [!code ++]
+```
+
+### Java Properties (`.properties`)
+
+Because Java Properties are essentially flat lists without objects or arrays, `!replace:` is completely unnecessary - overriding properties defaults to 1:1 replacement anyway! However, `!delete:` remains invaluable to remove stale flags perfectly.
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+```properties
+# Minecraft server properties
+view-distance=10
+enable-command-block=false
+legacy-mode=true
+motd=A Minecraft Server
+```
+</div>
+<div>
+**Template Payload**
+```properties
+view-distance=12
+!delete:legacy-mode=true
+motd=mc-orchestrator rules!
+```
+</div>
+</div>
+
+**Result (in Runtime)**
+```properties
+# Minecraft server properties
+view-distance=10            # [!code --]
+view-distance=12            # [!code ++]
+enable-command-block=false
+legacy-mode=true            # [!code --]
+motd=A Minecraft Server     # [!code --]
+motd=mc-orchestrator rules! # [!code ++]
+```

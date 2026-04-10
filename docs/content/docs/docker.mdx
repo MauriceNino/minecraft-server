@@ -1,0 +1,73 @@
+---
+title: Docker Compose Setup
+description: How to run MauriceNino/minecraft-server with Docker Compose
+---
+
+The orchestrator is built primarily to work gracefully within Docker environments, particularly `docker-compose`.
+
+## Minimal Setup
+
+A `docker-compose.yml` deploying a basic Paper server looks like this:
+
+```yaml
+services:
+  minecraft:
+    image: ghcr.io/mauricenino/minecraft-server:latest
+    environment:
+      TYPE: PAPER
+      VERSION: "latest"
+      MEMORY: 2G
+      PLUGINS: |
+        modrinth:luckperms@latest
+    volumes:
+      - ./data:/data/runtime
+    ports:
+      - "25565:25565"
+```
+
+## Volumes & State
+
+Inside the container, `/data` is the target directory via `DEFAULT_DATA_DIR`.
+- `/data/runtime`: Where the server execution happens (and where you should mount to persist data).
+- `/data/templates`: Where you should mount your config skeletons.
+
+## Example Environments
+
+Interested in load-balanced setups or proxies? We have curated examples, such as a complete Velocity network connecting multiple survival and creative instances seamlessly.
+
+Check the `examples/` directory in our repository:
+
+👉 **[View Examples](https://github.com/MauriceNino/minecraft-server/tree/main/examples)**
+
+## Image Flavors
+
+We provide a variety of Docker image flavors to suit your needs, varying by Java version and distribution.
+
+### Java Versions
+
+We support the following Long-Term Support (LTS) and current Java versions:
+- **Java 25** (Default)
+- **Java 23**
+- **Java 21**
+
+### Java Distributions
+
+You can choose from several popular Java distributions:
+- **Temurin** (Default, via Eclipse Adoptium)
+- **Corretto** (Amazon)
+- **Microsoft**
+- **Azul** (Zulu)
+- **GraalVM** (Oracle)
+
+### Tagging Scheme
+
+Tags follow the pattern `java<version>-<distribution>`.
+
+| Feature | Tag Example |
+|---|---|
+| Latest Stable | `latest` (Java 25, Temurin) |
+| Specific Version | `java21-temurin` |
+| Different Flavor | `java25-graalvm` |
+
+> [!TIP]
+> If you are unsure which one to use, `latest` (Java 25 Temurin) is recommended for most users.

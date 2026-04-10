@@ -1,0 +1,88 @@
+---
+title: Lifecycle Sigils
+description: Taking complete control of the layout lifecycle
+---
+
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+
+A **Sigil** is a special prefix that allows you to surgically intercept the orchestrator's processing behavior before the core merging logic executes.
+
+They can be applied to physical filenames inside a [Templates folder](./templates), or bound to injection keys mapped inside Docker `CONFIG_PATHS` ([Configuration Injection](./config)).
+
+## Breakdown of Action Sigils
+
+- **`!force:<name>`**
+  - **Behavior:** Ensures the file is copied if it doesn't exist, and recursively deep-merged if it does. This guarantees that your configuration block arrives safely regardless of the original container state.
+  
+- **`!replace:<name>`**
+  - **Behavior:** Completely bypasses the deep-merge logic. The target file is overwritten fully by your input data. Use this when you absolutely need a pure 1:1 replica without outside pollution.
+
+- **`!delete:<name>`**
+  - **Behavior:** Instructs the orchestrator to physically delete the target file in the `/runtime` folder. This is invaluable when managing sunset rules, allowing you to forcefully remove deprecated plugins, configs, or data folders from old setups programmatically!
+
+- **`<name>`**
+  - **Behavior:** This is the default behavior when no sigil is present. It instructs the orchestrator to merge the target file if it exists, and do nothing if it doesn't.
+
+### File Trees Example
+
+If used inside a `templates` directory physically mapping to `runtime`:
+
+**Template Source**
+<Files className="mb-6">
+  <Folder name="data" defaultOpen>
+    <Folder name="templates" defaultOpen>
+      <Folder name="some-folder" defaultOpen>
+        <File name="config.yml" />
+      </Folder>
+      <File name="!replace:replace-this.yml" />
+      <File name="!delete:delete-this.json" />
+      <File name="!force:force-this.yml" />
+      <File name="merge-this.json" />
+    </Folder>
+  </Folder>
+</Files>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+<Files>
+  <Folder name="data" defaultOpen>
+    <Folder name="runtime" defaultOpen>
+      <Folder name="some-folder" defaultOpen>
+        <Folder name="sessions" />
+      </Folder>
+      <File name="replace-this.yml" />
+      <File name="delete-this.json" />
+    </Folder>
+  </Folder>
+</Files>
+</div>
+<div>
+**Runtime (After)**
+<Files>
+  <Folder name="data" defaultOpen>
+    <Folder name="runtime" defaultOpen>
+      <Folder name="some-folder" defaultOpen>
+        <Folder name="sessions" />
+        <File name="config.yml" className="text-green-500" />
+      </Folder>
+      <File name="replace-this.yml" className="text-yellow-500" />
+      <File name="force-this.yml" className="text-yellow-500" />
+    </Folder>
+  </Folder>
+</Files>
+</div>
+</div>
+
+<Callout title="Note" type="info">
+  - `some-folder` is deep-merged
+  - `replace-this.yml` is completely overwritten
+  - `delete-this.json` is deleted
+  - `force-this.yml` is deep-merged
+</Callout>
+
+## Deep Merging Behavior
+
+Keep in mind that unless you bypass it with `!replace:`, standard matching files are processed intelligently depending on their extension.
+
+To read explicitly how JSON, YAML, TOML, and Properties behave during this procedure, read the [Deep Merging](./merging) guide.

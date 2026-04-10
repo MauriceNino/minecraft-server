@@ -1,0 +1,45 @@
+---
+title: Configuration Injection
+description: Inline configuration via environment variables
+---
+
+Often, you don't want to mount an entire directory of templates just to change a single line in a server configuration file. `MauriceNino/minecraft-server` lets you dynamically inject configuration files via Docker Environment Variables using `CONFIG_PATHS`.
+
+## Enabling Config Injections (`CONFIG_PATHS`)
+
+`CONFIG_PATHS` maps an environment variable key to a target file path in your runtime directory.
+
+**Format:** `[sigil:]<ENV_KEY> -> <Target_Path>`
+
+For example:
+
+```yaml
+environment:
+  CONFIG_PATHS: |
+    server_props -> server.properties
+    luckperms -> plugins/luckperms/config.yml
+    !force:my_custom_override -> custom.json
+
+  CONFIG_server_props: |
+    view-distance=10
+    motd=Welcome
+  
+  CONFIG_luckperms: |
+    server-name: survival
+    password: $[PASSWORD]
+    
+  CONFIG_my_custom_override: |
+    { "advanced": true }
+```
+
+<Callout title="Environment Variable Interpolation" type="info">
+  You can use `$[VARIABLE_NAME]` placeholders inside your injected config values. The orchestrator automatically intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the [Deep Merging](./merging) guide.
+</Callout>
+
+### Complex Injections
+
+When these environment injections evaluate, they run through the exact same engine pipeline as standard [templates](./templates). 
+
+Because of this, they are extremely capable:
+- **[Lifecycle Sigils](./sigils)**: You can prefix injection keys in your map with sigils like `!replace:`, `!force:`, and `!delete:` to completely rewrite files across container boots.
+- **[Deep Merging](./merging)**: Rather than replacing an entire `.yml` or `.json` file, injected payload contents dynamically deep-merge into existing files on disk. You can additionally use inner data sigils like `!replace:key` or `!delete:key` to specifically manipulate objects right through Docker Compose!

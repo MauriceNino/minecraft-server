@@ -1,0 +1,45 @@
+---
+title: Server Platforms
+description: Selecting and configuring your core server software
+---
+
+`MauriceNino/minecraft-server` manages the downloading, linking, and execution of your core server JAR. It takes the heavy lifting out of managing Java processes and garbage collection.
+
+## Supported Platforms
+
+You can control which software runs via the `TYPE` environment variable.
+
+- **`PAPER`** (Default): The high-performance fork of Spigot. If you omit `TYPE`, it defaults to this.
+- **`FOLIA`**: A fork of Paper that adds regionized multithreading.
+- **`VELOCITY`**: The next-generation Minecraft proxy proxy.
+
+## Version Resolution
+
+The orchestrator dynamically fetches builds directly from the official APIs (PaperMC's v2 API for Paper/Folia/Velocity).
+
+### `VERSION`
+Specifies the Minecraft version.
+- **Default:** `latest`
+- **Aliases:** `latest` or `stable` resolves to the most recent stable release. `experimental` or `beta` resolves to the latest experimental build.
+- **Exact:** e.g., `1.21.4`
+
+### `BUILD`
+Specifies the exact build number to use for the selected version.
+- **Default:** `latest`
+- **Aliases:** `latest` resolves to the very highest build number available for the selected version.
+- **Exact:** e.g., `123`
+
+## Java Execution Context
+
+When executing the server JAR, the orchestrator also manages the JVM environment.
+
+### `MEMORY`
+Defines the heap size. It is passed exactly as written to both `-Xms` and `-Xmx`.
+- **Default:** `1G` (e.g., `2G`, `512M`)
+
+### `JVM_FLAGS`
+Space-separated list of flags passed to the `java` execution command.
+- **Default:** None (Empty). However, if left empty, the orchestrator **injects highly optimized defaults**:
+  - For **PAPER / FOLIA**: Injects Aikar's flags (`-Dusing.aikars.flags`, `-XX:+UseG1GC`, G1GC tuning parameters, etc.) along with `--add-modules=jdk.incubator.vector`.
+  - For **VELOCITY**: Injects proxy-specific optimized G1GC flags (`-XX:G1HeapRegionSize=4M`, `-XX:MaxInlineLevel=15`, etc.).
+If you provide *any* flags to `JVM_FLAGS`, these defaults are skipped completely, allowing you full control.

@@ -1,0 +1,57 @@
+---
+title: Template Orchestration
+description: Declarative File Generation and the Replace-then-Merge pipeline
+---
+
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+
+The orchestrator executes a powerful file merging lifecycle before the Java process begins.
+
+It recursively searches your `templates` folder and merges exactly what it finds to `/data/runtime` (which is where the server actually runs).
+
+## Enabling Templates (`APPLIED_TEMPLATES`)
+
+By default, the orchestrator **will not apply any templates**. To tell the system which folders inside `/data/templates` to process, you must explicitly declare them using the `APPLIED_TEMPLATES` environment variable.
+
+The execution order heavily matters here—templates are merged top-to-bottom!
+
+For example, if your physical structure looks like this:
+
+<Files>
+  <Folder name="templates" defaultOpen>
+    <Folder name="shared-base">
+      <File name="config.yml" />
+    </Folder>
+    <Folder name="survival-overrides">
+      <File name="config.yml" />
+    </Folder>
+    <Folder name="creative-overrides">
+      <File name="config.yml" />
+    </Folder>
+  </Folder>
+</Files>
+
+You can instruct the container to only process specific subsets sequentially:
+
+```yaml
+environment:
+  APPLIED_TEMPLATES: |
+    shared-base
+    survival-overrides
+
+volumes:
+  - ./templates:/data/templates
+```
+
+The orchestrator will first copy and merge everything inside `shared-base`, and then layer everything from `survival-overrides` perfectly on top, while completely ignoring `creative-overrides`.
+
+<Callout title="Environment Variable Interpolation" type="info">
+  You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator automatically intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the [Deep Merging](./merging) guide.
+</Callout>
+
+## How Templates Apply
+
+When syncing your enabled templates over to the runtime container, the system natively supports powerful lifecycle overrides.
+
+- **[Directory & File Sigils](./sigils)**: By prefixing your folder or file names with sigils (e.g., `!replace:config.json` or `!delete:old-plugin.jar`), you can seamlessly command the orchestrator to abandon standard flow, allowing you to orchestrate programmatic programmatic deletions and resets directly from a file tree.
+- **[Deep Merging](./merging)**: If a configurations file inside your template runs into the same file in the runtime layer, by default it doesn't just overwrite it. The orchestrator intelligently merges your template dicts natively into the runtime formats (supporting YAML, JSON, TOML, and Properties).
