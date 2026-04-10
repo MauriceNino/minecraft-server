@@ -15,10 +15,12 @@ services:
     image: ghcr.io/mauricenino/minecraft-server:latest
     environment:
       TYPE: PAPER
-      VERSION: "latest"
+      VERSION: latest
       MEMORY: 2G
+      ACCEPT_EULA: true
       PLUGINS: |
         modrinth:luckperms@latest
+        hangar:viaversion@latest
     volumes:
       - ./data:/data/runtime
     ports:

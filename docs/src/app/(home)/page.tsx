@@ -10,7 +10,6 @@ import {
   Settings,
   Zap,
 } from 'lucide-react';
-import { CodeBlock } from 'fumadocs-ui/components/codeblock';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 
 const features = [
@@ -64,11 +63,12 @@ const codeSnippet = `services:
     image: ghcr.io/mauricenino/minecraft-server:latest
     environment:
       TYPE: PAPER
-      VERSION: "1.21.4"
+      VERSION: 1.21.4
       MEMORY: 2G
+      ACCEPT_EULA: true
       PLUGINS: |
         modrinth:luckperms@latest
-        modrinth:viaversion@latest
+        hangar:viaversion@latest
     volumes:
       - ./data:/data/runtime
     ports:
