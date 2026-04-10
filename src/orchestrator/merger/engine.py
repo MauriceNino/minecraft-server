@@ -6,6 +6,7 @@ from pathlib import Path
 from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.logging import console
+from orchestrator.merger.conf_merger import merge_conf
 from orchestrator.merger.json_merger import merge_json
 from orchestrator.merger.properties_merger import merge_properties
 from orchestrator.merger.toml_merger import merge_toml
@@ -16,6 +17,7 @@ _STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {
     ".yml": merge_yaml,
     ".yaml": merge_yaml,
     ".json": merge_json,
+    ".conf": merge_conf,
     ".toml": merge_toml,
     ".properties": merge_properties,
 }

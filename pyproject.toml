@@ -19,6 +19,7 @@ dependencies = [
     "click>=8.1",
     "ruamel-yaml>=0.18",
     "mcrcon>=0.7",
+    "pyhocon>=0.3.60",
 ]
 
 [project.optional-dependencies]

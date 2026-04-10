@@ -51,3 +51,25 @@ def strip_sigils(data: Any) -> Any:
         return [strip_sigils(item) for item in data]
 
     return data
+
+
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Deep-merge *overlay* into *base* with sigil support."""
+    result = dict(base)
+
+    for raw_key, overlay_value in overlay.items():
+        sigil, clean_key = parse_key_sigil(raw_key)
+
+        if sigil == KeySigil.DELETE:
+            result.pop(clean_key, None)
+        elif sigil == KeySigil.REPLACE:
+            # Overwrite entirely (strip sigils from nested keys too)
+            result[clean_key] = strip_sigils(overlay_value)
+        elif clean_key in result and isinstance(result[clean_key], dict) and isinstance(overlay_value, dict):
+            # Recursive merge
+            result[clean_key] = deep_merge(result[clean_key], overlay_value)
+        else:
+            # Scalar / list / new key — overwrite
+            result[clean_key] = strip_sigils(overlay_value)
+
+    return result

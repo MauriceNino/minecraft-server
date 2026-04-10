@@ -8,7 +8,7 @@ When the orchestrator successfully intercepts a file (either via [Templates](./t
 **Environment Variable Interpolation**
 During the merge phase, the orchestrator automatically scans for environment variable placeholders formatted as `$[VARIABLE_NAME]` in your payload files. These placeholders are directly interpolated and replaced with their actual runtime environment variable values before any merging logic hits the file!
 
-It actively supports preserving comments across all formats! You can also use key-level [sigils](./sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
+It actively supports preserving comments across most formats (YAML, TOML, and Properties)! You can also use key-level [sigils](./sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
 
 ### YAML (`.yml`, `.yaml`)
 
@@ -189,3 +189,52 @@ legacy-mode=true            # [!code --]
 motd=A Minecraft Server     # [!code --]
 motd=mc-orchestrator rules! # [!code ++]
 ```
+
+### HOCON (`.conf`)
+
+HOCON (Human-Optimized Config Object Notation) is a super-set of JSON often found in plugins like LuckPerms or Sponge. The orchestrator allows deep-merging `.conf` files exactly like JSON.
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+**Runtime (Before)**
+```js
+storage-method = "h2"
+data {
+  address = "127.0.0.1"
+  pool-settings {
+    maximum-pool-size = 10
+  }
+}
+```
+</div>
+<div>
+**Template Payload**
+```js
+storage-method = "postgresql"
+data {
+  address = "192.168.1.100"
+  "!replace:pool-settings" {
+    max = 20
+  }
+}
+```
+</div>
+</div>
+
+**Result (in Runtime)**
+```js
+storage-method = "h2" // [!code --]
+storage-method = "postgresql" // [!code ++]
+data {
+  address = "127.0.0.1" // [!code --]
+  address = "192.168.1.100" // [!code ++]
+  pool-settings {
+    maximum-pool-size = 10 // [!code --]
+    max = 20 // [!code ++]
+  }
+}
+```
+
+<Callout title="Note" type="warning">
+  Unlike YAML and TOML, the HOCON merger **does not** preserve comments in the existing file. Merging into a `.conf` file will result in a clean HOCON output without the original comments or custom formatting.
+</Callout>
