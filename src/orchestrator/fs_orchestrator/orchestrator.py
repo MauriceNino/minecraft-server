@@ -36,7 +36,7 @@ def orchestrate_templates(
         _collect_and_execute_replaces(tree, runtime_dir)
         _collect_and_execute_deletes(tree, runtime_dir)
 
-        _merge_tree(tree, runtime_dir, runtime_dir, False)
+        _merge_tree(tree, runtime_dir, runtime_dir, False, False)
 
 
 def _collect_and_execute_replaces(node: TemplateNode, runtime_base: Path) -> None:
@@ -66,10 +66,13 @@ def _collect_and_execute_deletes(node: TemplateNode, runtime_base: Path) -> None
             _collect_and_execute_deletes(child, target)
 
 
-def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_replace: bool) -> None:
+def _merge_tree(
+    node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_replace: bool, in_force: bool
+) -> None:
     for child in node.children:
         target = runtime_base / child.clean_name
         is_replace = in_replace or (child.sigil == DirSigil.REPLACE)
+        is_force = in_force or (child.sigil == DirSigil.FORCE)
 
         if child.sigil == DirSigil.DELETE:
             # Already handled in phase 1 — nothing to write
@@ -77,12 +80,14 @@ def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_re
 
         if child.is_dir:
             target.mkdir(parents=True, exist_ok=True)
-            _merge_tree(child, target, runtime_dir, is_replace)
+            _merge_tree(child, target, runtime_dir, is_replace, is_force)
         else:
-            _merge_file(child, target, runtime_dir, is_replace)
+            _merge_file(child, target, runtime_dir, is_replace, is_force)
 
 
-def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace: bool) -> None:
+def _merge_file(
+    node: TemplateNode, target: Path, runtime_dir: Path, in_replace: bool, in_force: bool
+) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
 
     suffix = target.suffix.lower()
@@ -96,7 +101,7 @@ def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace:
         return
 
     if not target.exists():
-        if node.sigil == DirSigil.FORCE:
+        if in_force or node.sigil == DirSigil.FORCE:
             console.print(f"    [info]✓[/info] [dim]creating[/dim]  {rel_path}")
             target.parent.mkdir(parents=True, exist_ok=True)
             _write_interpolated(node.source_path, target)
@@ -112,7 +117,7 @@ def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace:
         return
 
     # Non-config files: overwrite (last template wins for binaries)
-    console.print(f"    [warning]✗[/warning] [dim]overwrite[/dim] {rel_path}")
+    console.print(f"    [info]✓[/info] [dim]replacing[/dim] {rel_path}")
     _write_interpolated(node.source_path, target)
 
 

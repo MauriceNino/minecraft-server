@@ -171,6 +171,26 @@ class TestOrchestrateTemplates:
         assert target.exists()
         assert yaml.safe_load(target.read_text()) == {"key": "value"}
 
+    def test_force_directory_creates_absent_files(self, tmp_path: Path) -> None:
+        """!force: on a directory creates all absent files within it."""
+        templates = tmp_path / "templates"
+        runtime = tmp_path / "runtime"
+        runtime.mkdir(parents=True)
+
+        self._make_template(
+            templates,
+            "base",
+            {
+                "!force:config_dir/file1.yml": "a: 1\n",
+                "!force:config_dir/inner/file2.yml": "b: 2\n",
+            },
+        )
+
+        orchestrate_templates(templates, runtime, ["base"])
+
+        assert (runtime / "config_dir" / "file1.yml").read_text() == "a: 1\n"
+        assert (runtime / "config_dir" / "inner" / "file2.yml").read_text() == "b: 2\n"
+
     def test_force_merges_when_existing(self, tmp_path: Path) -> None:
         """!force: still deep-merges when the target already exists."""
         templates = tmp_path / "templates"
