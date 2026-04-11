@@ -1,0 +1,38 @@
+---
+title: Variable Interpolation
+description: Injecting environment variables into configuration files
+---
+
+The orchestrator supports dynamic variable interpolation across all configuration files handled during the [Templates](../templates) and [Config Injection](../config) phases. 
+
+This allows you to keep sensitive credentials or dynamic values (like hostnames, ports, or API keys) out of your template files and manage them entirely via Docker environment variables.
+
+## Usage
+
+During the preparation phase, the orchestrator automatically scans for environment variable placeholders formatted as `$[VARIABLE_NAME]` in your payload files. These placeholders are directly interpolated and replaced with their actual runtime environment variable values.
+
+### Basic Example
+
+If you have an environment variable `DB_PASSWORD=secret123` and a template file `config.yml`:
+
+```yaml
+database:
+  password: $[DB_PASSWORD]
+```
+
+The resulting file in the runtime directory will be:
+
+```yaml
+database:
+  password: secret123
+```
+
+## How it works
+
+1. **Detection:** Before any merging or sigil processing occurs, the orchestrator reads the content of the payload file.
+2. **Replacement:** Every instance of the `$[...]` pattern is replaced with the corresponding environment variable value.
+3. **Pipeline:** The "interpolated" content is then passed down to the [Deep Merging](../merging) and [Sigil](../sigils) processing engines.
+
+<Callout type="info" title="Note on Secrets">
+Variable interpolation is the recommended way to handle secrets. By using `$[SECRET_KEY]`, you can safely check your templates into Git (GitOps) while keeping the actual sensitive values in a secure `.env` file or Docker Secret.
+</Callout>

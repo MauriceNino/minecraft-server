@@ -12,7 +12,9 @@
     "config",
     "sigils",
     "merging",
-    "---Helpers---",
-    "scripts"
+    "interpolation",
+    "---Maintenance & FAQ---",
+    "scripts",
+    "faq"
   ]
 }

@@ -1,0 +1,56 @@
+---
+title: FAQ
+description: Frequently asked questions about the Minecraft Server Orchestrator
+---
+
+## How can I configure the server?
+
+Configuring your server is handled primarily through environment variables and configuration templates.
+
+- **Templates:** You can provide base configuration files that the orchestrator will process and populate with your environment variables. [Learn more about Templates](../templates).
+- **Environment Variables:** Primary control for core settings (Memory, Version, etc.) and support for dynamic [Variable Interpolation](../interpolation) in your configs.
+- **Direct Configuration:** You can also override specific values in existing configuration files using sigils. [Learn more about Merging](../merging).
+
+**Our Mantra:** The philosophy is **"Configuration as Code"**. Instead of manually editing files inside a running container, you define your desired state in your `docker-compose.yml` or template files. This makes your server reproducible, version-controllable, and easy to migrate.
+
+## How does this compare to other solutions?
+
+While there are many ways to run a Minecraft server, this orchestrator occupies a specific niche between "simple Docker images" and "complex management panels".
+
+- **vs. [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server):** The standard `itzg` image is amazing and supports almost everything. However, it relies heavily on a massive list of environment variables for every single config change. Our orchestrator focuses on **Template Merging**, allowing you to keep your actual `.yml`, `.properties`, or `.conf` files as the source of truth, while still using environment variables for dynamic injection. Use this project if you prefer "Configuration as Code" over "Environment Variable overload".
+- **vs. [CloudNet](https://github.com/CloudNetService/CloudNet):** CloudNet is a powerful distributed cloud system for massive networks with dynamic scaling. Our solution is much simpler and "closer to the metal" (Docker). If you don't need a central controller to dynamically spin up/down servers and just want a robust, reproducible static setup, this orchestrator is easier to manage.
+- **vs. [Pterodactyl](https://github.com/pterodactyl/panel):** Pterodactyl is a top-tier management panel with a beautiful UI. It is great for hosting providers or communities where multiple people need web access. Our orchestrator is **CLI-first** and designed for developers who want to manage their infrastructure via `docker-compose` and Git, without the overhead of a database, panel, and wings.
+
+## What is the benefit of templates and isn't this overcomplicated?
+
+It might seem like extra work at first, but it is a lifesaver for long-term projects and complex setups:
+
+- **Project Portability:** Want to start a new season or a different server with 90% of the same settings? Just reuse your templates and change a few environment variables.
+- **Networks:** If you run multiple servers (e.g., a Velocity network), you can share common configurations (like player permissions, chat settings, or plugin configs) across all nodes.
+- **Merging Patterns:** Our merging logic allows you to maintain a "global" template and small "per-server" overrides, completely removing configuration duplication.
+- **GitOps Ready:** We highly recommend checking your templates into a GitHub repository. This gives you a clear history of all changes and makes "reverting" a bad config change as easy as a `git revert`.
+
+<Callout type="info" title="Note on Secrets">
+Do not check sensitive information (like API keys, database passwords, or RCON passwords) into your templates. Instead, use [environment variables](interpolation) which the orchestrator will automatically inject into your configs during the preparation phase.
+</Callout>
+
+## What can I do if my wanted platform is not supported?
+
+We are constantly working on adding more platforms! Support for custom JAR files is also on our roadmap to allow any server software to be orchestrated.
+
+If you need a platform that isn't currently supported by our orchestrator, we recommend using the excellent [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) image in the meantime. It supports a massive range of legacy and niche platforms.
+
+## Why do I have to set permissions for the runtime directory manually?
+
+For security reasons, our containers do **not** run as the root user. They run as a dedicated `minecraft` user (UID `1000`) and group (GID `1000`).
+
+When you mount a volume (like `-v ./data:/data/runtime`) and the directory on your host does not exist yet, Docker may automatically create it as `root` (owned by `0:0`). Since the container process is running as UID `1000`, it will not have permission to write to that folder, leading to a `Permission Denied` error.
+
+To fix this, you should create the directory yourself on the host and set the correct ownership:
+
+```bash
+mkdir ./data
+sudo chown -R 1000:1000 ./data
+```
+
+Running as a non-root user is a security best practice that prevents a compromised Minecraft server from potentially gaining root access to your host system.

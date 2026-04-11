@@ -32,14 +32,14 @@ environment:
     { "advanced": true }
 ```
 
-<Callout title="Environment Variable Interpolation" type="info">
-  You can use `$[VARIABLE_NAME]` placeholders inside your injected config values. The orchestrator automatically intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the [Deep Merging](./merging) guide.
+<Callout title="Variable Interpolation" type="info">
+  You can use `$[VARIABLE_NAME]` placeholders inside your injected config values. The orchestrator automatically intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the [Variable Interpolation](../interpolation) guide.
 </Callout>
 
 ### Complex Injections
 
-When these environment injections evaluate, they run through the exact same engine pipeline as standard [templates](./templates). 
+When these environment injections evaluate, they run through the exact same engine pipeline as standard [templates](../templates). 
 
 Because of this, they are extremely capable:
-- **[Lifecycle Sigils](./sigils)**: You can prefix injection keys in your map with sigils like `!replace:`, `!force:`, and `!delete:` to completely rewrite files across container boots.
-- **[Deep Merging](./merging)**: Rather than replacing an entire `.yml` or `.json` file, injected payload contents dynamically deep-merge into existing files on disk. You can additionally use inner data sigils like `!replace:key` or `!delete:key` to specifically manipulate objects right through Docker Compose!
+- **[Lifecycle Sigils](../sigils)**: You can prefix injection keys in your map with sigils like `!replace:`, `!force:`, and `!delete:` to completely rewrite files across container boots.
+- **[Deep Merging](../merging)**: Rather than replacing an entire `.yml` or `.json` file, injected payload contents dynamically deep-merge into existing files on disk. You can additionally use inner data sigils like `!replace:key` or `!delete:key` to specifically manipulate objects right through Docker Compose!

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 import sys
+import tempfile
 
 import click
 
@@ -52,8 +52,8 @@ def _check_permissions(config: Config) -> None:
     """Verify that the orchestrator has write access to the data directory."""
     try:
         with tempfile.NamedTemporaryFile(dir=config.runtime_dir, prefix=".perm_test_"):
-            pass 
-    except (OSError, IOError):
+            pass
+    except OSError:
         console.print()
         console.print("  [error]✗ Permission Denied: Runtime Directory[/error]")
         console.print()

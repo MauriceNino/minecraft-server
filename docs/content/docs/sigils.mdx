@@ -7,7 +7,7 @@ import { File, Folder, Files } from 'fumadocs-ui/components/files';
 
 A **Sigil** is a special prefix that allows you to surgically intercept the orchestrator's processing behavior before the core merging logic executes.
 
-They can be applied to physical filenames inside a [Templates folder](./templates), or bound to injection keys mapped inside Docker `CONFIG_PATHS` ([Configuration Injection](./config)).
+They can be applied to physical filenames inside a [Templates folder](../templates), or bound to injection keys mapped inside Docker `CONFIG_PATHS` ([Configuration Injection](../config)).
 
 ## Breakdown of Action Sigils
 
@@ -85,4 +85,4 @@ If used inside a `templates` directory physically mapping to `runtime`:
 
 Keep in mind that unless you bypass it with `!replace:`, standard matching files are processed intelligently depending on their extension.
 
-To read explicitly how JSON, YAML, TOML, and Properties behave during this procedure, read the [Deep Merging](./merging) guide.
+To read explicitly how JSON, YAML, TOML, and Properties behave during this procedure, read the [Deep Merging](../merging) guide.

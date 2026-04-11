@@ -3,12 +3,11 @@ title: Deep Merging
 description: How different file extensions are deeply merged together
 ---
 
-When the orchestrator successfully intercepts a file (either via [Templates](./templates) or [Config Injection](./config)), and that file already exists in the runtime container, it intelligently deep-merges them based on the extension!
+When the orchestrator successfully intercepts a file (either via [Templates](../templates) or [Config Injection](../config)), and that file already exists in the runtime container, it intelligently deep-merges them based on the extension!
 
-**Environment Variable Interpolation**
-During the merge phase, the orchestrator automatically scans for environment variable placeholders formatted as `$[VARIABLE_NAME]` in your payload files. These placeholders are directly interpolated and replaced with their actual runtime environment variable values before any merging logic hits the file!
+Each payload also supports [Variable Interpolation](../interpolation) using the `$[VARIABLE_NAME]` syntax. This occurs before any merging logic hits the file!
 
-It actively supports preserving comments across most formats (YAML, TOML, and Properties)! You can also use key-level [sigils](./sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
+It actively supports preserving comments across most formats (YAML, TOML, and Properties)! You can also use key-level [sigils](../sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
 
 ### YAML (`.yml`, `.yaml`)
 
