@@ -24,7 +24,7 @@ ARG JAVA_FLAVOR=temurin
 LABEL org.opencontainers.image.title="minecraft-server" \
     org.opencontainers.image.description="Modular Minecraft server orchestrator with plugin resolution, config merging, and RCON injection" \
     org.opencontainers.image.source="https://github.com/MauriceNino/minecraft-server" \
-    org.opencontainers.image.licenses="MIT"
+    org.opencontainers.image.licenses="GPLv3"
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \

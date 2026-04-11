@@ -2,7 +2,7 @@
   <h1>MauriceNino/minecraft-server</h1>
   <p><b>A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.</b></p>
 
-  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+  [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
   [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 </div>
 

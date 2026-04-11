@@ -7,7 +7,7 @@ name = "minecraft-server"
 version = "1.0.0"
 description = "A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection."
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-only"
 requires-python = ">=3.12"
 authors = [{ name = "MauriceNino" }]
 
