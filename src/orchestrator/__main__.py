@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 import sys
 
 import click
@@ -47,6 +48,26 @@ def _accept_eula(config: Config) -> None:
         sys.exit(1)
 
 
+def _check_permissions(config: Config) -> None:
+    """Verify that the orchestrator has write access to the data directory."""
+    try:
+        with tempfile.NamedTemporaryFile(dir=config.runtime_dir, prefix=".perm_test_"):
+            pass 
+    except (OSError, IOError):
+        console.print()
+        console.print("  [error]✗ Permission Denied: Runtime Directory[/error]")
+        console.print()
+        console.print(
+            f"  The orchestrator cannot write to the data directory: [path]{config.runtime_dir}[/path]\n"
+            "  This usually occurs when Docker bind mounts create directories owned by root.\n"
+            "\n"
+            "  [bold]To fix this, run the following command on your host:[/bold]\n"
+            f"    sudo chown -R 1000:1000 /path/to/your/data"
+        )
+        console.print()
+        sys.exit(1)
+
+
 async def _async_main() -> None:
     config = load_config()
     lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
@@ -62,6 +83,7 @@ async def _async_main() -> None:
         justify="center",
     )
     console.print()
+    _check_permissions(config)
 
     log_phase("Platform JAR")
     resolved_version = await resolve_platform(
@@ -124,6 +146,7 @@ async def _async_main() -> None:
 
 async def _async_reapply() -> None:
     config = load_config()
+    _check_permissions(config)
     setup_logging(verbose=config.verbose)
 
     if not config.applied_templates and not config.config_overrides:

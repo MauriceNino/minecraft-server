@@ -97,7 +97,7 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /data
 RUN mkdir -p templates runtime && chown -R minecraft:minecraft /data
 
-USER 1000:1000
+USER minecraft:minecraft
 
 VOLUME ["/data/templates", "/data/runtime"]
 EXPOSE 25565 25575
