@@ -12,6 +12,7 @@ Connecting to Minecraft containers and dispatching commands via stdin or log-tai
 Because the orchestrator already injects its `RCON_PASSWORD` setup dynamically, `mc-rcon` pulls these environment credentials and connects flawlessly.
 
 **Usage:**
+
 ```bash
 # Interactive REPL:
 $ docker exec -it CONTAINER_NAME mc-rcon
@@ -22,21 +23,25 @@ $ docker exec CONTAINER_NAME mc-rcon "say Hello from auto RCON!"
 
 ## `mc-orchestrator`
 
-This is the main entry point to start the server processes, but it features powerful subcommands. 
+This is the main entry point to start the server processes, but it features powerful subcommands.
 
 ### `mc-orchestrator reapply`
+
 Re-runs the template interpolation and `CONFIG_PATHS` overrides without rebooting the container lifecycle or downloading Jars. \
 This is incredibly powerful for injecting configuration updates remotely without a disruptive server restart.
 
 **Usage:**
+
 ```bash
 $ docker exec CONTAINER_NAME mc-orchestrator reapply
 ```
 
 ### `mc-orchestrator check-updates`
+
 Pings `Modrinth`, `Hangar`, and `Spiget` APIs and compares the latest platform releases against your current `.plugin-lock.json`, outputting an actionable report of behind-the-curve plugins.
 
 **Usage:**
+
 ```bash
 $ docker exec CONTAINER_NAME mc-orchestrator check-updates
 ```

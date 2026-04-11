@@ -31,7 +31,9 @@ It might seem like extra work at first, but it is a lifesaver for long-term proj
 - **GitOps Ready:** We highly recommend checking your templates into a GitHub repository. This gives you a clear history of all changes and makes "reverting" a bad config change as easy as a `git revert`.
 
 <Callout type="info" title="Note on Secrets">
-Do not check sensitive information (like API keys, database passwords, or RCON passwords) into your templates. Instead, use [environment variables](interpolation) which the orchestrator will automatically inject into your configs during the preparation phase.
+  Do not check sensitive information (like API keys, database passwords, or RCON passwords) into
+  your templates. Instead, use [environment variables](interpolation) which the orchestrator will
+  automatically inject into your configs during the preparation phase.
 </Callout>
 
 ## What can I do if my wanted platform is not supported?

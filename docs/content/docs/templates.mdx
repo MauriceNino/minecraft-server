@@ -46,7 +46,9 @@ volumes:
 The orchestrator will first copy and merge everything inside `shared-base`, and then layer everything from `survival-overrides` perfectly on top, while completely ignoring `creative-overrides`.
 
 <Callout title="Variable Interpolation" type="info">
-  You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator automatically intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the [Variable Interpolation](../interpolation) guide.
+  You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator
+  automatically intercepts and replaces these with actual runtime environment variable values before
+  any merge logic applies. Read more in the [Variable Interpolation](../interpolation) guide.
 </Callout>
 
 ## How Templates Apply

@@ -11,13 +11,15 @@ It actively supports preserving comments across most formats (YAML, TOML, and Pr
 
 ### YAML (`.yml`, `.yaml`)
 
-Because the orchestrator relies on `ruamel.yaml`, your structural comments remain entirely untouched. 
+Because the orchestrator relies on `ruamel.yaml`, your structural comments remain entirely untouched.
 
 In this example, we change the port via standard merging, `!delete:` the legacy rules completely, and `!replace:` the entire advanced dictionary (wiping out old properties that aren't explicitly inside the new template block).
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
+
 **Runtime (Before)**
+
 ```yaml
 # server config
 server:
@@ -29,20 +31,25 @@ server:
     cache: true
     debug: false
 ```
+
 </div>
 <div>
+
 **Template**
+
 ```yaml
 server:
   port: 25566
-  "!delete:legacy_rules": ""
-  "!replace:advanced":
+  '!delete:legacy_rules': ''
+  '!replace:advanced':
     cache: false
 ```
+
 </div>
 </div>
 
 **Result (in Runtime)**
+
 ```yaml
 # server config
 server:
@@ -64,7 +71,9 @@ JSON supports the exact same nested behavior. Here we `!replace` the features di
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
+
 **Runtime (Before)**
+
 ```json
 {
   "max_players": 20,
@@ -76,9 +85,12 @@ JSON supports the exact same nested behavior. Here we `!replace` the features di
   "new_system": false
 }
 ```
+
 </div>
 <div>
+
 **Template Payload**
+
 ```json
 {
   "!replace:features": {
@@ -88,21 +100,23 @@ JSON supports the exact same nested behavior. Here we `!replace` the features di
   "new_system": true
 }
 ```
+
 </div>
 </div>
 
 **Result (in Runtime)**
+
 ```json
 {
   "max_players": 20,
   "features": {
     "flight": false, // [!code --]
-    "rcon": false,   // [!code --]
-    "rcon": true     // [!code ++]
+    "rcon": false, // [!code --]
+    "rcon": true // [!code ++]
   },
-  "old_system": true,  // [!code --]
+  "old_system": true, // [!code --]
   "new_system": false, // [!code --]
-  "new_system": true   // [!code ++]
+  "new_system": true // [!code ++]
 }
 ```
 
@@ -112,7 +126,9 @@ TOML supports sigils on both flat keys and table structures. Below we change the
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
+
 **Runtime (Before)**
+
 ```toml
 # Main settings
 [core]
@@ -123,9 +139,12 @@ legacy = true
 uri = "localhost:5432"
 timeout = 30
 ```
+
 </div>
 <div>
+
 **Template Payload**
+
 ```toml
 [core]
 debug = true
@@ -134,10 +153,12 @@ debug = true
 ["!replace:database"]
 uri = "remote:5432"
 ```
+
 </div>
 </div>
 
 **Result (in Runtime)**
+
 ```toml
 # Main settings
 [core]
@@ -151,6 +172,7 @@ timeout = 30 # [!code --]
 
 [database] # [!code ++]
 uri = "remote:5432" # [!code ++]
+
 ```
 
 ### Java Properties (`.properties`)
@@ -159,7 +181,9 @@ Because Java Properties are essentially flat lists without objects or arrays, `!
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
+
 **Runtime (Before)**
+
 ```properties
 # Minecraft server properties
 view-distance=10
@@ -167,18 +191,23 @@ enable-command-block=false
 legacy-mode=true
 motd=A Minecraft Server
 ```
+
 </div>
 <div>
+
 **Template Payload**
+
 ```properties
 view-distance=12
 !delete:legacy-mode=true
 motd=mc-orchestrator rules!
 ```
+
 </div>
 </div>
 
 **Result (in Runtime)**
+
 ```properties
 # Minecraft server properties
 view-distance=10            # [!code --]
@@ -195,7 +224,9 @@ HOCON (Human-Optimized Config Object Notation) is a super-set of JSON often foun
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
+
 **Runtime (Before)**
+
 ```js
 storage-method = "h2"
 data {
@@ -205,9 +236,12 @@ data {
   }
 }
 ```
+
 </div>
 <div>
+
 **Template Payload**
+
 ```js
 storage-method = "postgresql"
 data {
@@ -217,10 +251,12 @@ data {
   }
 }
 ```
+
 </div>
 </div>
 
 **Result (in Runtime)**
+
 ```js
 storage-method = "h2" // [!code --]
 storage-method = "postgresql" // [!code ++]
@@ -235,5 +271,7 @@ data {
 ```
 
 <Callout title="Note" type="warning">
-  Unlike YAML and TOML, the HOCON merger **does not** preserve comments in the existing file. Merging into a `.conf` file will result in a clean HOCON output without the original comments or custom formatting.
+  Unlike YAML and TOML, the HOCON merger **does not** preserve comments in the existing file.
+  Merging into a `.conf` file will result in a clean HOCON output without the original comments or
+  custom formatting.
 </Callout>

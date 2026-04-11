@@ -13,7 +13,6 @@ They can be applied to physical filenames inside a [Templates folder](../templat
 
 - **`!force:<name>`**
   - **Behavior:** Ensures the file is copied if it doesn't exist, and recursively deep-merged if it does. This guarantees that your configuration block arrives safely regardless of the original container state.
-  
 - **`!replace:<name>`**
   - **Behavior:** Completely bypasses the deep-merge logic. The target file is overwritten fully by your input data. Use this when you absolutely need a pure 1:1 replica without outside pollution.
 
@@ -28,6 +27,7 @@ They can be applied to physical filenames inside a [Templates folder](../templat
 If used inside a `templates` directory physically mapping to `runtime`:
 
 **Template Source**
+
 <Files className="mb-6">
   <Folder name="data" defaultOpen>
     <Folder name="templates" defaultOpen>
@@ -43,42 +43,46 @@ If used inside a `templates` directory physically mapping to `runtime`:
 </Files>
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div>
-**Runtime (Before)**
-<Files>
-  <Folder name="data" defaultOpen>
-    <Folder name="runtime" defaultOpen>
-      <Folder name="some-folder" defaultOpen>
-        <Folder name="sessions" />
+  <div>
+
+    **Runtime (Before)**
+
+    <Files>
+      <Folder name="data" defaultOpen>
+        <Folder name="runtime" defaultOpen>
+          <Folder name="some-folder" defaultOpen>
+            <Folder name="sessions" />
+          </Folder>
+          <File name="replace-this.yml" />
+          <File name="delete-this.json" />
+        </Folder>
       </Folder>
-      <File name="replace-this.yml" />
-      <File name="delete-this.json" />
-    </Folder>
-  </Folder>
-</Files>
-</div>
-<div>
-**Runtime (After)**
-<Files>
-  <Folder name="data" defaultOpen>
-    <Folder name="runtime" defaultOpen>
-      <Folder name="some-folder" defaultOpen>
-        <Folder name="sessions" />
-        <File name="config.yml" className="text-green-500" />
+    </Files>
+
+  </div>
+  <div>
+
+    **Runtime (After)**
+
+    <Files>
+      <Folder name="data" defaultOpen>
+        <Folder name="runtime" defaultOpen>
+          <Folder name="some-folder" defaultOpen>
+            <Folder name="sessions" />
+            <File name="config.yml" className="text-green-500" />
+          </Folder>
+          <File name="replace-this.yml" className="text-yellow-500" />
+          <File name="force-this.yml" className="text-yellow-500" />
+        </Folder>
       </Folder>
-      <File name="replace-this.yml" className="text-yellow-500" />
-      <File name="force-this.yml" className="text-yellow-500" />
-    </Folder>
-  </Folder>
-</Files>
-</div>
+    </Files>
+
+  </div>
 </div>
 
 <Callout title="Note" type="info">
-  - `some-folder` is deep-merged
-  - `replace-this.yml` is completely overwritten
-  - `delete-this.json` is deleted
-  - `force-this.yml` is deep-merged
+  - `some-folder` is deep-merged - `replace-this.yml` is completely overwritten - `delete-this.json`
+  is deleted - `force-this.yml` is deep-merged
 </Callout>
 
 ## Deep Merging Behavior

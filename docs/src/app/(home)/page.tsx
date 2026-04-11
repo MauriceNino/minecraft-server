@@ -8,7 +8,6 @@ import {
   Rocket,
   Server,
   Settings,
-  Zap,
 } from 'lucide-react';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 
@@ -31,7 +30,8 @@ const features = [
   {
     icon: FileCode2,
     title: 'Template Orchestration',
-    description: 'Advanced declarative file lifecycles with !replace:, !force:, and !delete: sigils.',
+    description:
+      'Advanced declarative file lifecycles with !replace:, !force:, and !delete: sigils.',
   },
   {
     icon: Settings,
@@ -72,7 +72,7 @@ const codeSnippet = `services:
     volumes:
       - ./data:/data/runtime
     ports:
-      - "25565:25565"`
+      - "25565:25565"`;
 
 export default function HomePage() {
   return (
@@ -87,9 +87,8 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-lg text-fd-muted-foreground md:text-xl">
-            A modular Python utility and Docker environment to manage
-            Minecraft server instances. Dynamic plugin resolution, sigil-based
-            config merging, and automated RCON injection.
+            A modular Python utility and Docker environment to manage Minecraft server instances.
+            Dynamic plugin resolution, sigil-based config merging, and automated RCON injection.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
@@ -111,7 +110,7 @@ export default function HomePage() {
       </section>
 
       {/* Quick Start */}
-      <section className="border-b border-fd-border bg-fd-card/50">
+      <section className="border-b border-fd-border">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="mb-8 text-center text-2xl font-bold">Up and running in seconds</h2>
           <div className="mx-auto max-w-3xl overflow-hidden rounded-xl border border-fd-border bg-fd-background shadow-lg">
@@ -119,11 +118,34 @@ export default function HomePage() {
               <div className="h-3 w-3 rounded-full bg-red-400" />
               <div className="h-3 w-3 rounded-full bg-yellow-400" />
               <div className="h-3 w-3 rounded-full bg-green-400" />
-              <span className="ml-2 text-xs text-fd-muted-foreground font-mono">docker-compose.yml</span>
+              <span className="ml-2 text-xs text-fd-muted-foreground font-mono">
+                docker-compose.yml
+              </span>
             </div>
             <pre className="overflow-x-auto text-sm leading-relaxed">
               <DynamicCodeBlock lang="yaml" code={codeSnippet} />
             </pre>
+          </div>
+        </div>
+      </section>
+
+      {/* Supported Platforms */}
+      <section className="border-b border-fd-border bg-fd-card/50 py-20 flex flex-col gap-16">
+        <div className="mx-auto max-w-6xl px-6 gap-4 flex flex-col">
+          <h2 className="mb-4 text-center text-2xl font-bold">Supported Platforms</h2>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {platforms.map((platform) => (
+              <div
+                key={platform.name}
+                className="flex items-center gap-2 rounded-full border border-fd-border bg-fd-background px-5 py-2.5 text-sm font-medium transition-all hover:scale-105"
+              >
+                <div
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: platform.color }}
+                />
+                {platform.name}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -154,27 +176,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Supported Platforms */}
-      <section className="border-b border-fd-border bg-fd-card/50 py-16 flex flex-col gap-16">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="mb-4 text-center text-2xl font-bold">Supported Platforms</h2>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            {platforms.map((platform) => (
-              <div
-                key={platform.name}
-                className="flex items-center gap-2 rounded-full border border-fd-border bg-fd-background px-5 py-2.5 text-sm font-medium transition-all hover:scale-105"
-              >
-                <div
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: platform.color }}
-                />
-                {platform.name}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-6xl px-6">
+      {/* Supported Plugins */}
+      <section className="border-b border-fd-border bg-fd-card/50 py-20 flex flex-col gap-16">
+        <div className="mx-auto max-w-6xl px-6 flex flex-col gap-4">
           <h2 className="mb-4 text-center text-2xl font-bold">Supported Plugin Loaders</h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             {pluginLoaders.map((pluginLoader) => (
