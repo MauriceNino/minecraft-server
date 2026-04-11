@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   },
   description:
     'A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.',
+  icons: {
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/favicon.ico`,
+    apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon.png`,
+  },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

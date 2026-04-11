@@ -8,7 +8,7 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <div className="flex items-center gap-2">
           <Image
-            src="/icon.png"
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/icon.png`}
             alt="Logo"
             width={24}
             height={24}
