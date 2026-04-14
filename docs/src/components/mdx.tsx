@@ -6,18 +6,7 @@ export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
     img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
-      const { src, ...rest } = props;
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-
-      const prefixStringUrl = (url: string) => (url.startsWith('/') ? `${basePath}${url}` : url);
-      const newSrc =
-        typeof src === 'string'
-          ? prefixStringUrl(src)
-          : src && 'src' in src && typeof src.src === 'string'
-            ? { ...src, src: prefixStringUrl(src.src) }
-            : src;
-
-      return <ImageZoom src={newSrc as any} {...rest} />;
+      return <ImageZoom {...(props as any)} />;
     },
     ...components,
   } satisfies MDXComponents;
