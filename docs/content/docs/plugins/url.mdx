@@ -1,0 +1,32 @@
+---
+title: Direct URL
+description: Using the direct URL plugin provider
+---
+
+Sometimes plugins aren't hosted on a supported repository, or you want to use a specific build from a CI server. You can specify a direct download link.
+
+## Usage
+
+Use the `url:` prefix followed by the full HTTP(S) link to the `.jar` file.
+
+```yaml
+environment:
+  PLUGINS: |
+    url:https://cidomain.com/job/Plugin/lastSuccessfulBuild/artifact/target/Plugin-1.0.jar
+```
+
+## Filename Resolution
+
+The orchestrator determines the local filename in the following order:
+
+1.  **Content-Disposition Header:** If the server responds with a `Content-Disposition: attachment; filename="plugin.jar"` header, this name is used.
+2.  **URL Path:** If no header is present, the last segment of the URL path is used.
+
+## Caching
+
+URLs are cached based on:
+
+- **ETag:** If the server provides an ETag, it is stored in the `.plugin-lock.json`.
+- **Last-Modified:** If the server provides a modification date, it is used to check for updates.
+
+If neither is provided, the plugin may be re-downloaded more frequently to ensure it is up-to-date.

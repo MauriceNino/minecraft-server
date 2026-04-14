@@ -1,5 +1,8 @@
 <div align="center">
-  <h1>MauriceNino/minecraft-server</h1>
+  <h1>
+    <img src="docs/public/banner.png" alt="MauriceNino/minecraft-server" width="100%">
+  </h1>
+  
   <p><b>A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.</b></p>
 
   [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)

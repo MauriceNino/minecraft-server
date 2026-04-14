@@ -1,0 +1,62 @@
+---
+title: Modrinth
+description: Using the Modrinth plugin provider
+---
+
+Modrinth is a modern, fast, and open-source platform for Minecraft plugins and mods. It is the recommended provider for most users due to its clean API and rich metadata.
+
+## Usage
+
+To use a plugin from Modrinth, use the `modrinth:` prefix followed by the project slug or ID.
+
+```yaml
+environment:
+  PLUGINS: |
+    modrinth:luckperms@latest
+    modrinth:geyser@latest
+```
+
+<Callout title="Hint" type="info">
+  You can find the **Project Slug** in the URL of the plugin page, or the **Project ID** in the
+  options dropdown. Both work interchangeably. I recommend using the **Project Slug** as it is more
+  readable. ![Modrinth Project Slug](/modrinth_project_slug.png) OR (not recommended) ![Modrinth
+  Project ID](/modrinth_project_id.png)
+</Callout>
+
+## Smart Filtering
+
+The orchestrator automatically filters Modrinth versions based on your server's configuration:
+
+- **Platform Loaders:** It only requests files matching your `TYPE` (e.g., if you run Paper, it filters for "paper" or "spigot" loader tags).
+- **Game Version:** It ensures the plugin version supports your `VERSION` (e.g., `1.21`).
+
+## Version Resolution
+
+Modrinth supports two main version aliases:
+
+| Alias                      | Resolution                                                 |
+| :------------------------- | :--------------------------------------------------------- |
+| `@latest` or `@stable`     | Resolves to the most recent **Release** version.           |
+| `@experimental` or `@beta` | Resolves to the most recent **Beta** or **Alpha** version. |
+
+You can also specify an exact version number: `modrinth:luckperms@5.4.133`.
+
+<Callout title="Hint" type="info">
+  To lock to a specific build, use the **Version Number** or **Version ID**, which can both be found
+  by clicking on a specific version in the **Versions** tab. ![Modrinth Version
+  ID](/modrinth_version_number_and_id.png)
+</Callout>
+
+## The Force Flag (`!`)
+
+If you want to bypass the smart filtering (e.g., if a plugin isn't correctly tagged but you know it works), append a `!` to the version:
+
+```yaml
+PLUGINS: |
+  modrinth:some-plugin@latest!
+```
+
+This will bypass:
+
+1. Platform loader compatibility checks
+2. Game version compatibility checks

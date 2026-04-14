@@ -27,37 +27,24 @@ environment:
 
 ## Providers
 
-### Modrinth (`modrinth:`)
+The orchestrator supports several plugin repositories. Each provider handles version resolution and platform compatibility differently.
 
-The modern, fast, open plugin repository.
+- [**Modrinth**](modrinth): The modern, fast, open plugin repository. Supports smart filtering for loaders and game versions.
+- [**Hangar**](hangar): The official PaperMC repository. Excellent support for Paper, Velocity, and Folia.
+- [**SpigotMC (Spiget)**](spiget): Proxies to SpigotMC via Resource IDs.
+- [**Direct URLs**](url): Download from any direct link.
 
-- Uses the project slug/ID.
-- **Smart Filtering:** It dynamically filters matching files based on your server `TYPE`. (E.g. requests only "paper" loader tags if running Paper).
-- Responds to `version=latest` and `version=experimental`.
+## Version Aliases & Flags
 
-### Hangar (`hangar:`)
+Across most providers, you can use special aliases and flags in the `@version` part of the spec:
 
-The official PaperMC plugin repository.
-
-- Uses the project namespace (slug).
-- Maps automatically to the Hangar API platform identifiers (`PAPER` or `VELOCITY`).
-
-### SpigotMC (`spiget:`)
-
-Proxies queries to SpigotMC via the Spiget API.
-
-- Because SpigotMC does not expose clean slugs, you **must use the resource ID number**. (e.g., `spiget:12345`).
-- Fetches the highest suitable uploaded artifact.
-
-### Direct URLs (`url:`)
-
-Sometimes plugins aren't hosted on public repositories. You can specify a direct URL.
-
-- Must end with `.jar` (typically) or respond with correct `Content-Disposition` headers containing the filename.
+- **`@latest`**: Resolves to the highest stable/release version.
+- **`@experimental`**: Resolves to the latest beta, alpha, or snapshot if available.
+- **`!` flag**: Appending `!` (e.g., `@latest!`) forces the orchestrator to ignore compatibility filters. Use this if a plugin is known to work but its metadata is incorrect.
 
 ## Intelligent Caching & Removal
 
 During the download phase, `MauriceNino/minecraft-server` builds and manages a `.plugin-lock.json` file inside its runtime directory.
 
-- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the 10MB download is skipped instantly.
+- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped instantly.
 - **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **automatically deletes the `.jar` from your container**, keeping your runtime completely stateless and synchronized.

@@ -1,0 +1,66 @@
+---
+title: Hangar
+description: Using the Hangar plugin provider
+---
+
+Hangar is the official plugin repository for the PaperMC ecosystem. It is the primary source for Paper, Velocity, and Waterfall plugins.
+
+## Usage
+
+To use a plugin from Hangar, use the `hangar:` prefix followed by the project namespace (slug).
+
+```yaml
+environment:
+  PLUGINS: |
+    hangar:ViaVersion@latest
+    hangar:MiniMOTD@latest
+```
+
+<Callout title="Hint" type="info">
+  Hangar uses a **Namespace** (slug) to identify projects. You can find it in the URL of the project
+  page. ![Hangar Project Slug](/hangar_project_slug.png)
+</Callout>
+
+## Platform Mapping
+
+The orchestrator automatically maps your server `TYPE` to Hangar's platform identifiers:
+
+- `PAPER`, `FOLIA` -> `PAPER`
+- `VELOCITY` -> `VELOCITY`
+- `WATERFALL` -> `WATERFALL`
+
+<Callout title="Hint" type="info">
+  The `FOLIA` type is mapped to `PAPER` because Hangar does not have a separate platform for Folia.
+  Internally it is checked if the plugin supports folia using the `SUPPORTS_FOLIA` tag.
+</Callout>
+
+## Version Resolution
+
+Hangar supports two main version aliases:
+
+| Alias                      | Resolution                                                                |
+| :------------------------- | :------------------------------------------------------------------------ |
+| `@latest` or `@stable`     | Resolves to the most recent **Release** channel version.                  |
+| `@experimental` or `@beta` | Resolves to the most recent **Beta**, **Alpha**, or **Snapshot** version. |
+
+You can also specify an exact version number: `hangar:ViaVersion@5.2.1`.
+
+<Callout title="Hint" type="info">
+  The version number can be found in the **Versions** tab or the sidebar of the project page.
+  ![Hangar Version Number](/hangar_version_number.png)
+</Callout>
+
+## The Force Flag (`!`)
+
+Use the `!` flag to bypass compatibility checks:
+
+```yaml
+PLUGINS: |
+  hangar:legacy-plugin@latest!
+```
+
+This will bypass:
+
+1. Platform loader compatibility checks
+2. Folia-specific support tags (`SUPPORTS_FOLIA`)
+3. Game version compatibility checks
