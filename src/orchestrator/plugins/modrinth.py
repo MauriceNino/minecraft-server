@@ -7,10 +7,7 @@ from typing import TypedDict, cast
 import httpx
 
 from orchestrator.constants import PLATFORM_LOADER_TAGS, USER_AGENT, PlatformType
-from orchestrator.logging import get_logger
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
-
-log = get_logger(__name__)
 
 API_BASE = "https://api.modrinth.com/v2"
 

@@ -8,13 +8,11 @@ from rich.table import Table
 from orchestrator.cli import Config
 from orchestrator.constants import SERVER_LOCK_FILENAME, USER_AGENT
 from orchestrator.lockfile import ServerLockfile, make_lock_key
-from orchestrator.logging import console, get_logger, log_exception, log_phase
+from orchestrator.logging import console, log_exception, log_phase
 from orchestrator.plugins import _build_providers
 from orchestrator.plugins.base import PluginSpec
 from orchestrator.plugins.resolver import parse_plugin_lines
 from orchestrator.providers import get_platform_provider
-
-log = get_logger(__name__)
 
 
 async def check_plugin_updates(config: Config) -> None:

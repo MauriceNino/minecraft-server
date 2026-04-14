@@ -6,10 +6,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.logging import get_logger
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
-
-log = get_logger(__name__)
 
 API_BASE = "https://fill.papermc.io/v3/projects"
 

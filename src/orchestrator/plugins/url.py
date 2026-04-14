@@ -9,10 +9,7 @@ from urllib.parse import unquote, urlsplit
 import httpx
 
 from orchestrator.constants import PlatformType
-from orchestrator.logging import get_logger
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
-
-log = get_logger(__name__)
 
 
 def _parse_content_disposition_filename(header: str) -> str | None:

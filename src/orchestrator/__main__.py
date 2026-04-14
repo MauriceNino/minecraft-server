@@ -11,7 +11,6 @@ from orchestrator.constants import SERVER_LOCK_FILENAME, PlatformType
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.logging import (
     console,
-    get_logger,
     log_exception,
     log_header,
     log_phase,
@@ -24,8 +23,6 @@ from orchestrator.plugins.check import check_plugin_updates
 from orchestrator.providers import download_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
 from orchestrator.runner import exec_java
-
-log = get_logger(__name__)
 
 
 def _accept_eula(config: Config) -> None:
@@ -180,7 +177,7 @@ def cli(ctx: click.Context) -> None:
         try:
             asyncio.run(_async_main())
         except KeyboardInterrupt:
-            log.info("Interrupted — shutting down")
+            console.print("  [error]✗ Interrupted — shutting down[/error]")
             sys.exit(130)
         except SystemExit:
             raise
@@ -194,7 +191,7 @@ def reapply_cmd() -> None:
     try:
         asyncio.run(_async_reapply())
     except KeyboardInterrupt:
-        log.info("Interrupted — shutting down")
+        console.print("  [error]✗ Interrupted — shutting down[/error]")
         sys.exit(130)
     except SystemExit:
         raise
@@ -208,7 +205,7 @@ def check_updates_cmd() -> None:
     try:
         asyncio.run(_async_check_updates())
     except KeyboardInterrupt:
-        log.info("Interrupted — shutting down")
+        console.print("  [error]✗ Interrupted — shutting down[/error]")
         sys.exit(130)
     except SystemExit:
         raise

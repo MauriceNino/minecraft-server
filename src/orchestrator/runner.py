@@ -4,9 +4,7 @@ import os
 from pathlib import Path
 
 from orchestrator.constants import PlatformType
-from orchestrator.logging import console, get_logger
-
-log = get_logger(__name__)
+from orchestrator.logging import console
 
 
 def build_java_command(

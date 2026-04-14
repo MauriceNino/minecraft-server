@@ -7,7 +7,7 @@ import httpx
 
 from orchestrator.constants import USER_AGENT, PlatformType
 from orchestrator.lockfile import ServerLockfile, make_lock_key
-from orchestrator.logging import console, get_logger, log_version_change
+from orchestrator.logging import console, log_version_change
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec
 from orchestrator.plugins.hangar import HangarProvider
 from orchestrator.plugins.modrinth import ModrinthProvider
@@ -16,8 +16,6 @@ from orchestrator.plugins.spiget import SpigetProvider
 from orchestrator.plugins.url import UrlProvider
 
 __all__ = ["download_plugins"]
-
-log = get_logger(__name__)
 
 
 def _build_providers() -> dict[str, AbstractPluginProvider]:
@@ -81,7 +79,7 @@ async def download_plugins(
             )
 
     if not specs:
-        log.info("No plugins to download")
+        console.print("  [info]🛈[/info] [label]No plugins to download[/label]")
         lockfile.save()
         return
 
@@ -96,7 +94,9 @@ async def download_plugins(
         for spec in specs:
             provider = providers.get(spec.provider)
             if provider is None:
-                log.error("Unknown plugin provider %r — skipping %s", spec.provider, spec.identifier)
+                console.print(
+                    f"  [warning]⚠[/warning] [label]{spec.identifier}[/label]  [dim]unknown provider -- skipping[/dim]"
+                )
                 continue
             tasks.append(
                 _resolve_and_download(

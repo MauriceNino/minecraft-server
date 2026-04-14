@@ -7,9 +7,7 @@ from orchestrator.constants import MERGEABLE_EXTENSIONS
 from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.fs_orchestrator.template_reader import TemplateNode, read_template
-from orchestrator.logging import console, get_logger
-
-log = get_logger(__name__)
+from orchestrator.logging import console
 
 
 def orchestrate_templates(
@@ -27,7 +25,7 @@ def orchestrate_templates(
     for tpl_name in applied_templates:
         tpl_root = templates_dir / tpl_name
         if not tpl_root.is_dir():
-            log.warning("Template directory not found: %s — skipping", tpl_root)
+            console.print(f"  [warning]⚠[/warning] [label]Template directory not found: {tpl_name}[/label]")
             continue
 
         console.print(f"  [info]📂[/info] [label]{tpl_name}[/label]")

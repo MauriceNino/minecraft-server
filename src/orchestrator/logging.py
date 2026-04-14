@@ -82,10 +82,6 @@ def log_exception(exc: Exception, message: str, *, prefix: str = "Error") -> Non
         console.print()
 
 
-def get_logger(name: str) -> logging.Logger:
-    return logging.getLogger(name)
-
-
 phase_console = Console(theme=THEME, width=65, force_terminal=True)
 
 

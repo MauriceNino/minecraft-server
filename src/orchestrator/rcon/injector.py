@@ -3,11 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator.constants import PlatformType
-from orchestrator.logging import console, get_logger
+from orchestrator.logging import console
 from orchestrator.merger.properties_merger import merge_properties
 from orchestrator.merger.yaml_merger import merge_yaml
-
-log = get_logger(__name__)
 
 # Velocircon release URL (Velocity RCON bridge plugin)
 VELOCIRCON_URL = "https://github.com/code-lime/Velocircon/releases/download/1.0.6/Velocircon-1.0.6.jar"

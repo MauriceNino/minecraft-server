@@ -7,11 +7,8 @@ from typing import TypedDict, cast
 import httpx
 
 from orchestrator.constants import PLATFORM_HANGAR_TAGS, USER_AGENT, PlatformType
-from orchestrator.logging import get_logger
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
-
-log = get_logger(__name__)
 
 API_BASE = "https://hangar.papermc.io/api/v1"
 
