@@ -36,7 +36,7 @@ def _accept_eula(config: Config) -> None:
         console.print()
         console.print(
             "  Minecraft requires you to accept the EULA before the server can start.\n"
-            "  Read the EULA at: [link]https://aka.ms/MinecraftEULA[/link]\n"
+            "  Read the EULA at: [url]https://aka.ms/MinecraftEULA[/url]\n"
             "\n"
             "  To accept, set the environment variable:\n"
             "    [bold]ACCEPT_EULA=true[/bold]"

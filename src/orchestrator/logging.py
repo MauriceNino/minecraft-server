@@ -23,6 +23,7 @@ THEME = Theme(
         "cached": "dim green",
         "label": "bold white",
         "dim": "dim",
+        "url": "blue underline",
     }
 )
 

@@ -25,16 +25,16 @@ environment:
 
 The GitHub provider supports the same version aliases used by every other provider.
 
-| Alias                      | Resolution                                                                               |
-| :------------------------- | :--------------------------------------------------------------------------------------- |
-| `@latest` or `@stable`     | Resolves to the most recent **non-pre-release** release.                                 |
-| `@experimental` or `@beta` | Resolves to the most recent **pre-release**. Falls back to latest stable if none exists. |
-| specific tag (e.g. `1.7.3`) | Resolves to the release whose Git tag **exactly matches** the given string.             |
+| Alias                       | Resolution                                                                               |
+| :-------------------------- | :--------------------------------------------------------------------------------------- |
+| `@latest` or `@stable`      | Resolves to the most recent **non-pre-release** release.                                 |
+| `@experimental` or `@beta`  | Resolves to the most recent **pre-release**. Falls back to latest stable if none exists. |
+| specific tag (e.g. `1.7.3`) | Resolves to the release whose Git tag **exactly matches** the given string.              |
 
 <Callout title="Hint" type="info">
   Release tag names can be found on the **Releases** page of the repository. The tag label is shown
-  on the left side of each release entry. Use the exact string shown there as your version specifier.
-  ![GitHub Release Tag](/github_release_tag.png)
+  on the left side of each release entry. Use the exact string shown there as your version
+  specifier. ![GitHub Release Tag](/github_release_tag.png)
 </Callout>
 
 ## JAR Asset Selection
@@ -54,29 +54,32 @@ When a release publishes multiple JARs that cannot be automatically disambiguate
 PLUGINS: |
   github:plasmoapp/plasmo-voice[regex=plasmovoice-neoforge-1.21.7-.*.jar]@latest
 ```
+
 <Callout title="Note" type="info">
-The pattern is matched against each asset name. Exactly **one** file must match — the orchestrator will error if zero or multiple files match, so you can refine the pattern accordingly.
+  The pattern is matched against each asset name. Exactly **one** file must match — the orchestrator
+  will error if zero or multiple files match, so you can refine the pattern accordingly.
 </Callout>
 
 ## Rate Limiting & Authentication
 
 <Callout title="Important" type="warn">
-  The GitHub API allows only **60 unauthenticated requests per hour** per IP address. Since the
-  orchestrator checks releases on every container boot, you may hit this limit if you have many
-  GitHub-sourced plugins or restart frequently.
+The GitHub API allows only **60 unauthenticated requests per hour** per IP address. Since the
+orchestrator checks releases on every container boot, you may hit this limit if you have many
+GitHub-sourced plugins or restart frequently.
 
-  The orchestrator makes exactly **one request per plugin per boot**. For example, if you have 10
-  GitHub-sourced plugins, the orchestrator will make 10 requests per boot. If you have 100 plugins,
-  the orchestrator will make 100 requests per boot.
+The orchestrator makes exactly **one request per plugin per boot**. For example, if you have 10
+GitHub-sourced plugins, the orchestrator will make 10 requests per boot. If you have 100 plugins,
+the orchestrator will make 100 requests per boot.
 
-  To increase the limit to **5 000 requests per hour**, set the `GITHUB_TOKEN` environment variable
-  to a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-  (a fine-grained token with read-only access to public repositories is sufficient):
+To increase the limit to **5 000 requests per hour**, set the `GITHUB_TOKEN` environment variable
+to a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+(a fine-grained token with read-only access to public repositories is sufficient):
 
-  ```yaml
-  environment:
-    GITHUB_TOKEN: ghp_xxxxxxxxxxxxxxxxxxxx
-    PLUGINS: |
-      github:MilkBowl/Vault@latest
-  ```
+```yaml
+environment:
+  GITHUB_TOKEN: ghp_xxxxxxxxxxxxxxxxxxxx
+  PLUGINS: |
+    github:MilkBowl/Vault@latest
+```
+
 </Callout>

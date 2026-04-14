@@ -4,7 +4,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import TypedDict, List, Optional, cast
+from typing import TypedDict, cast
 
 import httpx
 
@@ -28,7 +28,9 @@ class GithubProvider(AbstractPluginProvider):
             url = f"{API_BASE}/repos/{identifier}/releases/latest"
         elif version == "experimental":
             # Fetch recent releases and find the first pre-release; fall back to the newest if none found
-            resp = await client.get(f"{API_BASE}/repos/{identifier}/releases", params={"per_page": 100}, headers=self._headers())
+            resp = await client.get(
+                f"{API_BASE}/repos/{identifier}/releases", params={"per_page": 100}, headers=self._headers()
+            )
             resp.raise_for_status()
             releases = cast(list[GitHubRelease], resp.json())
             return releases[0]
@@ -40,7 +42,9 @@ class GithubProvider(AbstractPluginProvider):
         resp.raise_for_status()
         return cast(GitHubRelease, resp.json())
 
-    def _select_asset(self, assets: list[GitHubReleaseAsset], spec: PluginSpec, platform_type: PlatformType) -> GitHubReleaseAsset:
+    def _select_asset(
+        self, assets: list[GitHubReleaseAsset], spec: PluginSpec, platform_type: PlatformType
+    ) -> GitHubReleaseAsset:
         """Pick the single JAR asset to download, using optional regex or automatic detection."""
         owner, repo = spec.identifier.split("/", 1)
         regex = spec.param("regex")
@@ -55,7 +59,9 @@ class GithubProvider(AbstractPluginProvider):
             names = ", ".join(f"'{a['name']}'" for a in assets)
             if not matches:
                 raise RuntimeError(f"No assets match regex {regex!r} for {owner}/{repo}. Available: {names}")
-            raise RuntimeError(f"Multiple assets match regex {regex!r} for {owner}/{repo}: {', '.join(a['name'] for a in matches)}")
+            raise RuntimeError(
+                f"Multiple assets match regex {regex!r} for {owner}/{repo}: {', '.join(a['name'] for a in matches)}"
+            )
 
         # 2. Automatic mode: filter to .jar files
         jars = [a for a in assets if a["name"].lower().endswith(".jar")]
@@ -66,17 +72,19 @@ class GithubProvider(AbstractPluginProvider):
 
         # 3. Loader keyword disambiguation: try to find a JAR matching the platform (e.g. 'paper', 'spigot')
         loaders = PLATFORM_LOADER_TAGS.get(platform_type, [])
-        matches = [j for j in jars if any(l in j["name"].lower() for l in loaders)]
+        matches = [jar for jar in jars if any(loader in jar["name"].lower() for loader in loaders)]
         if len(matches) == 1:
             return matches[0]
 
         raise RuntimeError(
             f"Ambiguous JAR selection for {owner}/{repo} (found {len(jars)} JARs). "
             f"Use \[regex=...] to specify the JAR for {owner}/{repo}. "
-            f"The regex needs to match exactly one of: \n{"\n".join(f'- {j["name"]}' for j in jars)}"
+            f"The regex needs to match exactly one of: \n{'\n'.join(f'- {j["name"]}' for j in jars)}"
         )
 
-    async def resolve(self, spec: PluginSpec, platform_type: PlatformType, mc_version: str, client: httpx.AsyncClient) -> ResolvedPlugin:
+    async def resolve(
+        self, spec: PluginSpec, platform_type: PlatformType, mc_version: str, client: httpx.AsyncClient
+    ) -> ResolvedPlugin:
         if "/" not in spec.identifier:
             raise ValueError(f"Invalid GitHub identifier {spec.identifier!r}. Expected owner/repo")
 
@@ -102,6 +110,7 @@ class GithubProvider(AbstractPluginProvider):
                     sha.update(chunk)
         return target
 
+
 class GitHubUser(TypedDict):
     login: str
     id: int
@@ -123,21 +132,23 @@ class GitHubUser(TypedDict):
     user_view_type: str
     site_admin: bool
 
+
 class GitHubReleaseAsset(TypedDict):
     url: str
     id: int
     node_id: str
     name: str
-    label: Optional[str]
+    label: str | None
     uploader: GitHubUser
     content_type: str
     state: str
     size: int
-    digest: Optional[str]
+    digest: str | None
     download_count: int
     created_at: str
     updated_at: str
     browser_download_url: str
+
 
 class GitHubRelease(TypedDict):
     url: str
@@ -156,7 +167,7 @@ class GitHubRelease(TypedDict):
     created_at: str
     updated_at: str
     published_at: str
-    assets: List[GitHubReleaseAsset]
+    assets: list[GitHubReleaseAsset]
     tarball_url: str
     zipball_url: str
     body: str

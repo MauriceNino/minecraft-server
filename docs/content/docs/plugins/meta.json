@@ -1,9 +1,3 @@
 {
-  "pages": [
-    "modrinth",
-    "hangar",
-    "spiget",
-    "github",
-    "url"
-  ]
+  "pages": ["modrinth", "hangar", "spiget", "curseforge", "github", "url"]
 }

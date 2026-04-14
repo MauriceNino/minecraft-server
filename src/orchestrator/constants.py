@@ -22,9 +22,10 @@ class PluginProviderType(StrEnum):
     SPIGET = "spiget"
     URL = "url"
     GITHUB = "github"
+    CURSEFORGE = "curseforge"
 
 
-# Loader tags used by Modrinth / Hangar to filter compatible versions
+# Loader tags used by Modrinth / Hangar / CurseForge to filter compatible versions
 PLATFORM_LOADER_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PAPER: ["paper", "spigot", "bukkit"],
     PlatformType.FOLIA: ["folia", "paper"],

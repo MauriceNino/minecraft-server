@@ -29,6 +29,7 @@ class ResolvedPlugin:
     version: str
     download_url: str
     filename: str
+    sha1: str | None = None
     sha256: str | None = None
     sha512: str | None = None
     etag: str | None = None

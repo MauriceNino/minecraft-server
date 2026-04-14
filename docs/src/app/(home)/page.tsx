@@ -20,7 +20,8 @@ const features = [
   {
     icon: Plug,
     title: 'Plugin Resolution',
-    description: 'Modrinth, Hangar, Spiget, Github releases and direct URLs with lockfile-based caching.',
+    description:
+      'Modrinth, Hangar, Spiget, Github releases, CurseForge and direct URLs with lockfile-based caching.',
   },
   {
     icon: GitMerge,
@@ -56,6 +57,7 @@ const pluginLoaders = [
   { name: 'Hangar', color: '#1a5feb' },
   { name: 'Spiget', color: '#de8825' },
   { name: 'Github', color: '#2DBA4E' },
+  { name: 'CurseForge', color: '#eb622b' },
   { name: 'URL', color: '#5f5f66' },
 ];
 

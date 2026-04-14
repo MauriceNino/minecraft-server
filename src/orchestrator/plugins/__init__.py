@@ -9,12 +9,13 @@ from orchestrator.constants import USER_AGENT, PlatformType
 from orchestrator.lockfile import ServerLockfile, make_lock_key
 from orchestrator.logging import console, log_version_change
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec
+from orchestrator.plugins.curseforge import CurseForgeProvider
+from orchestrator.plugins.github import GithubProvider
 from orchestrator.plugins.hangar import HangarProvider
 from orchestrator.plugins.modrinth import ModrinthProvider
 from orchestrator.plugins.resolver import parse_plugin_lines
 from orchestrator.plugins.spiget import SpigetProvider
 from orchestrator.plugins.url import UrlProvider
-from orchestrator.plugins.github import GithubProvider
 
 __all__ = ["download_plugins"]
 
@@ -26,6 +27,7 @@ def _build_providers() -> dict[str, AbstractPluginProvider]:
         "spiget": SpigetProvider(),
         "url": UrlProvider(),
         "github": GithubProvider(),
+        "curseforge": CurseForgeProvider(),
     }
 
 
