@@ -4,8 +4,10 @@ import re
 
 from orchestrator.plugins.base import PluginSpec
 
-# Matches:  provider:id@version   or   provider:id@version!
-_SPEC_RE = re.compile(r"^(?P<provider>[a-z]+):(?P<id>.+?)(?:@(?P<version>[^!]+)(?P<force>!)?)?$")
+# Matches:  provider:id@version,  provider:id[key=val]@version,  or variants with !
+_SPEC_RE = re.compile(
+    r"^(?P<provider>[a-z]+):(?P<id>[^\[@]+?)(?:\[(?P<params>[^\]]*)\])?(?:@(?P<version>[^!]+?)(?P<force>!)?)?$"
+)
 
 # URL provider is detected by the presence of :// in the identifier
 _URL_RE = re.compile(r"^url:(?P<url>https?://.+)$")
@@ -14,6 +16,19 @@ _URL_RE = re.compile(r"^url:(?P<url>https?://.+)$")
 _STABLE_ALIASES: frozenset[str] = frozenset({"latest", "stable"})
 # Canonical experimental aliases -> "experimental"
 _EXPERIMENTAL_ALIASES: frozenset[str] = frozenset({"experimental", "beta"})
+
+
+def _parse_params(raw_params: str | None) -> dict[str, str]:
+    if not raw_params:
+        return {}
+    result: dict[str, str] = {}
+    for part in raw_params.split(","):
+        part = part.strip()
+        if "=" not in part:
+            continue
+        key, _, value = part.partition("=")
+        result[key.strip()] = value.strip()
+    return result
 
 
 def _normalize_plugin_version(raw: str) -> str:
@@ -44,6 +59,8 @@ def parse_plugin_spec(raw: str) -> PluginSpec:
         hangar:libertybans@latest
         spiget:28140@latest
         url:https://example.com/plugin.jar
+        github:MilkBowl/Vault@latest
+        github:SkinsRestorer/SkinsRestorer[regex=/SkinsRestorer-Forg-.*.jar/]@latest
 
     """
     raw = raw.strip()
@@ -63,15 +80,16 @@ def parse_plugin_spec(raw: str) -> PluginSpec:
 
     match = _SPEC_RE.match(raw)
     if not match:
-        msg = f"Invalid plugin spec: {raw!r}. Expected format: provider:id@version"
+        msg = f"Invalid plugin spec: {raw!r}. Expected format: provider:id[params]@version"
         raise ValueError(msg)
 
     raw_version = match.group("version") or "latest"
     return PluginSpec(
         provider=match.group("provider"),
-        identifier=match.group("id"),
+        identifier=match.group("id").strip(),
         version=_normalize_plugin_version(raw_version),
         force=match.group("force") is not None,
+        params=_parse_params(match.group("params")),
     )
 
 

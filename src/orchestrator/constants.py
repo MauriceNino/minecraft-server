@@ -21,6 +21,7 @@ class PluginProviderType(StrEnum):
     HANGAR = "hangar"
     SPIGET = "spiget"
     URL = "url"
+    GITHUB = "github"
 
 
 # Loader tags used by Modrinth / Hangar to filter compatible versions

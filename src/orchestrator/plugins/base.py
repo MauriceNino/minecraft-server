@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
@@ -15,6 +15,11 @@ class PluginSpec:
     identifier: str  # project slug / ID / URL
     version: str  # "latest", "5.4", etc.
     force: bool  # True if ``@latest!`` — bypass compatibility filters
+    params: dict[str, str] = field(default_factory=dict)  # optional provider-specific args, e.g. {"regex": "..."}
+
+    def param(self, key: str, default: str | None = None) -> str | None:
+        """Convenience accessor for optional provider parameters."""
+        return self.params.get(key, default)
 
 
 @dataclass(frozen=True, slots=True)

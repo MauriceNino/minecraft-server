@@ -20,7 +20,7 @@ const features = [
   {
     icon: Plug,
     title: 'Plugin Resolution',
-    description: 'Modrinth, Hangar, Spiget, and direct URLs with lockfile-based caching.',
+    description: 'Modrinth, Hangar, Spiget, Github releases and direct URLs with lockfile-based caching.',
   },
   {
     icon: GitMerge,
@@ -52,10 +52,11 @@ const platforms = [
 ];
 
 const pluginLoaders = [
-  { name: 'Modrinth', color: '#4A90D9' },
-  { name: 'Hangar', color: '#1B9CEA' },
-  { name: 'Spiget', color: '#4ADE80' },
-  { name: 'URL', color: '#4ADE80' },
+  { name: 'Modrinth', color: '#1bd96a' },
+  { name: 'Hangar', color: '#1a5feb' },
+  { name: 'Spiget', color: '#de8825' },
+  { name: 'Github', color: '#2DBA4E' },
+  { name: 'URL', color: '#5f5f66' },
 ];
 
 const codeSnippet = `services:
@@ -206,7 +207,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/docs/getting-started"
+              href="/docs/docker"
               className="inline-flex items-center gap-2 rounded-lg bg-linear-to-r from-emerald-500 to-blue-500 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 hover:brightness-110"
             >
               <Rocket className="h-4 w-4" />

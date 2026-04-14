@@ -14,6 +14,7 @@ from orchestrator.plugins.modrinth import ModrinthProvider
 from orchestrator.plugins.resolver import parse_plugin_lines
 from orchestrator.plugins.spiget import SpigetProvider
 from orchestrator.plugins.url import UrlProvider
+from orchestrator.plugins.github import GithubProvider
 
 __all__ = ["download_plugins"]
 
@@ -24,6 +25,7 @@ def _build_providers() -> dict[str, AbstractPluginProvider]:
         "hangar": HangarProvider(),
         "spiget": SpigetProvider(),
         "url": UrlProvider(),
+        "github": GithubProvider(),
     }
 
 

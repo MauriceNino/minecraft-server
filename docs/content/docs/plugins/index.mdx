@@ -9,7 +9,7 @@ Plugins are resolved and downloaded before your server starts. This happens dete
 
 You declare plugins via the `PLUGINS` environment variable. It accepts a multiline string where each line represents one plugin.
 
-- **Format:** `provider:identifier@version`
+- **Format:** `provider:identifier[params]@version` (params are optional)
 - **Default:** (Empty, no plugins downloaded)
 
 ```yaml
@@ -33,6 +33,7 @@ The orchestrator supports several plugin repositories. Each provider handles ver
 - [**Hangar**](hangar): The official PaperMC repository. Excellent support for Paper, Velocity, and Folia.
 - [**SpigotMC (Spiget)**](spiget): Proxies to SpigotMC via Resource IDs.
 - [**Direct URLs**](url): Download from any direct link.
+- [**GitHub Releases**](github): Download directly from a GitHub repository's releases.
 
 ## Version Aliases & Flags
 
@@ -41,6 +42,19 @@ Across most providers, you can use special aliases and flags in the `@version` p
 - **`@latest`**: Resolves to the highest stable/release version.
 - **`@experimental`**: Resolves to the latest beta, alpha, or snapshot if available.
 - **`!` flag**: Appending `!` (e.g., `@latest!`) forces the orchestrator to ignore compatibility filters. Use this if a plugin is known to work but its metadata is incorrect.
+
+## Optional Parameters
+
+Some providers accept additional arguments via the optional `[key=value]` block placed between the identifier and the version:
+
+```yaml
+PLUGINS: |
+  github:plasmoapp/plasmo-voice[regex=plasmovoice-neoforge-1.21.7-.*.jar]@latest
+```
+
+<Callout title="Note" type="info">
+  Not all providers support extra parameters. Check each provider's documentation page for the list of available arguments.
+</Callout>
 
 ## Intelligent Caching & Removal
 

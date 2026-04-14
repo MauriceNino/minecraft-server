@@ -71,6 +71,31 @@ class TestParsePluginSpec:
         spec = parse_plugin_spec("modrinth:luckperms@5.4.137")
         assert spec.version == "5.4.137"
 
+    def test_empty_params_when_omitted(self) -> None:
+        spec = parse_plugin_spec("github:MilkBowl/Vault@latest")
+        assert spec.params == {}
+
+    def test_multiple_params(self) -> None:
+        spec = parse_plugin_spec("github:Foo/Bar[regex=foo.jar,other=val]@latest")
+        assert spec.params == {"regex": "foo.jar", "other": "val"}
+
+    def test_params_with_specific_version(self) -> None:
+        spec = parse_plugin_spec("github:Foo/Bar[regex=foo.jar]@1.2.3")
+        assert spec.version == "1.2.3"
+        assert spec.params == {"regex": "foo.jar"}
+
+    def test_param_accessor_returns_value(self) -> None:
+        spec = parse_plugin_spec("github:Foo/Bar[regex=foo.jar]@latest")
+        assert spec.param("regex") == "foo.jar"
+
+    def test_param_accessor_returns_none_for_missing_key(self) -> None:
+        spec = parse_plugin_spec("github:Foo/Bar@latest")
+        assert spec.param("regex") is None
+
+    def test_param_accessor_returns_default_for_missing_key(self) -> None:
+        spec = parse_plugin_spec("github:Foo/Bar@latest")
+        assert spec.param("regex", "fallback") == "fallback"
+
 
 class TestParsePluginLines:
     def test_skips_blanks_and_comments(self) -> None:

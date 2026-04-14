@@ -18,8 +18,8 @@ _THEME = Theme(
         "dim": "dim",
     }
 )
-_console = Console(theme=_THEME)
-_err_console = Console(theme=_THEME, stderr=True)
+_console = Console(theme=_THEME, highlight=False)
+_err_console = Console(theme=_THEME, stderr=True, highlight=False)
 
 
 def _print_info(msg: str) -> None:

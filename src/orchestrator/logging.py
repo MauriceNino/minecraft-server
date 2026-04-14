@@ -26,7 +26,7 @@ THEME = Theme(
     }
 )
 
-console = Console(theme=THEME, width=150, force_terminal=True)
+console = Console(theme=THEME, width=150, force_terminal=True, highlight=False)
 
 _LOG_FORMAT = "%(message)s"
 _VERBOSE_ENABLED = True
@@ -47,6 +47,7 @@ def setup_logging(*, verbose: bool = True) -> None:
                 rich_tracebacks=verbose,
                 show_path=False,
                 markup=True,
+                highlighter=None,
             )
         ],
     )
@@ -82,7 +83,7 @@ def log_exception(exc: Exception, message: str, *, prefix: str = "Error") -> Non
         console.print()
 
 
-phase_console = Console(theme=THEME, width=65, force_terminal=True)
+phase_console = Console(theme=THEME, width=65, force_terminal=True, highlight=False)
 
 
 def log_header(title: str) -> None:
