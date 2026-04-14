@@ -9,6 +9,8 @@ from orchestrator.lockfile import ServerLockfile
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
 from orchestrator.providers.paper import PaperProvider
+from orchestrator.providers.spigotmc import GetBukkitProvider
+from orchestrator.providers.vanilla import VanillaProvider
 
 __all__ = ["download_platform", "get_platform_provider", "resolve_platform"]
 
@@ -16,6 +18,10 @@ _PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.PAPER: PaperProvider(project="paper"),
     PlatformType.FOLIA: PaperProvider(project="folia"),
     PlatformType.VELOCITY: PaperProvider(project="velocity"),
+    PlatformType.WATERFALL: PaperProvider(project="waterfall"),
+    PlatformType.VANILLA: VanillaProvider(),
+    PlatformType.BUKKIT: GetBukkitProvider(project="craftbukkit"),
+    PlatformType.SPIGOT: GetBukkitProvider(project="spigot"),
 }
 
 

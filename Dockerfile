@@ -55,7 +55,7 @@ else echo "Unsupported architecture: $ARCH"; exit 1; fi
 # Resolve the download URL based on the requested flavor
 case "$JAVA_FLAVOR" in
     "temurin")
-        URL="https://api.adoptium.net/v3/binary/latest/${JAVA_VERSION}/ga/linux/${JAVA_ARCH}/jre/hotspot/normal/eclipse"
+        URL="https://api.adoptium.net/v3/binary/latest/${JAVA_VERSION}/ga/linux/${JAVA_ARCH}/jdk/hotspot/normal/eclipse"
         ;;
     "corretto")
         URL="https://corretto.aws/downloads/latest/amazon-corretto-${JAVA_VERSION}-${JAVA_ARCH}-linux-jdk.tar.gz"
@@ -64,7 +64,7 @@ case "$JAVA_FLAVOR" in
         URL="https://aka.ms/download-jdk/microsoft-jdk-${JAVA_VERSION}-linux-${JAVA_ARCH}.tar.gz"
         ;;
     "azul")
-        API_URL="https://api.azul.com/zulu/download/community/v1.0/bundles/latest/?os=linux&arch=${ZULU_ARCH}&hw_bitness=64&ext=tar.gz&jdk_version=${JAVA_VERSION}&bundle_type=jre"
+        API_URL="https://api.azul.com/zulu/download/community/v1.0/bundles/latest/?os=linux&arch=${ZULU_ARCH}&hw_bitness=64&ext=tar.gz&jdk_version=${JAVA_VERSION}&bundle_type=jdk"
         URL=$(wget -qO- "$API_URL" | python3 -c "import sys, json; print(json.load(sys.stdin)['url'])")
         ;;
     "graalvm")

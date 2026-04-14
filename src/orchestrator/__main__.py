@@ -7,7 +7,7 @@ import tempfile
 import click
 
 from orchestrator.cli import Config, load_config
-from orchestrator.constants import SERVER_LOCK_FILENAME, PlatformType
+from orchestrator.constants import SERVER_LOCK_FILENAME, SERVER_PLATFORMS
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.logging import (
     console,
@@ -127,7 +127,7 @@ async def _async_main() -> None:
             rcon_password=config.rcon_password,
         )
 
-    if config.platform != PlatformType.VELOCITY:
+    if config.platform in SERVER_PLATFORMS:
         log_phase("Eula")
         _accept_eula(config)
 

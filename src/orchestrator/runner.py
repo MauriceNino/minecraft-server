@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from orchestrator.constants import PlatformType
+from orchestrator.constants import SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 
 
@@ -23,8 +23,8 @@ def build_java_command(
     args.extend(jvm_flags)
     args.extend(["-jar", str(server_jar)])
 
-    # Only backend servers support --nogui; proxies (Velocity) don't
-    if platform != PlatformType.VELOCITY:
+    # Only backend servers support --nogui; proxies don't
+    if platform in SERVER_PLATFORMS:
         args.append("--nogui")
 
     return args

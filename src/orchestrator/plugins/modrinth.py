@@ -6,7 +6,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import PLATFORM_LOADER_TAGS, USER_AGENT, PlatformType
+from orchestrator.constants import PLATFORM_LOADER_TAGS, PROXY_PLATFORMS, USER_AGENT, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.modrinth.com/v2"
@@ -91,7 +91,7 @@ class ModrinthProvider(AbstractPluginProvider):
 
         if (
             not spec.force
-            and platform_type != PlatformType.VELOCITY
+            and platform_type not in PROXY_PLATFORMS
             and mc_version not in version_data.get("game_versions", [])
         ):
             self._raise_version_not_supported(spec, mc_version)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator.constants import PlatformType
+from orchestrator.constants import SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 from orchestrator.merger.properties_merger import merge_properties
 from orchestrator.merger.yaml_merger import merge_yaml
@@ -25,7 +25,7 @@ async def inject_rcon(
     - **Paper / Folia**: Enable via `server.properties`.
     - **Velocity**: Download Velocircon plugin and generate its config.
     """
-    if platform in (PlatformType.PAPER, PlatformType.FOLIA):
+    if platform in SERVER_PLATFORMS:
         await _inject_server_properties_rcon(runtime_dir, rcon_port, rcon_password)
     elif platform == PlatformType.VELOCITY:
         await _inject_velocity_rcon(plugins_dir, rcon_port, rcon_password)

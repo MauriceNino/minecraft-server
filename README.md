@@ -19,8 +19,8 @@
 
 ## Key Features
 
-- **Multi-Platform Support**: Native support for **Paper**, **Velocity**, and **Folia**.
-- **Dynamic Plugin Resolution**: Seamlessly download and cache plugins from **Modrinth**, **Hangar**, **Spiget**, or direct **URLs**.
+- **Multi-Platform Support**: Native support for **Paper**, **Folia**, **Velocity**, **Waterfall**, **Vanilla**, **Spigot**, and **Bukkit**.
+- **Dynamic Plugin Resolution**: Seamlessly download and cache plugins from **Modrinth**, **Hangar**, **Spiget**, **CurseForge**, **GitHub**, or direct **URLs**.
 - **Sigil-Based Config Merging**: Intelligently merge `YAML`, `JSON`, `TOML`, `HOCON`, and `.properties` files using `!replace:`, `!force:`, and `!delete:` lifecycle sigils.
 - **Auto-RCON**: Integrated `mc-rcon` module for secure, automated remote console access inside the container.
 - **Docker-First Architecture**: Built for stateless deployments via Docker Compose with deterministic startup routines.

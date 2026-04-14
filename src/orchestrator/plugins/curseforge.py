@@ -7,7 +7,7 @@ from typing import Any, TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import PLATFORM_LOADER_TAGS, USER_AGENT, PlatformType
+from orchestrator.constants import BUKKIT_BASED_PLATFORMS, USER_AGENT, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.curseforge.com/v1"
@@ -73,7 +73,7 @@ class CurseForgeProvider(AbstractPluginProvider):
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
         # Platform enforcement (Bukkit servers only)
-        if not spec.force and "bukkit" not in PLATFORM_LOADER_TAGS.get(platform_type, []):
+        if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
             self._raise_platform_not_supported(spec, platform_type)
 
         is_alias = spec.version in ("latest", "experimental")

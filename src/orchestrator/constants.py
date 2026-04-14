@@ -11,6 +11,37 @@ class PlatformType(StrEnum):
     PAPER = "PAPER"
     FOLIA = "FOLIA"
     VELOCITY = "VELOCITY"
+    WATERFALL = "WATERFALL"
+    VANILLA = "VANILLA"
+    BUKKIT = "BUKKIT"
+    SPIGOT = "SPIGOT"
+
+
+SERVER_PLATFORMS = frozenset(
+    {
+        PlatformType.PAPER,
+        PlatformType.FOLIA,
+        PlatformType.VANILLA,
+        PlatformType.BUKKIT,
+        PlatformType.SPIGOT,
+    }
+)
+
+PROXY_PLATFORMS = frozenset(
+    {
+        PlatformType.VELOCITY,
+        PlatformType.WATERFALL,
+    }
+)
+
+BUKKIT_BASED_PLATFORMS = frozenset(
+    {
+        PlatformType.PAPER,
+        PlatformType.FOLIA,
+        PlatformType.SPIGOT,
+        PlatformType.BUKKIT,
+    }
+)
 
 
 # Plugin provider identifiers
@@ -30,6 +61,10 @@ PLATFORM_LOADER_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PAPER: ["paper", "spigot", "bukkit"],
     PlatformType.FOLIA: ["folia", "paper"],
     PlatformType.VELOCITY: ["velocity"],
+    PlatformType.WATERFALL: ["waterfall", "bungeecord"],
+    PlatformType.VANILLA: ["vanilla"],
+    PlatformType.SPIGOT: ["spigot", "bukkit"],
+    PlatformType.BUKKIT: ["bukkit"],
 }
 
 # Hangar uses its own platform enum
@@ -37,6 +72,7 @@ PLATFORM_HANGAR_TAGS: dict[PlatformType, str] = {
     PlatformType.PAPER: "PAPER",
     PlatformType.FOLIA: "PAPER",
     PlatformType.VELOCITY: "VELOCITY",
+    PlatformType.WATERFALL: "WATERFALL",
 }
 
 

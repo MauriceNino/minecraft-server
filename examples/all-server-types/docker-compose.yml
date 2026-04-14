@@ -1,0 +1,104 @@
+services:
+  paper:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/paper:/data/runtime
+    ports:
+      - "25570:25565"
+    environment:
+      TYPE: PAPER
+      VERSION: latest
+      MEMORY: 512M
+      ACCEPT_EULA: "true"
+
+  folia:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/folia:/data/runtime
+    ports:
+      - "25571:25565"
+    environment:
+      TYPE: FOLIA
+      VERSION: latest
+      MEMORY: 512M
+      ACCEPT_EULA: "true"
+
+  vanilla:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/vanilla:/data/runtime
+    ports:
+      - "25572:25565"
+    environment:
+      TYPE: VANILLA
+      VERSION: latest
+      MEMORY: 512M
+      ACCEPT_EULA: "true"
+
+  bukkit:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/bukkit:/data/runtime
+    ports:
+      - "25573:25565"
+    environment:
+      TYPE: BUKKIT
+      VERSION: latest
+      MEMORY: 512M
+      ACCEPT_EULA: "true"
+
+  spigot:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/spigot:/data/runtime
+    ports:
+      - "25574:25565"
+    environment:
+      TYPE: SPIGOT
+      VERSION: latest
+      MEMORY: 512M
+      ACCEPT_EULA: "true"
+
+  velocity:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/velocity:/data/runtime
+    ports:
+      - "25578:25565"
+    environment:
+      TYPE: VELOCITY
+      VERSION: latest
+      MEMORY: 512M
+
+  waterfall:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/waterfall:/data/runtime
+    ports:
+      - "25579:25565"
+    environment:
+      TYPE: WATERFALL
+      VERSION: latest
+      MEMORY: 512M
+    

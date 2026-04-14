@@ -15,7 +15,8 @@ const features = [
   {
     icon: Server,
     title: 'Multi-Platform',
-    description: 'Paper, Velocity, and Folia — all centrally managed from one core image.',
+    description:
+      'Paper, Folia, Velocity, Waterfall, Vanilla, Spigot, and Bukkit — all centrally managed from one core image.',
   },
   {
     icon: Plug,
@@ -48,9 +49,13 @@ const features = [
 
 const platforms = [
   { name: 'Paper', color: '#4A90D9' },
-  { name: 'Velocity', color: '#1B9CEA' },
   { name: 'Folia', color: '#4ADE80' },
-];
+  { name: 'Vanilla', color: '#EF4444' },
+  { name: 'Spigot', color: '#F97316' },
+  { name: 'Bukkit', color: '#FB923C' },
+  { name: 'Velocity', color: '#1B9CEA' },
+  { name: 'Waterfall', color: '#06B6D4' },
+]
 
 const pluginLoaders = [
   { name: 'Modrinth', color: '#1bd96a' },

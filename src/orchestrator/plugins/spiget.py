@@ -5,7 +5,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import USER_AGENT, PlatformType
+from orchestrator.constants import BUKKIT_BASED_PLATFORMS, USER_AGENT, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
 
@@ -70,7 +70,7 @@ class SpigetProvider(AbstractPluginProvider):
                 "Please download the JAR file manually and place it in the plugins folder."
             )
 
-        if not spec.force and platform_type not in (PlatformType.PAPER, PlatformType.FOLIA):
+        if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
             self._raise_platform_not_supported(spec, platform_type)
 
         if not spec.force and not any(is_same_semver(mc_version, v) for v in project_info["testedVersions"]):

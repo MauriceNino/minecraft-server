@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestrator.constants import DEFAULT_DATA_DIR, PlatformType
+from orchestrator.constants import DEFAULT_DATA_DIR, PROXY_PLATFORMS, SERVER_PLATFORMS, PlatformType
 from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
 
 
@@ -176,7 +176,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
 
     # Adding default JVM flags if not specified (https://flags.sh/)
     if not jvm_flags:
-        if platform in (PlatformType.PAPER, PlatformType.FOLIA):
+        if platform in SERVER_PLATFORMS:
             jvm_flags = [
                 "--add-modules=jdk.incubator.vector",
                 "-XX:+UseG1GC",
@@ -200,7 +200,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
                 "-XX:G1HeapRegionSize=8M",
                 "-XX:G1ReservePercent=20",
             ]
-        if platform == PlatformType.VELOCITY:
+        elif platform in PROXY_PLATFORMS:
             jvm_flags = [
                 "-XX:+UseG1GC",
                 "-XX:G1HeapRegionSize=4M",

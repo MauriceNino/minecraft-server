@@ -15,6 +15,7 @@ class ResolvedVersion:
     download_url: str
     filename: str
     sha256: str | None = None
+    sha1: str | None = None
     md5: str | None = None
 
 
