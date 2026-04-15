@@ -69,16 +69,19 @@ class HangarProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        hangar_platform = PLATFORM_HANGAR_TAGS.get(platform_type, "PAPER")
+        hangar_platform = PLATFORM_HANGAR_TAGS.get(platform_type)
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported
         if not spec.force:
-            if not project_info["supportedPlatforms"].get(hangar_platform):
+            if not hangar_platform or not project_info["supportedPlatforms"].get(hangar_platform):
                 self._raise_platform_not_supported(spec, platform_type)
 
             if platform_type == PlatformType.FOLIA and "SUPPORTS_FOLIA" not in project_info["settings"]["tags"]:
                 self._raise_platform_not_supported(spec, platform_type)
+
+        # Default to Paper if no platform is supported
+        hangar_platform = hangar_platform or "PAPER"
 
         # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
