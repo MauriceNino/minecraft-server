@@ -7,7 +7,7 @@ import tempfile
 import click
 
 from orchestrator.cli import Config, load_config
-from orchestrator.constants import SERVER_LOCK_FILENAME, SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import PLUGIN_PLATFORMS, SERVER_LOCK_FILENAME, SERVER_PLATFORMS, PlatformType
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.logging import (
     console,
@@ -107,7 +107,7 @@ async def _async_main() -> None:
         if config.config_overrides:
             apply_config_overrides(config.config_overrides, config.runtime_dir)
 
-    if config.plugin_lines or len(lockfile.plugins.keys()) > 0:
+    if (config.plugin_lines or len(lockfile.plugins.keys()) > 0) and config.platform in PLUGIN_PLATFORMS:
         log_phase("Plugins")
         await download_plugins(
             plugin_lines=config.plugin_lines,
