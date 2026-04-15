@@ -65,7 +65,7 @@ PLUGIN_PLATFORMS = frozenset(
 # Loader tags used by Modrinth to filter compatible versions
 MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PAPER: ["paper", "spigot", "bukkit"],
-    PlatformType.FOLIA: ["folia", "paper"],
+    PlatformType.FOLIA: ["folia"],
     PlatformType.VELOCITY: ["velocity"],
     PlatformType.WATERFALL: ["waterfall", "bungeecord"],
     PlatformType.SPIGOT: ["spigot", "bukkit"],

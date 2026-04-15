@@ -30,14 +30,26 @@ class ModrinthProvider(AbstractPluginProvider):
         return cast(ModrinthVersionList, resp.json())
 
     async def _get_plugin_version(
-        self, spec: PluginSpec, client: httpx.AsyncClient, version: str
+        self, spec: PluginSpec, client: httpx.AsyncClient, version: str, loaders: list[str]
     ) -> ModrinthVersionDict:
-        resp = await client.get(
-            f"{API_BASE}/project/{spec.identifier}/version/{version}",
-            headers={"User-Agent": USER_AGENT},
-        )
-        resp.raise_for_status()
-        return cast(ModrinthVersionDict, resp.json())
+        # We need to find the version that matches the spec.version and the loaders so
+        # we cant simply use the direct /version/{version} endpoint
+        versions = await self._get_plugin_versions(spec, client)
+        possible_matches = [
+            v
+            for v in versions
+            if v.get("version_number") == version and any(loader in v.get("loaders", []) for loader in loaders)
+        ]
+
+        if len(possible_matches) == 0:
+            raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
+
+        for loader in loaders:
+            for p_match in possible_matches:
+                if loader in p_match.get("loaders", []):
+                    return p_match
+
+        raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
 
     async def _get_first_plugin_version_by_channel(
         self,
@@ -86,7 +98,7 @@ class ModrinthProvider(AbstractPluginProvider):
 
         # Just load the specific version
         else:
-            version_data = await self._get_plugin_version(spec, client, spec.version)
+            version_data = await self._get_plugin_version(spec, client, spec.version, loaders)
 
         if (
             not spec.force
