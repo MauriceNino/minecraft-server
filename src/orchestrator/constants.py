@@ -49,26 +49,25 @@ BUKKIT_BASED_PLATFORMS = frozenset(
     }
 )
 
+PLUGIN_PLATFORMS = frozenset(
+    {
+        PlatformType.PAPER,
+        PlatformType.FOLIA,
+        PlatformType.VELOCITY,
+        PlatformType.WATERFALL,
+        PlatformType.SPIGOT,
+        PlatformType.BUKKIT,
+        PlatformType.PUMPKIN,
+        PlatformType.PURPUR,
+    }
+)
 
-# Plugin provider identifiers
-class PluginProviderType(StrEnum):
-    """Supported plugin download providers."""
-
-    MODRINTH = "modrinth"
-    HANGAR = "hangar"
-    SPIGET = "spiget"
-    URL = "url"
-    GITHUB = "github"
-    CURSEFORGE = "curseforge"
-
-
-# Loader tags used by Modrinth / Hangar / CurseForge to filter compatible versions
-PLATFORM_LOADER_TAGS: dict[PlatformType, list[str]] = {
+# Loader tags used by Modrinth to filter compatible versions
+MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PAPER: ["paper", "spigot", "bukkit"],
     PlatformType.FOLIA: ["folia", "paper"],
     PlatformType.VELOCITY: ["velocity"],
     PlatformType.WATERFALL: ["waterfall", "bungeecord"],
-    PlatformType.VANILLA: ["vanilla"],
     PlatformType.SPIGOT: ["spigot", "bukkit"],
     PlatformType.BUKKIT: ["bukkit"],
     PlatformType.PUMPKIN: ["paper", "spigot", "bukkit"],
@@ -76,7 +75,7 @@ PLATFORM_LOADER_TAGS: dict[PlatformType, list[str]] = {
 }
 
 # Hangar uses its own platform enum
-PLATFORM_HANGAR_TAGS: dict[PlatformType, str] = {
+HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.PAPER: "PAPER",
     PlatformType.FOLIA: "PAPER",
     PlatformType.VELOCITY: "VELOCITY",

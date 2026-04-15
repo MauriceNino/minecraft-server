@@ -8,7 +8,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import PLATFORM_LOADER_TAGS, PlatformType
+from orchestrator.constants import MODRINTH_PLATFORM_TAGS, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.github.com"
@@ -71,7 +71,7 @@ class GithubProvider(AbstractPluginProvider):
             return jars[0]
 
         # 3. Loader keyword disambiguation: try to find a JAR matching the platform (e.g. 'paper', 'spigot')
-        loaders = PLATFORM_LOADER_TAGS.get(platform_type, [])
+        loaders = MODRINTH_PLATFORM_TAGS.get(platform_type, [])
         matches = [jar for jar in jars if any(loader in jar["name"].lower() for loader in loaders)]
         if len(matches) == 1:
             return matches[0]

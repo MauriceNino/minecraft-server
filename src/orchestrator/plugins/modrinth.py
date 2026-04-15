@@ -6,7 +6,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import PLATFORM_LOADER_TAGS, PROXY_PLATFORMS, USER_AGENT, PlatformType
+from orchestrator.constants import MODRINTH_PLATFORM_TAGS, PROXY_PLATFORMS, USER_AGENT, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.modrinth.com/v2"
@@ -48,18 +48,17 @@ class ModrinthProvider(AbstractPluginProvider):
     ) -> ModrinthVersionDict:
         versions = await self._get_plugin_versions(spec, client)
 
-        version_data = next(
-            (
-                v
-                for v in versions
-                if (
-                    v.get("version_type") in channel_names and any(loader in v.get("loaders", []) for loader in loaders)
-                )
-            ),
-            None,
-        )
+        version_data = None
+        for loader in loaders:
+            version_data = next(
+                (v for v in versions if v.get("version_type") in channel_names and loader in v.get("loaders", [])),
+                None,
+            )
+            if version_data:
+                break
+
         if not version_data:
-            raise RuntimeError(f"No {spec.version} Modrinth versions found for {spec.identifier}")
+            raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
 
         return version_data
 
@@ -70,7 +69,7 @@ class ModrinthProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        loaders = PLATFORM_LOADER_TAGS.get(platform_type, [])
+        loaders = MODRINTH_PLATFORM_TAGS.get(platform_type, [])
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported

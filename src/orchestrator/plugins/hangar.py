@@ -6,7 +6,7 @@ from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import PLATFORM_HANGAR_TAGS, USER_AGENT, PlatformType
+from orchestrator.constants import HANGAR_PLATFORM_TAGS, USER_AGENT, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
 
@@ -69,7 +69,7 @@ class HangarProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        hangar_platform = PLATFORM_HANGAR_TAGS.get(platform_type)
+        hangar_platform = HANGAR_PLATFORM_TAGS.get(platform_type)
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported
@@ -89,7 +89,7 @@ class HangarProvider(AbstractPluginProvider):
             version_data = await self._get_first_plugin_version_by_channel(spec, client, channel_names)
 
             if not version_data:
-                raise RuntimeError(f"No {spec.version} Hangar versions found for {spec.identifier}")
+                raise RuntimeError(f"No '{spec.version}' Hangar versions found for {spec.identifier}")
 
         # Just load the specific version
         else:
