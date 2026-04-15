@@ -42,14 +42,14 @@ class ModrinthProvider(AbstractPluginProvider):
         ]
 
         if len(possible_matches) == 0:
-            raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
+            raise self._version_could_not_be_found_for_platform(spec, loaders)
 
         for loader in loaders:
             for p_match in possible_matches:
                 if loader in p_match.get("loaders", []):
                     return p_match
 
-        raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
+        raise self._version_could_not_be_found_for_platform(spec, loaders)
 
     async def _get_first_plugin_version_by_channel(
         self,
@@ -70,7 +70,7 @@ class ModrinthProvider(AbstractPluginProvider):
                 break
 
         if not version_data:
-            raise RuntimeError(f"No '{spec.version}' Modrinth versions found for {spec.identifier}")
+            raise self._version_could_not_be_found_for_platform(spec, loaders)
 
         return version_data
 
@@ -81,12 +81,14 @@ class ModrinthProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        loaders = MODRINTH_PLATFORM_TAGS.get(platform_type, [])
+        custom_loader = spec.param("loader")
+        loaders = [custom_loader.lower()] if custom_loader else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
+
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported
         if not spec.force and not any(loader in project_info.get("loaders", []) for loader in loaders):
-            self._raise_platform_not_supported(spec, platform_type)
+            raise self._platform_not_supported(spec, loaders)
 
         # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
@@ -94,7 +96,7 @@ class ModrinthProvider(AbstractPluginProvider):
             version_data = await self._get_first_plugin_version_by_channel(spec, client, loaders, channel_names)
 
             if not version_data:
-                raise RuntimeError(f"No {spec.version} Modrinth versions found for {spec.identifier}")
+                raise self._version_could_not_be_found_for_platform(spec, loaders)
 
         # Just load the specific version
         else:
@@ -105,7 +107,7 @@ class ModrinthProvider(AbstractPluginProvider):
             and platform_type not in PROXY_PLATFORMS
             and mc_version not in version_data.get("game_versions", [])
         ):
-            self._raise_version_not_supported(spec, mc_version)
+            raise self._version_not_supported(spec, mc_version)
 
         version_file = version_data["files"][0]
 

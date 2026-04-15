@@ -63,3 +63,16 @@ This will bypass:
 1. Platform loader compatibility checks
 2. Folia-specific support tags (`SUPPORTS_FOLIA`)
 3. Game version compatibility checks
+
+## Override Platform
+
+You can manually specify a platform using the `platform` parameter in square brackets.
+This is useful if you want to download a version for a specific platform, bypassing the automatic mapping.
+
+```yaml
+PLUGINS: |
+  hangar:ViaVersion[platform=paper]@latest
+```
+
+While Hangar categorizes plugins into **Paper**, **Velocity**, and **Waterfall**, many plugins designed for Paper also work on other platforms like Spigot.
+This parameter allows you to force the download of a specific platform's file regardless of your server `TYPE`.

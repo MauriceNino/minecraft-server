@@ -74,7 +74,7 @@ class CurseForgeProvider(AbstractPluginProvider):
     ) -> ResolvedPlugin:
         # Platform enforcement (Bukkit servers only)
         if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
-            self._raise_platform_not_supported(spec, platform_type)
+            raise self._platform_not_supported(spec, [platform_type])
 
         is_alias = spec.version in ("latest", "experimental")
         if not is_alias and not spec.version.isdigit():
@@ -93,7 +93,7 @@ class CurseForgeProvider(AbstractPluginProvider):
             target_file = await self._get_mod_file(mod_info["id"], spec.version, client)
 
             if not spec.force and mc_version not in target_file["gameVersions"]:
-                self._raise_version_not_supported(spec, mc_version)
+                raise self._version_not_supported(spec, mc_version)
         else:
             files = await self._get_mod_files(mod_info["id"], client)
 

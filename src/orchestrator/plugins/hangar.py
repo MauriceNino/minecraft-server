@@ -33,11 +33,16 @@ class HangarProvider(AbstractPluginProvider):
         resp.raise_for_status()
         return cast(HangarVersionResponse, resp.json())
 
-    async def _get_plugin_version(self, spec: PluginSpec, client: httpx.AsyncClient, version: str) -> VersionDict:
+    async def _get_plugin_version(
+        self, spec: PluginSpec, client: httpx.AsyncClient, hangar_platform: str, version: str
+    ) -> VersionDict:
         resp = await client.get(
             f"{API_BASE}/projects/{spec.identifier}/versions/{version}",
             headers={"User-Agent": USER_AGENT},
         )
+        if resp.status_code == 404:
+            raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
+
         resp.raise_for_status()
         return cast(VersionDict, resp.json())
 
@@ -45,6 +50,7 @@ class HangarProvider(AbstractPluginProvider):
         self,
         spec: PluginSpec,
         client: httpx.AsyncClient,
+        hangar_platform: str,
         channel_names: list[str],
         offset: int = 0,
         limit: int = 25,
@@ -55,10 +61,10 @@ class HangarProvider(AbstractPluginProvider):
         if not version_data:
             if versions["pagination"]["offset"] + versions["pagination"]["limit"] < versions["pagination"]["count"]:
                 return await self._get_first_plugin_version_by_channel(
-                    spec, client, channel_names, offset + limit, limit
+                    spec, client, hangar_platform, channel_names, offset + limit, limit
                 )
             else:
-                raise RuntimeError(f"No {spec.version} Hangar versions found for {spec.identifier}")
+                raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
 
         return version_data
 
@@ -69,16 +75,21 @@ class HangarProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        hangar_platform = HANGAR_PLATFORM_TAGS.get(platform_type)
+        custom_platform = spec.param("platform")
+        hangar_platform = custom_platform.upper() if custom_platform else HANGAR_PLATFORM_TAGS.get(platform_type)
+
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported
         if not spec.force:
-            if not hangar_platform or not project_info["supportedPlatforms"].get(hangar_platform):
-                self._raise_platform_not_supported(spec, platform_type)
+            if not hangar_platform:
+                raise self._platform_not_supported(spec, ["None"])
 
             if platform_type == PlatformType.FOLIA and "SUPPORTS_FOLIA" not in project_info["settings"]["tags"]:
-                self._raise_platform_not_supported(spec, platform_type)
+                raise self._platform_not_supported(spec, [PlatformType.FOLIA.value])
+
+            if not project_info["supportedPlatforms"].get(hangar_platform):
+                raise self._platform_not_supported(spec, [hangar_platform])
 
         # Default to Paper if no platform is supported
         hangar_platform = hangar_platform or "PAPER"
@@ -86,18 +97,18 @@ class HangarProvider(AbstractPluginProvider):
         # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
             channel_names = ["Release"] if spec.version == "latest" else ["Beta", "Alpha", "Snapshot"]
-            version_data = await self._get_first_plugin_version_by_channel(spec, client, channel_names)
+            version_data = await self._get_first_plugin_version_by_channel(spec, client, hangar_platform, channel_names)
 
             if not version_data:
-                raise RuntimeError(f"No '{spec.version}' Hangar versions found for {spec.identifier}")
+                raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
 
         # Just load the specific version
         else:
-            version_data = await self._get_plugin_version(spec, client, spec.version)
+            version_data = await self._get_plugin_version(spec, client, hangar_platform, spec.version)
 
         supported_platform_versions = version_data.get("platformDependencies", {}).get(hangar_platform, [])
         if not spec.force and not any(is_same_semver(mc_version, v) for v in supported_platform_versions):
-            self._raise_version_not_supported(spec, mc_version)
+            raise self._version_not_supported(spec, mc_version)
 
         platform_dl = version_data["downloads"][hangar_platform]
         file_info = platform_dl["fileInfo"]

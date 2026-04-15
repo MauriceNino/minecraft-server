@@ -58,3 +58,15 @@ This will bypass:
 
 1. Platform loader compatibility checks
 2. Game version compatibility checks
+
+## Override Platform
+
+You can manually specify a platform using the `platform` parameter in square brackets.
+This is useful if a plugin is compatible with your platform but its Modrinth metadata is missing the correct tag (e.g., a plugin that works on Folia but only has the Paper tag).
+
+```yaml
+PLUGINS: |
+  modrinth:chunky[platform=spigot]@latest
+```
+
+When this parameter is used, it overrides the automatic loader detection based on your server `TYPE`.

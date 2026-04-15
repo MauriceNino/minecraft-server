@@ -62,7 +62,7 @@ class SpigetProvider(AbstractPluginProvider):
         version = str(project_info["version"]["id"]) if spec.version in ("latest", "experimental") else spec.version
 
         if not any(version == str(v.get("id")) for v in project_info.get("versions", [])):
-            raise RuntimeError(f"Version {version} not found for {spec.identifier}")
+            raise self._version_could_not_be_found(spec)
 
         if project_info.get("premium", False):
             raise RuntimeError(
@@ -71,10 +71,10 @@ class SpigetProvider(AbstractPluginProvider):
             )
 
         if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
-            self._raise_platform_not_supported(spec, platform_type)
+            raise self._platform_not_supported(spec, [platform_type])
 
         if not spec.force and not any(is_same_semver(mc_version, v) for v in project_info["testedVersions"]):
-            self._raise_version_not_supported(spec, mc_version)
+            raise self._version_not_supported(spec, mc_version)
 
         filename = f"{spec.identifier}-{version}.jar"
         download_url = f"{API_BASE}/resources/{resource_id}/download?version={version}"
