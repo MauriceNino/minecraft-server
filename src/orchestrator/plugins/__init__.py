@@ -55,6 +55,11 @@ async def _resolve_and_download(
 
     log_version_change(spec.identifier, old_version, resolved.version)
 
+    if old_entry:
+        old_plugin_path = plugins_dir / old_entry.filename
+        if old_plugin_path.exists():
+            old_plugin_path.unlink()
+
     downloaded_path = await provider.download(resolved, plugins_dir, client)
     lockfile.update_plugin(lock_key, resolved, downloaded_path)
 
