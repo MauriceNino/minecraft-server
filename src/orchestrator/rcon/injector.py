@@ -5,6 +5,7 @@ from pathlib import Path
 from orchestrator.constants import SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 from orchestrator.merger.properties_merger import merge_properties
+from orchestrator.merger.toml_merger import merge_toml
 from orchestrator.merger.yaml_merger import merge_yaml
 
 # Velocircon release URL (Velocity RCON bridge plugin)
@@ -18,17 +19,29 @@ async def inject_rcon(
     rcon_port: int,
     rcon_password: str,
 ) -> None:
-    """Detect platform and inject RCON configuration.
-
-    Strategy per platform:
-
-    - **Paper / Folia**: Enable via `server.properties`.
-    - **Velocity**: Download Velocircon plugin and generate its config.
-    """
-    if platform in SERVER_PLATFORMS:
+    if platform == PlatformType.PUMPKIN:
+        await _inject_pumpkin_rcon(runtime_dir, rcon_port, rcon_password)
+    elif platform in SERVER_PLATFORMS:
         await _inject_server_properties_rcon(runtime_dir, rcon_port, rcon_password)
     elif platform == PlatformType.VELOCITY:
         await _inject_velocity_rcon(plugins_dir, rcon_port, rcon_password)
+
+
+async def _inject_pumpkin_rcon(
+    runtime_dir: Path,
+    rcon_port: int,
+    rcon_password: str,
+) -> None:
+    """Enable RCON in `config/features.toml` for PumpkinMC."""
+    config_dir = runtime_dir / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / "features.toml"
+
+    config_content = (
+        f"[networking.rcon]\nenabled = true\naddress = '0.0.0.0:{rcon_port}'\npassword = '{rcon_password}'\n"
+    )
+    console.print(f"  [success]✓[/success] Enabled & Reachable  [label][dim]0.0.0.0:[/dim]{rcon_port}[/label]")
+    merge_toml(config_file, config_content)
 
 
 async def _inject_server_properties_rcon(

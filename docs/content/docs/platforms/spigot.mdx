@@ -1,0 +1,27 @@
+---
+title: Spigot
+description: The popular plugin-compatible CraftBukkit fork
+---
+
+**Spigot** is a popular fork of CraftBukkit that introduces various performance improvements and configuration options. It is compatibility-oriented and supports the vast library of Bukkit plugins.
+
+## Configuration
+
+Set `TYPE=SPIGOT` to use this platform.
+
+```yaml
+environment:
+  TYPE: SPIGOT
+```
+
+- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+
+The orchestrator resolves builds via the GetBukkit community API.
+
+## RCON Support
+
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

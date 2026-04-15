@@ -1,0 +1,27 @@
+---
+title: Bukkit
+description: The classic Minecraft server software
+---
+
+**Bukkit** (specifically CraftBukkit) is the classic plugin-capable Minecraft server software. While mostly superseded by Spigot and Paper, it is still supported for legacy purposes.
+
+## Configuration
+
+Set `TYPE=BUKKIT` to use this platform.
+
+```yaml
+environment:
+  TYPE: BUKKIT
+```
+
+- **`VERSION`**: Resolves the game version (e.g., `1.8.8`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `1G`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+
+The orchestrator resolves legacy builds via the GetBukkit community API.
+
+## RCON Support
+
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

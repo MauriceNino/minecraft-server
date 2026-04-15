@@ -1,0 +1,28 @@
+---
+title: Waterfall
+description: A high-performance BungeeCord fork
+---
+
+**Waterfall** is a fork of BungeeCord, the popular Minecraft proxy. It is designed for performance and stability while maintaining full compatibility with BungeeCord plugins.
+
+## Configuration
+
+Set `TYPE=WATERFALL` to use this platform.
+
+```yaml
+environment:
+  TYPE: WATERFALL
+```
+
+- **`VERSION`**: Resolves the proxy version (e.g., `1.21`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **proxy-specific optimized G1GC flags**.
+
+The orchestrator resolves builds via the [PaperMC API](https://api.papermc.io/v2/projects/waterfall).
+
+## RCON Support
+
+<Callout type="warning">
+  Waterfall (BungeeCord) does not natively support RCON. If you need remote command access, consider
+  using a third-party plugin.
+</Callout>

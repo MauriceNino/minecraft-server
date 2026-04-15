@@ -1,0 +1,28 @@
+---
+title: Paper
+description: The most popular high-performance Spigot fork
+---
+
+**Paper** is a high-performance fork of the Spigot Minecraft server that aims to fix performance and gameplay inconsistencies. It is the recommended platform for most plugin-based servers.
+
+## Configuration
+
+Set `TYPE=PAPER` to use this platform.
+
+```yaml
+environment:
+  TYPE: PAPER
+```
+
+- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`, `stable`).
+- **`BUILD`**: Resolves the specific build number (e.g., `123`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `2G`, `512M`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+
+The orchestrator automatically fetches the latest builds from the [PaperMC API](https://api.papermc.io/v2/projects/paper).
+
+## RCON Support
+
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

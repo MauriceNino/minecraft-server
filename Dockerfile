@@ -3,7 +3,7 @@
 ARG PYTHON_VERSION=3.12
 
 # Builder
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie-slim AS builder
 
 WORKDIR /build
 
@@ -16,7 +16,7 @@ RUN uv venv /opt/venv && \
     uv pip install --no-cache --python=/opt/venv .
 
 # Runtime
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS runtime
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie-slim AS runtime
 
 ARG JAVA_VERSION=25
 ARG JAVA_FLAVOR=temurin

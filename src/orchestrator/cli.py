@@ -160,7 +160,10 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
 
     templates_dir = data_dir / "templates"
     runtime_dir = data_dir / "runtime"
-    plugins_dir = runtime_dir / "plugins"
+    if platform == PlatformType.PUMPKIN:
+        plugins_dir = runtime_dir / "patchbukkit" / "patchbukkit-plugins"
+    else:
+        plugins_dir = runtime_dir / "plugins"
 
     plugin_lines = _parse_multiline(env.get("PLUGINS", ""))
     applied_templates = _parse_multiline(env.get("APPLIED_TEMPLATES", ""))

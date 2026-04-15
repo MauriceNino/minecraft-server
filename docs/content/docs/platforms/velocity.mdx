@@ -1,0 +1,30 @@
+---
+title: Velocity
+description: The next-generation high-performance Minecraft proxy
+---
+
+**Velocity** is a high-performance Minecraft proxy designed for stability and modern feature support. It is the successor to BungeeCord/Waterfall and is recommended for all modern proxy setups.
+
+## Configuration
+
+Set `TYPE=VELOCITY` to use this platform.
+
+```yaml
+environment:
+  TYPE: VELOCITY
+```
+
+- **`VERSION`**: Resolves the proxy version (e.g., `3.4.0`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `2G`, `512M`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **proxy-specific optimized G1GC flags**.
+
+The orchestrator automatically injects proxy-specific optimized JVM flags and resolves builds via the [PaperMC API](https://api.papermc.io/v2/projects/velocity).
+
+## RCON Support
+
+The orchestrator provides RCON support for Velocity via the **Velocircon** bridge plugin. The orchestrator automatically:
+
+1. Downloads the Velocircon plugin if missing.
+2. Injects the necessary RCON settings (port and password) into the plugin configuration.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

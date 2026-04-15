@@ -1,0 +1,30 @@
+---
+title: Folia
+description: Regionized multithreading Paper fork
+---
+
+**Folia** is a fork of Paper that groups nearby players into independent "regions". Each region has its own tick loop, which runs on its own thread, allowing for massive player counts on a single server.
+
+Folia is specifically designed for servers with 100+ players and great server hardware. If you have fewer players, Paper is usually more efficient.
+
+## Configuration
+
+Set `TYPE=FOLIA` to use this platform.
+
+```yaml
+environment:
+  TYPE: FOLIA
+```
+
+- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`).
+- **`BUILD`**: Resolves the specific build number (e.g., `123`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `4G`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+
+The orchestrator automatically fetches the latest builds from the [PaperMC API](https://api.papermc.io/v2/projects/folia).
+
+## RCON Support
+
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

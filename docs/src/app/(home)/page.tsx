@@ -55,7 +55,7 @@ const platforms = [
   { name: 'Bukkit', color: '#FB923C' },
   { name: 'Velocity', color: '#1B9CEA' },
   { name: 'Waterfall', color: '#06B6D4' },
-]
+];
 
 const pluginLoaders = [
   { name: 'Modrinth', color: '#1bd96a' },

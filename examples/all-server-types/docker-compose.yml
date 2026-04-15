@@ -8,6 +8,7 @@ services:
       - ./data/paper:/data/runtime
     ports:
       - "25570:25565"
+    env_file: .env
     environment:
       TYPE: PAPER
       VERSION: latest
@@ -23,6 +24,7 @@ services:
       - ./data/folia:/data/runtime
     ports:
       - "25571:25565"
+    env_file: .env
     environment:
       TYPE: FOLIA
       VERSION: latest
@@ -38,6 +40,7 @@ services:
       - ./data/vanilla:/data/runtime
     ports:
       - "25572:25565"
+    env_file: .env
     environment:
       TYPE: VANILLA
       VERSION: latest
@@ -53,6 +56,7 @@ services:
       - ./data/bukkit:/data/runtime
     ports:
       - "25573:25565"
+    env_file: .env
     environment:
       TYPE: BUKKIT
       VERSION: latest
@@ -68,6 +72,7 @@ services:
       - ./data/spigot:/data/runtime
     ports:
       - "25574:25565"
+    env_file: .env
     environment:
       TYPE: SPIGOT
       VERSION: latest
@@ -83,6 +88,7 @@ services:
       - ./data/velocity:/data/runtime
     ports:
       - "25578:25565"
+    env_file: .env
     environment:
       TYPE: VELOCITY
       VERSION: latest
@@ -97,8 +103,27 @@ services:
       - ./data/waterfall:/data/runtime
     ports:
       - "25579:25565"
+    env_file: .env
     environment:
       TYPE: WATERFALL
       VERSION: latest
       MEMORY: 512M
     
+  pumpkin:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/pumpkin:/data/runtime
+    ports:
+      - "25580:25565"
+    env_file: .env
+    environment:
+      TYPE: PUMPKIN
+      VERSION: experimental
+      CONFIG_PATHS: |
+        features -> config/features.toml
+      CONFIG_features: |
+        [logging]
+        timestamp = false

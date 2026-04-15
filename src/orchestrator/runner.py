@@ -30,22 +30,27 @@ def build_java_command(
     return args
 
 
-def exec_java(
-    server_jar: Path,
+def exec_server(
+    server_executable: Path,
     runtime_dir: Path,
     memory: str,
     jvm_flags: list[str],
     platform: PlatformType,
 ) -> None:
-    """Build the Java command and replace this process with it.
+    """Build the server command and replace this process with it.
 
-    After this call, the Python process ceases to exist — the Java
+    After this call, the Python process ceases to exist — the
     server becomes PID 1 (in Docker) for proper signal handling.
     """
-    args = build_java_command(server_jar, memory, jvm_flags, platform)
+    if platform == PlatformType.PUMPKIN:
+        args = [str(server_executable)]
+        executable = str(server_executable)
+    else:
+        args = build_java_command(server_executable, memory, jvm_flags, platform)
+        executable = "java"
 
     console.print(f"  🚀 [dim]Executing  →[/dim]  {' '.join(args)}")
     console.print()
 
     os.chdir(runtime_dir)
-    os.execvp("java", args)  # noqa: S606, S607
+    os.execvp(executable, args)  # noqa: S606

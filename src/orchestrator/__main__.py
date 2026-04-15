@@ -7,7 +7,7 @@ import tempfile
 import click
 
 from orchestrator.cli import Config, load_config
-from orchestrator.constants import SERVER_LOCK_FILENAME, SERVER_PLATFORMS
+from orchestrator.constants import SERVER_LOCK_FILENAME, SERVER_PLATFORMS, PlatformType
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.logging import (
     console,
@@ -22,7 +22,7 @@ from orchestrator.plugins import ServerLockfile, download_plugins
 from orchestrator.plugins.check import check_plugin_updates
 from orchestrator.providers import download_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
-from orchestrator.runner import exec_java
+from orchestrator.runner import exec_server
 
 
 def _accept_eula(config: Config) -> None:
@@ -89,7 +89,7 @@ async def _async_main() -> None:
         build=config.build,
     )
 
-    server_jar = await download_platform(
+    server_executable = await download_platform(
         runtime_dir=config.runtime_dir,
         platform_type=config.platform,
         resolved_version=resolved_version,
@@ -127,13 +127,13 @@ async def _async_main() -> None:
             rcon_password=config.rcon_password,
         )
 
-    if config.platform in SERVER_PLATFORMS:
+    if config.platform in SERVER_PLATFORMS and config.platform != PlatformType.PUMPKIN:
         log_phase("Eula")
         _accept_eula(config)
 
-    log_phase("Launching Java")
-    exec_java(
-        server_jar=server_jar,
+    log_phase("Launching Server")
+    exec_server(
+        server_executable=server_executable,
         runtime_dir=config.runtime_dir,
         memory=config.memory,
         jvm_flags=config.jvm_flags,

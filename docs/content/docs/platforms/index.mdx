@@ -1,0 +1,34 @@
+---
+title: Server Platforms
+description: Overview of supported Minecraft server and proxy platforms
+---
+
+`MauriceNino/minecraft-server` manages the downloading, linking, and execution of your core server binary. It handles the heavy lifting of managing processes, Java versions, and optimized garbage collection.
+
+## Supported Platforms
+
+You can control which software runs via the `TYPE` environment variable.
+
+### Game Servers
+
+- [**PAPER**](paper): High-performance Spigot fork. Recommended for most plugin-based servers.
+- [**FOLIA**](folia): Regionized multithreading Paper fork for massive player counts.
+- [**VANILLA**](vanilla): The official server software from Mojang. Reliable and pure, but lacks plugin support.
+- [**SPIGOT**](spigot): The most popular plugin-compatible fork of CraftBukkit.
+- [**BUKKIT**](bukkit): The classic CraftBukkit server software.
+- [**PUMPKIN**](pumpkin): High-performance Rust-based server with native plugin support.
+
+### Proxies
+
+- [**VELOCITY**](velocity): The next-generation proxy for maximum performance and stability.
+- [**WATERFALL**](waterfall): A high-performance fork of BungeeCord, compatible with Bungee plugins.
+
+## Version Resolution
+
+The orchestrator dynamically fetches builds from various official and community APIs.
+See the individual platform pages for details on how each provider resolves versions and builds.
+
+## Configuration
+
+Each platform supports a tailored set of environment variables for versioning and execution.
+Read the documentation for your specific platform to see available versions and default execution behaviors.

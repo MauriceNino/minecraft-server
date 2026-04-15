@@ -1,0 +1,38 @@
+---
+title: Pumpkin
+description: Rust-based high-performance Minecraft server
+---
+
+**Pumpkin** is a modern, high-performance Minecraft server (Protocol 775) written from the ground up in Rust. It aims to provide extreme performance and stability, particularly for large-scale operations.
+
+<Callout title="Experimental" type="warning">
+  Pumpkin is under heavy development. Nightly builds are fetched directly from the [PumpkinMC
+  GitHub](https://github.com/Pumpkin-MC/Pumpkin).
+</Callout>
+
+## Configuration
+
+Set `TYPE=PUMPKIN` to use this platform.
+
+```yaml
+environment:
+  TYPE: PUMPKIN
+  VERSION: experimental
+```
+
+- **`VERSION`**: Currently **must** be set to `experimental` to pull the latest nightly builds from GitHub.
+- **`MEMORY` / `JVM_FLAGS`**: As Pumpkin runs as a native Rust binary, these Java-specific variables are currently **ignored** by the orchestrator.
+
+## RCON Support
+
+Pumpkin uses a specialized configuration file located at `config/features.toml`. The orchestrator automatically configures the `[networking.rcon]` section to match your environment variables.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.
+
+### Plugin Support
+
+When running Pumpkin, the orchestrator automatically:
+
+1. Downloads the latest **Pumpkin** native binary for your architecture.
+2. Injects the **PatchBukkit** compatibility layer.
+3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory to ensure perfect compatibility.

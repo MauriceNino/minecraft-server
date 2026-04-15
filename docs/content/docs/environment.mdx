@@ -14,8 +14,12 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Default:** `false`
 
 - **`ACCEPT_EULA`**
-  - **Description:** Minecraft backend servers (Paper, Folia) require EULA acceptance. Set this to true to automatically write the `eula.txt`.
+  - **Description:** Most Minecraft backend servers require EULA acceptance. Set this to true to automatically write the `eula.txt`.
   - **Default:** `false`
+
+- **`TYPE`**
+  - **Description:** The platform software to run. This determines which variables (like `VERSION` or `MEMORY`) are available and how they behave. See [Server Platforms](../platforms) for details.
+  - **Default:** `PAPER`
 
 ## RCON Variables
 

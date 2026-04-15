@@ -1,0 +1,27 @@
+---
+title: Vanilla
+description: The official Minecraft server software
+---
+
+**Vanilla** is the official server software released by Mojang. It is the most stable and "pure" experience, but it does not support plugins out of the box.
+
+## Configuration
+
+Set `TYPE=VANILLA` to use this platform.
+
+```yaml
+environment:
+  TYPE: VANILLA
+```
+
+- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`).
+- **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
+- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+
+The orchestrator uses the official Mojang version manifest to resolve and download the server JAR.
+
+## RCON Support
+
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.
