@@ -127,3 +127,19 @@ services:
       CONFIG_features: |
         [logging]
         timestamp = false
+
+  purpur:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/purpur:/data/runtime
+    ports:
+      - "25581:25565"
+    env_file: .env
+    environment:
+      TYPE: PURPUR
+      VERSION: latest
+      MEMORY: 1G
+      ACCEPT_EULA: "true"

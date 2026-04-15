@@ -10,6 +10,7 @@ from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
 from orchestrator.providers.paper import PaperProvider
 from orchestrator.providers.pumpkin import PumpkinProvider
+from orchestrator.providers.purpur import PurpurProvider
 from orchestrator.providers.spigotmc import GetBukkitProvider
 from orchestrator.providers.vanilla import VanillaProvider
 
@@ -24,6 +25,7 @@ _PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.BUKKIT: GetBukkitProvider(project="craftbukkit"),
     PlatformType.SPIGOT: GetBukkitProvider(project="spigot"),
     PlatformType.PUMPKIN: PumpkinProvider(),
+    PlatformType.PURPUR: PurpurProvider(),
 }
 
 

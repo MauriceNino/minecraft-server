@@ -88,8 +88,7 @@ class PaperProvider(AbstractPlatformProvider):
 
         if resolved.sha256 and sha.hexdigest() != resolved.sha256:
             target.unlink()
-            msg = f"SHA-256 mismatch for {resolved.filename}"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"SHA-256 mismatch for {resolved.filename}")
 
         return target
 

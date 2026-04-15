@@ -16,7 +16,7 @@ const features = [
     icon: Server,
     title: 'Multi-Platform',
     description:
-      'Paper, Folia, Velocity, Waterfall, Vanilla, Spigot, and Bukkit — all centrally managed from one core image.',
+      'Paper, Purpur, Folia, Velocity, Waterfall, Vanilla, Spigot, and Bukkit — all centrally managed from one core image.',
   },
   {
     icon: Plug,
@@ -49,6 +49,7 @@ const features = [
 
 const platforms = [
   { name: 'Paper', color: '#4A90D9' },
+  { name: 'Purpur', color: '#A94AD9' },
   { name: 'Folia', color: '#4ADE80' },
   { name: 'Vanilla', color: '#EF4444' },
   { name: 'Spigot', color: '#F97316' },

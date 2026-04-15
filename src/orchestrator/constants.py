@@ -16,6 +16,7 @@ class PlatformType(StrEnum):
     BUKKIT = "BUKKIT"
     SPIGOT = "SPIGOT"
     PUMPKIN = "PUMPKIN"
+    PURPUR = "PURPUR"
 
 
 SERVER_PLATFORMS = frozenset(
@@ -26,6 +27,7 @@ SERVER_PLATFORMS = frozenset(
         PlatformType.BUKKIT,
         PlatformType.SPIGOT,
         PlatformType.PUMPKIN,
+        PlatformType.PURPUR,
     }
 )
 
@@ -43,6 +45,7 @@ BUKKIT_BASED_PLATFORMS = frozenset(
         PlatformType.SPIGOT,
         PlatformType.BUKKIT,
         PlatformType.PUMPKIN,
+        PlatformType.PURPUR,
     }
 )
 
@@ -69,6 +72,7 @@ PLATFORM_LOADER_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.SPIGOT: ["spigot", "bukkit"],
     PlatformType.BUKKIT: ["bukkit"],
     PlatformType.PUMPKIN: ["paper", "spigot", "bukkit"],
+    PlatformType.PURPUR: ["purpur", "paper", "spigot", "bukkit"],
 }
 
 # Hangar uses its own platform enum

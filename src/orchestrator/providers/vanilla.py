@@ -66,8 +66,7 @@ class VanillaProvider(AbstractPlatformProvider):
 
         if resolved.sha1 and sha.hexdigest() != resolved.sha1:
             target.unlink()
-            msg = f"SHA-1 mismatch for {resolved.filename}"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"SHA-1 mismatch for {resolved.filename}")
 
         return target
 
