@@ -107,7 +107,7 @@ async def _async_main() -> None:
         if config.config_overrides:
             apply_config_overrides(config.config_overrides, config.runtime_dir)
 
-    if config.plugin_lines:
+    if config.plugin_lines or len(lockfile.plugins.keys()) > 0:
         log_phase("Plugins")
         await download_plugins(
             plugin_lines=config.plugin_lines,
