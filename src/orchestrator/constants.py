@@ -108,3 +108,8 @@ MERGEABLE_EXTENSIONS: frozenset[str] = frozenset(
 
 # User-Agent for HTTP requests
 USER_AGENT = "MauriceNino/minecraft-server/1.0 (https://github.com/MauriceNino/minecraft-server)"
+
+
+# RCON Bridge Plugins for Proxies
+VELOCIRCON_URL = "https://github.com/code-lime/Velocircon/releases/download/1.0.6/Velocircon-1.0.6.jar"
+BUNGEE_RCON_URL = "https://github.com/orblazer/bungee-rcon/releases/download/v1.0.0/bungee-rcon-1.0.0.jar"

@@ -5,7 +5,14 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from orchestrator.constants import DEFAULT_DATA_DIR, PROXY_PLATFORMS, SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import (
+    BUNGEE_RCON_URL,
+    DEFAULT_DATA_DIR,
+    PROXY_PLATFORMS,
+    SERVER_PLATFORMS,
+    VELOCIRCON_URL,
+    PlatformType,
+)
 from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
 
 
@@ -172,6 +179,13 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     rcon_enabled = env.get("RCON_ENABLED", "true").lower() in ("true", "1", "yes")
     rcon_password = env.get("RCON_PASSWORD", str(uuid.uuid4()))
     rcon_port = int(env.get("RCON_PORT", "25575"))
+
+    # Auto-inject RCON bridge plugins for proxies
+    if rcon_enabled:
+        if platform == PlatformType.VELOCITY:
+            plugin_lines.append(f"url:{VELOCIRCON_URL}")
+        elif platform == PlatformType.WATERFALL:
+            plugin_lines.append(f"url:{BUNGEE_RCON_URL}")
 
     memory = env.get("MEMORY", "1G")
     jvm_flags_raw = env.get("JVM_FLAGS", "")
