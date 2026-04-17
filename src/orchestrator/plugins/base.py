@@ -85,7 +85,7 @@ class AbstractPluginProvider(ABC):
     def _version_could_not_be_found_for_platform(self, spec: PluginSpec, platform_types: list[str]) -> RuntimeError:
         platform_example = (
             "You could try to change the platform using "
-            f"[info]{spec.provider}:{spec.identifier}[platform=AnotherPlatform]@{spec.identifier}[/info] "
+            f"[info]{spec.provider}:{spec.identifier}\[platform=AnotherPlatform]@{spec.version}[/info] "
             "and see if that has a different outcome. "
         )
         return RuntimeError(
