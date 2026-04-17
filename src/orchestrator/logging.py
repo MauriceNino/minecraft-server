@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import sys
 import traceback
-from pathlib import Path
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -65,19 +64,22 @@ def log_exception(exc: Exception, message: str, *, prefix: str = "Error") -> Non
     else:
         _, _, tb = sys.exc_info()
         stack = traceback.extract_tb(tb)
-        last_frame = stack[-1] if stack else None
 
         error_msg = f"[error]{prefix}:[/error] {message}\n"
-        error_msg += f"  [bold red]{type(exc).__name__}:[/bold red] {exc}"
-        if last_frame:
-            # Shorten absolute path to relative or filename for cleaner output
-            path = last_frame.filename
-            cwd = str(Path.cwd())
-            if path.startswith(cwd):
-                path = path[len(cwd) :].lstrip("/")
-            elif "/src/" in path:
-                path = path.partition("/src/")[2]
-            error_msg += f"\n  [dim]at {path}:{last_frame.lineno}[/dim]"
+        error_msg += f"  [error]{type(exc).__name__}:[/error] {exc}"
+
+        last_path = ""
+        for frame in stack:
+            path = frame.filename
+
+            if "/orchestrator/" in path:
+                path = path.partition("/orchestrator/")[2]
+
+            if path == last_path:
+                error_msg += f"[dim] -> {frame.lineno}[/dim]"
+            else:
+                error_msg += f"\n  [dim]at {path}: {frame.lineno}[/dim]"
+            last_path = path
 
         console.print()
         console.print(error_msg)

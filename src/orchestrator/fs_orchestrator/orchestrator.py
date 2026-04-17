@@ -8,6 +8,7 @@ from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.fs_orchestrator.template_reader import TemplateNode, read_template
 from orchestrator.logging import console
+from orchestrator.merger import log_change
 
 
 def orchestrate_templates(
@@ -31,37 +32,22 @@ def orchestrate_templates(
         console.print(f"  [info]📂[/info] [label]{tpl_name}[/label]")
         tree = read_template(tpl_root)
 
-        _collect_and_execute_replaces(tree, runtime_dir)
-        _collect_and_execute_deletes(tree, runtime_dir)
-
+        _execute_deletes_and_replaces(tree, runtime_dir)
         _merge_tree(tree, runtime_dir, runtime_dir, False, False)
 
 
-def _collect_and_execute_replaces(node: TemplateNode, runtime_base: Path) -> None:
+def _execute_deletes_and_replaces(node: TemplateNode, runtime_base: Path) -> None:
     for child in node.children:
         target = runtime_base / child.clean_name
-        if child.is_dir and child.sigil == DirSigil.REPLACE:
-            if target.exists():
-                shutil.rmtree(target)
-            elif target.is_file():
+
+        if child.sigil in (DirSigil.DELETE, DirSigil.REPLACE):
+            if not child.is_dir and target.exists():
                 target.unlink()
-        elif not child.is_dir and child.sigil == DirSigil.REPLACE and target.exists():
-            target.unlink()
+            elif child.is_dir and target.exists():
+                shutil.rmtree(target)
 
-        # Recurse into subdirectories (even replaced ones — they may have
-        # nested replace markers for sub-dirs)
-        if child.is_dir:
-            _collect_and_execute_replaces(child, target)
-
-
-def _collect_and_execute_deletes(node: TemplateNode, runtime_base: Path) -> None:
-    for child in node.children:
-        target = runtime_base / child.clean_name
-        if not child.is_dir and child.sigil == DirSigil.DELETE and target.exists():
-            target.unlink()
-
-        if child.is_dir:
-            _collect_and_execute_deletes(child, target)
+        elif child.is_dir:
+            _execute_deletes_and_replaces(child, target)
 
 
 def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_replace: bool, in_force: bool) -> None:
@@ -72,13 +58,18 @@ def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_re
 
         if child.sigil == DirSigil.DELETE:
             # Already handled in phase 1 — nothing to write
+            log_change("deleted", str(target.relative_to(runtime_dir)))
             continue
 
         if child.is_dir:
             target.mkdir(parents=True, exist_ok=True)
             _merge_tree(child, target, runtime_dir, is_replace, is_force)
         else:
-            _merge_file(child, target, runtime_dir, is_replace, is_force)
+            try:
+                _merge_file(child, target, runtime_dir, is_replace, is_force)
+            except Exception as e:
+                log_change("errored", str(target.relative_to(runtime_dir)), reason=str(e))
+                raise e
 
 
 def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace: bool, in_force: bool) -> None:
@@ -89,30 +80,30 @@ def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace:
 
     # If the file or its parent was explicitly `!replace:`d, just copy
     if in_replace or node.sigil == DirSigil.REPLACE:
-        console.print(f"    [info]✓[/info] [dim]replacing[/dim] {rel_path}")
         target.parent.mkdir(parents=True, exist_ok=True)
         _write_interpolated(node.source_path, target)
+        log_change("replaced", rel_path, indentation=1)
         return
 
     if not target.exists():
         if in_force or node.sigil == DirSigil.FORCE:
-            console.print(f"    [info]✓[/info] [dim]creating[/dim]  {rel_path}")
             target.parent.mkdir(parents=True, exist_ok=True)
             _write_interpolated(node.source_path, target)
+            log_change("created", rel_path, indentation=1)
             return
-        console.print(f"    [dim]⊘ skipping [/dim] {rel_path}")
+        log_change("skipped", rel_path, indentation=1)
         return
 
     if suffix in MERGEABLE_EXTENSIONS:
-        console.print(f"    [info]⚙[/info] [dim]merging[/dim]   {rel_path}")
         from orchestrator.merger.engine import merge_file
 
         merge_file(node.source_path, target)
+        log_change("merged", rel_path, indentation=1)
         return
 
     # Non-config files: overwrite (last template wins for binaries)
-    console.print(f"    [info]✓[/info] [dim]replacing[/dim] {rel_path}")
     _write_interpolated(node.source_path, target)
+    log_change("replaced", rel_path, indentation=1)
 
 
 def _write_interpolated(source: Path, target: Path) -> None:

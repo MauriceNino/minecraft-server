@@ -33,9 +33,7 @@ def merge_file(overlay_path: Path, target_path: Path) -> None:
     string_merger = _STRING_MERGERS.get(suffix)
 
     if string_merger is None:
-        console.print(
-            f"  [warning]✗[/warning] [dim]skipping[/dim]    {target_path.name}  [dim](unsupported format)[/dim]"
-        )
+        log_change("skipped", target_path.name, reason="unsupported format")
         return
 
     # Interpolate env vars in the overlay content, then merge as a string
@@ -44,29 +42,44 @@ def merge_file(overlay_path: Path, target_path: Path) -> None:
     string_merger(target_path, interpolated)  # type: ignore[operator]
 
 
+def log_change(action: str, rel_path: str, reason: str | None = None, indentation: int = 0) -> None:
+    indentation += 1
+    action_pad = 13 - (indentation * 2)
+    indent = "  " * indentation
+    match action:
+        case "errored":
+            action_icon = "[error]✗[/error]"
+        case "created":
+            action_icon = "[info]✓[/info]"
+        case "deleted":
+            action_icon = "[info]✓[/info]"
+        case "merged":
+            action_icon = "[info]✓[/info]"
+        case "replaced":
+            action_icon = "[info]⟳[/info]"
+        case "skipped":
+            action_icon = "[dim]⊘[/dim]"
+        case _:
+            action_icon = " "
+
+    if reason:
+        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path} [dim]({reason})[/dim]")
+    else:
+        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path}")
+
+
 def apply_config_overrides(
     overrides: list[tuple[DirSigil, str, str]],
     runtime_dir: Path,
 ) -> None:
     """Apply config overrides parsed from `CONFIG_PATHS` + `CONFIG_<key>`.
 
-    Parameters
-    ----------
-    overrides:
-        List of `(sigil, relative_path, raw_content)` tuples produced by
-        :func:`orchestrator.cli._collect_config_overrides`.
-        `$[VAR]` placeholders in *raw_content* are substituted from
-        `os.environ` before writing.
-    runtime_dir:
-        The runtime directory where config files reside.
-
     Behaviour by sigil
     ------------------
-    - :attr:`~DirSigil.NONE`    — merge into the existing file.  If the file
-      does not exist the override is **skipped**.
-    - :attr:`~DirSigil.FORCE`   — create if absent, deep-merge if present.
-    - :attr:`~DirSigil.REPLACE` — always write (create or overwrite); no merge.
-    - :attr:`~DirSigil.DELETE`  — delete the target file (content ignored).
+    - DirSigil.NONE    - merge into the existing file. If the file does not exist the override is skipped.
+    - DirSigil.FORCE   - create if absent, deep-merge if present.
+    - DirSigil.REPLACE - always write (create or overwrite); no merge.
+    - DirSigil.DELETE  - delete the target file (content ignored).
     """
     for sigil, rel_path, raw_content in overrides:
         target = runtime_dir / rel_path
@@ -76,37 +89,37 @@ def apply_config_overrides(
         if sigil == DirSigil.DELETE:
             if target.exists():
                 target.unlink()
-                console.print(f"  [warning]✗[/warning] [dim]deleted[/dim]     {rel_path}")
+                log_change("deleted", rel_path)
             else:
-                console.print(f"  [dim]⊘ skipping[/dim]    {rel_path} (delete — not found)")
+                log_change("skipped", rel_path, reason="nothing to delete")
             continue
 
         content = interpolate_env(raw_content)
 
         # --- REPLACE ---
         if sigil == DirSigil.REPLACE:
-            console.print(f"  [info]✓[/info] [dim]replacing[/dim]   {rel_path}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
+            log_change("replaced", rel_path)
             continue
 
         # --- FORCE or NONE ---
         if not target.exists():
             if sigil == DirSigil.FORCE:
-                console.print(f"  [info]✓[/info] [dim]creating[/dim]    {rel_path}")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content, encoding="utf-8")
+                log_change("created", rel_path)
             else:
-                console.print(f"  [dim]⊘ skipping[/dim]    {rel_path}")
+                log_change("skipped", rel_path, reason="nothing to create")
             continue
 
         merger_fn = _STRING_MERGERS.get(suffix)
         if merger_fn is None:
-            console.print(f"  [warning]✓[/warning] [dim]replacing[/dim]   {rel_path}  [dim](merge not supported)[/dim]")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
+            log_change("replaced", rel_path, reason="merge not supported")
             continue
 
-        console.print(f"  [info]⚙[/info] [dim]merging[/dim]     {rel_path}")
         target.parent.mkdir(parents=True, exist_ok=True)
         merger_fn(target, content)
+        log_change("merged", rel_path)
