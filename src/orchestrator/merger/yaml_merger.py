@@ -14,7 +14,7 @@ _yaml = YAML()
 _yaml.preserve_quotes = True
 
 
-def _ruamel_deep_merge(base_doc: CommentedMap, overlay: CommentedMap | dict[str, Any]) -> None:
+def _ruamel_deep_merge(base_doc: CommentedMap, overlay: CommentedMap | dict[str | int, Any]) -> None:
     """Recursively apply *overlay* into *base_doc* in-place.
 
     - Comments and whitespace in *base_doc* are preserved wherever possible.
@@ -44,7 +44,9 @@ def _ruamel_deep_merge(base_doc: CommentedMap, overlay: CommentedMap | dict[str,
             base_doc[clean_key] = _to_commented(strip_sigils(overlay_value))
 
 
-def _to_commented(value: Any) -> Any:
+def _to_commented(
+    value: dict[str | int, Any] | list[Any] | str | int | float | bool | None,
+) -> CommentedMap | CommentedSeq | str | int | float | bool | None:
     """Convert a plain Python value to a ruamel.yaml CommentedMap/Seq (best-effort)."""
     if isinstance(value, dict):
         cm = CommentedMap()
@@ -85,7 +87,6 @@ def merge_yaml(existing_path: Path, overlay_content: str) -> None:
         _ruamel_deep_merge(base_doc, overlay)
         result_doc = base_doc
     else:
-        # No existing file — write overlay after stripping sigils
         result_doc = _yaml.load(overlay_content) or CommentedMap()
         _strip_sigils_from_doc(result_doc)
 

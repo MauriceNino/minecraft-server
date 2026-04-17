@@ -11,11 +11,11 @@ from orchestrator.merger.sigils import deep_merge, strip_sigils
 
 def merge_json(existing_path: Path, overlay_content: str) -> None:
     """Deep-merge *overlay_content* (JSON string) into *existing_path*."""
-    overlay: dict[str, Any] = json.loads(overlay_content)
+    overlay: dict[str | int, Any] = json.loads(overlay_content)
 
     if existing_path.exists():
         with existing_path.open() as f:
-            base: dict[str, Any] = json.load(f)
+            base: dict[str | int, Any] = json.load(f)
         merged = deep_merge(base, overlay)
     else:
         merged = strip_sigils(overlay)

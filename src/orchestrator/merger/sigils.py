@@ -15,18 +15,17 @@ class KeySigil(Enum):
     DELETE = "delete"
 
 
-def parse_key_sigil(key: str) -> tuple[KeySigil, str]:
+def parse_key_sigil(key: str | int) -> tuple[KeySigil, str]:
     """Parse a config key and return `(sigil, clean_key)`.
 
-    Examples
-    --------
-    >>> parse_key_sigil("!replace:servers")
-    (KeySigil.REPLACE, 'servers')
-    >>> parse_key_sigil("motd")
-    (KeySigil.NONE, 'motd')
-    >>> parse_key_sigil("!replace:forwarding-mode")
-    (KeySigil.REPLACE, 'forwarding-mode')
+    **Examples**
+    - `parse_key_sigil("!replace:servers")` -> `(KeySigil.REPLACE, 'servers')`
+    - `parse_key_sigil("motd")` -> `(KeySigil.NONE, 'motd')`
+    - `parse_key_sigil("!replace:forwarding-mode")` -> `(KeySigil.REPLACE, 'forwarding-mode')`
     """
+    if not isinstance(key, str):
+        return KeySigil.NONE, str(key)
+
     if key.startswith(REPLACE_PREFIX):
         return KeySigil.REPLACE, key[len(REPLACE_PREFIX) :]
     if key.startswith(DELETE_PREFIX):
@@ -34,15 +33,15 @@ def parse_key_sigil(key: str) -> tuple[KeySigil, str]:
     return KeySigil.NONE, key
 
 
-def strip_sigils(data: Any) -> Any:
+def strip_sigils(data: dict[str | int, Any]) -> dict[str | int, Any]:
     """Recursively strip all sigil prefixes from dictionary keys.
 
-    Non-dict values are returned as-is.
-    """
+    Non-dict values are returned as-is."""
     if isinstance(data, dict):
-        cleaned: dict[str, Any] = {}
+        cleaned: dict[str | int, Any] = {}
         for key, value in data.items():
             sigil, clean_key = parse_key_sigil(key)
+
             if sigil != KeySigil.DELETE:
                 cleaned[clean_key] = strip_sigils(value)
         return cleaned
@@ -53,7 +52,7 @@ def strip_sigils(data: Any) -> Any:
     return data
 
 
-def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+def deep_merge(base: dict[str | int, Any], overlay: dict[str | int, Any]) -> dict[str | int, Any]:
     """Deep-merge *overlay* into *base* with sigil support."""
     result = dict(base)
 
