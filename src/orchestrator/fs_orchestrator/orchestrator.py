@@ -8,7 +8,7 @@ from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.fs_orchestrator.template_reader import TemplateNode, read_template
 from orchestrator.logging import console
-from orchestrator.merger import log_change
+from orchestrator.merger import log_change, merge_file
 
 
 def orchestrate_templates(
@@ -95,8 +95,6 @@ def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace:
         return
 
     if suffix in MERGEABLE_EXTENSIONS:
-        from orchestrator.merger.engine import merge_file
-
         merge_file(node.source_path, target)
         log_change("merged", rel_path, indentation=1)
         return
@@ -107,14 +105,8 @@ def _merge_file(node: TemplateNode, target: Path, runtime_dir: Path, in_replace:
 
 
 def _write_interpolated(source: Path, target: Path) -> None:
-    """Read *source*, interpolate env vars, and write the result to *target*.
-
-    Falls back to a binary copy when the file cannot be decoded as UTF-8
-    (e.g. jar files or other binary assets).
-    """
     try:
         content = source.read_text(encoding="utf-8")
+        target.write_text(interpolate_env(content), encoding="utf-8")
     except (UnicodeDecodeError, ValueError):
         shutil.copy2(source, target)
-        return
-    target.write_text(interpolate_env(content), encoding="utf-8")

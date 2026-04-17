@@ -1,5 +1,3 @@
-"""Directory and file-level sigil parsing for the filesystem orchestrator."""
-
 from __future__ import annotations
 
 from enum import Enum
@@ -22,18 +20,12 @@ class DirSigil(Enum):
 def parse_dir_sigil(name: str) -> tuple[DirSigil, str]:
     """Parse a directory/file name and return `(sigil, clean_name)`.
 
-    Examples
-    --------
-    >>> parse_dir_sigil("!replace:worldedit")
-    (DirSigil.REPLACE, 'worldedit')
-    >>> parse_dir_sigil("!replace:bukkit.yaml")
-    (DirSigil.REPLACE, 'bukkit.yaml')
-    >>> parse_dir_sigil("plugins")
-    (DirSigil.NONE, 'plugins')
-    >>> parse_dir_sigil("!force:paper-global.yml")
-    (DirSigil.FORCE, 'paper-global.yml')
-    >>> parse_dir_sigil("!delete:old-config.yml")
-    (DirSigil.DELETE, 'old-config.yml')
+    **Examples**
+    - `parse_dir_sigil("!replace:worldedit")` -> `(DirSigil.REPLACE, 'worldedit')`
+    - `parse_dir_sigil("!replace:bukkit.yaml")` -> `(DirSigil.REPLACE, 'bukkit.yaml')`
+    - `parse_dir_sigil("plugins")` -> `(DirSigil.NONE, 'plugins')`
+    - `parse_dir_sigil("!force:paper-global.yml")` -> `(DirSigil.FORCE, 'paper-global.yml')`
+    - `parse_dir_sigil("!delete:old-config.yml")` -> `(DirSigil.DELETE, 'old-config.yml')`
     """
 
     if name.startswith(REPLACE_PREFIX):

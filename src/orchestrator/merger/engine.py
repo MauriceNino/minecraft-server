@@ -23,25 +23,6 @@ _STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {
 }
 
 
-def merge_file(overlay_path: Path, target_path: Path) -> None:
-    """Deep-merge *overlay_path* into *target_path*, dispatching by extension.
-
-    Environment variable placeholders (`$[VAR]`) in *overlay_path* are
-    substituted from `os.environ` before merging.
-    """
-    suffix = target_path.suffix.lower()
-    string_merger = _STRING_MERGERS.get(suffix)
-
-    if string_merger is None:
-        log_change("skipped", target_path.name, reason="unsupported format")
-        return
-
-    # Interpolate env vars in the overlay content, then merge as a string
-    raw_overlay = overlay_path.read_text(encoding="utf-8")
-    interpolated = interpolate_env(raw_overlay)
-    string_merger(target_path, interpolated)  # type: ignore[operator]
-
-
 def log_change(action: str, rel_path: str, reason: str | None = None, indentation: int = 0) -> None:
     indentation += 1
     action_pad = 13 - (indentation * 2)
@@ -66,6 +47,26 @@ def log_change(action: str, rel_path: str, reason: str | None = None, indentatio
         console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path} [dim]({reason})[/dim]")
     else:
         console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path}")
+
+
+def merge_file_content(target_path: Path, overlay_content: str) -> None:
+    suffix = target_path.suffix.lower()
+    string_merger = _STRING_MERGERS.get(suffix)
+
+    if string_merger is None:
+        raise ValueError(f"Unsupported file format: {suffix} for file {target_path!s}")
+
+    interpolated = interpolate_env(overlay_content)
+    string_merger(target_path, interpolated)
+
+
+def merge_file(overlay_path: Path, target_path: Path) -> None:
+    if target_path.suffix.lower() not in _STRING_MERGERS:
+        log_change("skipped", target_path.name, reason="unsupported format")
+        return
+
+    raw_overlay = overlay_path.read_text(encoding="utf-8")
+    merge_file_content(target_path, raw_overlay)
 
 
 def apply_config_overrides(

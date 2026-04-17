@@ -4,9 +4,7 @@ from pathlib import Path
 
 from orchestrator.constants import SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
-from orchestrator.merger.properties_merger import merge_properties
-from orchestrator.merger.toml_merger import merge_toml
-from orchestrator.merger.yaml_merger import merge_yaml
+from orchestrator.merger import merge_file_content
 
 
 async def inject_rcon(
@@ -42,7 +40,7 @@ async def _inject_pumpkin_rcon(
     config_content = (
         f"[networking.rcon]\nenabled = true\naddress = '0.0.0.0:{rcon_port}'\npassword = '{rcon_password}'\n"
     )
-    merge_toml(config_file, config_content)
+    merge_file_content(config_file, config_content)
 
 
 async def _inject_server_properties_rcon(
@@ -53,7 +51,7 @@ async def _inject_server_properties_rcon(
     """Enable RCON in `server.properties`."""
     rcon_config = f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={rcon_password}\n"
     server_props = runtime_dir / "server.properties"
-    merge_properties(server_props, rcon_config)
+    merge_file_content(server_props, rcon_config)
 
 
 async def _inject_velocity_rcon(
@@ -67,7 +65,7 @@ async def _inject_velocity_rcon(
     config_file = config_dir / "rcon.yml"
 
     config_content = f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {rcon_password}\ncolors: false\n"
-    merge_yaml(config_file, config_content)
+    merge_file_content(config_file, config_content)
 
 
 async def _inject_waterfall_rcon(
@@ -81,4 +79,4 @@ async def _inject_waterfall_rcon(
     config_file = config_dir / "config.yml"
 
     config_content = f"port: {rcon_port}\npassword: {rcon_password}\ncolored: false\n"
-    merge_yaml(config_file, config_content)
+    merge_file_content(config_file, config_content)
