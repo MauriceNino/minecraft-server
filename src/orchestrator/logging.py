@@ -86,6 +86,32 @@ def log_exception(exc: Exception, message: str, *, prefix: str = "Error") -> Non
         console.print()
 
 
+def log_change(action: str, rel_path: str, reason: str | None = None, indentation: int = 0) -> None:
+    indentation += 1
+    action_pad = 13 - (indentation * 2)
+    indent = "  " * indentation
+    match action:
+        case "errored":
+            action_icon = "[error]✗[/error]"
+        case "created":
+            action_icon = "[info]✓[/info]"
+        case "deleted":
+            action_icon = "[info]✓[/info]"
+        case "merged":
+            action_icon = "[info]✓[/info]"
+        case "replaced":
+            action_icon = "[info]⟳[/info]"
+        case "skipped":
+            action_icon = "[dim]⊘[/dim]"
+        case _:
+            action_icon = " "
+
+    if reason:
+        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path} [dim]({reason})[/dim]")
+    else:
+        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path}")
+
+
 phase_console = Console(theme=THEME, width=65, force_terminal=True, highlight=False)
 
 

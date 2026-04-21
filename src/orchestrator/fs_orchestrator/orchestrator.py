@@ -7,8 +7,8 @@ from orchestrator.constants import MERGEABLE_EXTENSIONS
 from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.fs_orchestrator.template_reader import TemplateNode, read_template
-from orchestrator.logging import console
-from orchestrator.merger import log_change, merge_file
+from orchestrator.logging import console, log_change
+from orchestrator.merger import merge_file
 
 
 def orchestrate_templates(
@@ -58,7 +58,7 @@ def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_re
 
         if child.sigil == DirSigil.DELETE:
             # Already handled in phase 1 — nothing to write
-            log_change("deleted", str(target.relative_to(runtime_dir)))
+            log_change("deleted", str(target.relative_to(runtime_dir)), indentation=1)
             continue
 
         if child.is_dir:
@@ -68,7 +68,7 @@ def _merge_tree(node: TemplateNode, runtime_base: Path, runtime_dir: Path, in_re
             try:
                 _merge_file(child, target, runtime_dir, is_replace, is_force)
             except Exception as e:
-                log_change("errored", str(target.relative_to(runtime_dir)), reason=str(e))
+                log_change("errored", str(target.relative_to(runtime_dir)), reason=str(e), indentation=1)
                 raise e
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from orchestrator.env_interpolation import interpolate_env
 from orchestrator.fs_orchestrator.sigils import DirSigil
-from orchestrator.logging import console
+from orchestrator.logging import log_change
 from orchestrator.merger.conf_merger import merge_conf
 from orchestrator.merger.json_merger import merge_json
 from orchestrator.merger.properties_merger import merge_properties
@@ -21,32 +21,6 @@ _STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {
     ".toml": merge_toml,
     ".properties": merge_properties,
 }
-
-
-def log_change(action: str, rel_path: str, reason: str | None = None, indentation: int = 0) -> None:
-    indentation += 1
-    action_pad = 13 - (indentation * 2)
-    indent = "  " * indentation
-    match action:
-        case "errored":
-            action_icon = "[error]✗[/error]"
-        case "created":
-            action_icon = "[info]✓[/info]"
-        case "deleted":
-            action_icon = "[info]✓[/info]"
-        case "merged":
-            action_icon = "[info]✓[/info]"
-        case "replaced":
-            action_icon = "[info]⟳[/info]"
-        case "skipped":
-            action_icon = "[dim]⊘[/dim]"
-        case _:
-            action_icon = " "
-
-    if reason:
-        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path} [dim]({reason})[/dim]")
-    else:
-        console.print(f"{indent}{action_icon} [dim]{action.ljust(action_pad)}[/dim]{rel_path}")
 
 
 def merge_file_content(target_path: Path, overlay_content: str) -> None:

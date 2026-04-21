@@ -82,7 +82,9 @@ class ModrinthProvider(AbstractPluginProvider):
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
         custom_platform = spec.param("platform")
-        modrinth_platforms = [custom_platform.lower()] if custom_platform else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
+        modrinth_platforms = (
+            [custom_platform.lower()] if custom_platform else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
+        )
 
         project_info = await self._get_plugin_info(spec, client)
 
@@ -93,7 +95,9 @@ class ModrinthProvider(AbstractPluginProvider):
         # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
             channel_names = ["release"] if spec.version == "latest" else ["beta", "alpha"]
-            version_data = await self._get_first_plugin_version_by_channel(spec, client, modrinth_platforms, channel_names)
+            version_data = await self._get_first_plugin_version_by_channel(
+                spec, client, modrinth_platforms, channel_names
+            )
 
             if not version_data:
                 raise self._version_could_not_be_found_for_platform(spec, modrinth_platforms)
