@@ -30,47 +30,47 @@ class ModrinthProvider(AbstractPluginProvider):
         return cast(ModrinthVersionList, resp.json())
 
     async def _get_plugin_version(
-        self, spec: PluginSpec, client: httpx.AsyncClient, version: str, loaders: list[str]
+        self, spec: PluginSpec, client: httpx.AsyncClient, version: str, platforms: list[str]
     ) -> ModrinthVersionDict:
-        # We need to find the version that matches the spec.version and the loaders so
+        # We need to find the version that matches the spec.version and the platforms so
         # we cant simply use the direct /version/{version} endpoint
         versions = await self._get_plugin_versions(spec, client)
         possible_matches = [
             v
             for v in versions
-            if v.get("version_number") == version and any(loader in v.get("loaders", []) for loader in loaders)
+            if v.get("version_number") == version and any(platform in v.get("loaders", []) for platform in platforms)
         ]
 
         if len(possible_matches) == 0:
-            raise self._version_could_not_be_found_for_platform(spec, loaders)
+            raise self._version_could_not_be_found_for_platform(spec, platforms)
 
-        for loader in loaders:
+        for platform in platforms:
             for p_match in possible_matches:
-                if loader in p_match.get("loaders", []):
+                if platform in p_match.get("loaders", []):
                     return p_match
 
-        raise self._version_could_not_be_found_for_platform(spec, loaders)
+        raise self._version_could_not_be_found_for_platform(spec, platforms)
 
     async def _get_first_plugin_version_by_channel(
         self,
         spec: PluginSpec,
         client: httpx.AsyncClient,
-        loaders: list[str],
+        platforms: list[str],
         channel_names: list[str],
     ) -> ModrinthVersionDict:
         versions = await self._get_plugin_versions(spec, client)
 
         version_data = None
-        for loader in loaders:
+        for platform in platforms:
             version_data = next(
-                (v for v in versions if v.get("version_type") in channel_names and loader in v.get("loaders", [])),
+                (v for v in versions if v.get("version_type") in channel_names and platform in v.get("loaders", [])),
                 None,
             )
             if version_data:
                 break
 
         if not version_data:
-            raise self._version_could_not_be_found_for_platform(spec, loaders)
+            raise self._version_could_not_be_found_for_platform(spec, platforms)
 
         return version_data
 
@@ -81,26 +81,26 @@ class ModrinthProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        custom_loader = spec.param("loader")
-        loaders = [custom_loader.lower()] if custom_loader else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
+        custom_platform = spec.param("platform")
+        modrinth_platforms = [custom_platform.lower()] if custom_platform else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
 
         project_info = await self._get_plugin_info(spec, client)
 
         # Make sure platform is supported
-        if not spec.force and not any(loader in project_info.get("loaders", []) for loader in loaders):
-            raise self._platform_not_supported(spec, loaders)
+        if not spec.force and not any(platform in project_info.get("loaders", []) for platform in modrinth_platforms):
+            raise self._platform_not_supported(spec, modrinth_platforms)
 
         # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
             channel_names = ["release"] if spec.version == "latest" else ["beta", "alpha"]
-            version_data = await self._get_first_plugin_version_by_channel(spec, client, loaders, channel_names)
+            version_data = await self._get_first_plugin_version_by_channel(spec, client, modrinth_platforms, channel_names)
 
             if not version_data:
-                raise self._version_could_not_be_found_for_platform(spec, loaders)
+                raise self._version_could_not_be_found_for_platform(spec, modrinth_platforms)
 
         # Just load the specific version
         else:
-            version_data = await self._get_plugin_version(spec, client, spec.version, loaders)
+            version_data = await self._get_plugin_version(spec, client, spec.version, modrinth_platforms)
 
         if (
             not spec.force
