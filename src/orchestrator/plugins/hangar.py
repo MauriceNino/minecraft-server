@@ -83,7 +83,7 @@ class HangarProvider(AbstractPluginProvider):
         # Make sure platform is supported
         if not spec.force:
             if not hangar_platform:
-                raise self._platform_not_supported(spec, ["None"])
+                raise self._platform_not_supported(spec, [custom_platform or platform_type.value])
 
             if platform_type == PlatformType.FOLIA and "SUPPORTS_FOLIA" not in project_info["settings"]["tags"]:
                 raise self._platform_not_supported(spec, [PlatformType.FOLIA.value])

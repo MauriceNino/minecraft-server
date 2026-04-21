@@ -78,6 +78,7 @@ MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
 HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.PAPER: "PAPER",
     PlatformType.FOLIA: "PAPER",
+    PlatformType.PURPUR: "PAPER",
     PlatformType.VELOCITY: "VELOCITY",
     PlatformType.WATERFALL: "WATERFALL",
 }
