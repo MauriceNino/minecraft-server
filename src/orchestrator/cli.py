@@ -12,6 +12,7 @@ from orchestrator.constants import (
     SERVER_PLATFORMS,
     VELOCIRCON_URL,
     PlatformType,
+    PluginUpdateStrategy,
 )
 from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
 
@@ -54,6 +55,9 @@ class Config:
 
     # EULA acceptance
     accept_eula: bool
+
+    # Plugin update strategy
+    plugins_update_strategy: PluginUpdateStrategy
 
 
 def _parse_multiline(value: str) -> list[str]:
@@ -230,6 +234,14 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     verbose = env.get("VERBOSE", "false").lower() in ("true", "1", "yes")
     accept_eula = env.get("ACCEPT_EULA", "false").lower() in ("true", "1", "yes")
 
+    strategy_raw = env.get("PLUGINS_UPDATE_STRATEGY", "auto").lower()
+    try:
+        plugins_update_strategy = PluginUpdateStrategy(strategy_raw)
+    except ValueError:
+        valid = ", ".join(t.value for t in PluginUpdateStrategy)
+        msg = f"Unknown PLUGINS_UPDATE_STRATEGY={strategy_raw!r}. Valid options: {valid}"
+        raise SystemExit(msg) from None
+
     return Config(
         platform=platform,
         version=version,
@@ -248,4 +260,5 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         jvm_flags=jvm_flags,
         verbose=verbose,
         accept_eula=accept_eula,
+        plugins_update_strategy=plugins_update_strategy,
     )

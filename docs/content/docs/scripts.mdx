@@ -38,10 +38,20 @@ $ docker exec CONTAINER_NAME mc-orchestrator reapply
 
 ### `mc-orchestrator check-updates`
 
-Pings `Modrinth`, `Hangar`, and `Spiget` APIs and compares the latest platform releases against your current `.plugin-lock.json`, outputting an actionable report of behind-the-curve plugins.
+Pings `Modrinth`, `Hangar`, and `Spiget` APIs and compares the latest platform releases against your current `server-lock.json`, outputting an actionable report of behind-the-curve plugins.
 
 **Usage:**
 
 ```bash
 $ docker exec CONTAINER_NAME mc-orchestrator check-updates
+```
+
+### `mc-orchestrator update`
+
+Explicitly forces an update for all plugins configured in the `PLUGINS` environment variable. This will replace the `.jar` files in the runtime directory and update the `server-lock.json` file.
+
+**Usage:**
+
+```bash
+$ docker exec CONTAINER_NAME mc-orchestrator update
 ```

@@ -64,3 +64,13 @@ During the download phase, `MauriceNino/minecraft-server` builds and manages a `
 
 - **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped instantly.
 - **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **automatically deletes the `.jar` from your container**, keeping your runtime completely stateless and synchronized.
+
+## Update Strategies
+
+You can control how the orchestrator handles plugin downloads and updates via the `PLUGINS_UPDATE_STRATEGY` environment variable.
+
+| Strategy | Behavior |
+| :--- | :--- |
+| `manual` | Checks for updates and **removes orphans**, **downloads newly added plugins**, but **never updates to new versions**. Use this if you want to see what's available without changing your jars. |
+| `auto` | **(Default)** Checks for updates, downloads them, and removes orphans. If a download fails, it logs an error but **continues starting the server** with the old version. |
+| `force` | Same as `auto`, but the orchestrator will **abort the startup** and fail if any plugin fails to download or resolve. |

@@ -7,7 +7,13 @@ import tempfile
 import click
 
 from orchestrator.cli import Config, load_config
-from orchestrator.constants import PLUGIN_PLATFORMS, SERVER_LOCK_FILENAME, SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import (
+    PLUGIN_PLATFORMS,
+    SERVER_LOCK_FILENAME,
+    SERVER_PLATFORMS,
+    PlatformType,
+    PluginUpdateStrategy,
+)
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.logging import (
     console,
@@ -115,6 +121,7 @@ async def _async_main() -> None:
             mc_version=resolved_version.version,
             plugins_dir=config.plugins_dir,
             lockfile=lockfile,
+            strategy=config.plugins_update_strategy,
         )
 
     if config.rcon_enabled:
@@ -170,6 +177,38 @@ async def _async_check_updates() -> None:
     await check_plugin_updates(config)
 
 
+async def _async_update() -> None:
+    config = load_config()
+    lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
+    setup_logging(verbose=config.verbose)
+
+    log_header("⚡ Updating Plugins")
+    console.print()
+
+    # We need the platform version for compatibility checks
+    log_phase("Platform JAR")
+    resolved_version = await resolve_platform(
+        platform_type=config.platform,
+        version=config.version,
+        build=config.build,
+    )
+
+    if config.platform in PLUGIN_PLATFORMS:
+        log_phase("Plugins")
+        await download_plugins(
+            plugin_lines=config.plugin_lines,
+            platform_type=config.platform,
+            mc_version=resolved_version.version,
+            plugins_dir=config.plugins_dir,
+            lockfile=lockfile,
+            # Forcing updates in the explicit update command
+            strategy=PluginUpdateStrategy.FORCE,
+        )
+
+    console.print()
+    console.print("  [success]✓[/success] Successfully updated plugins!")
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
@@ -211,6 +250,20 @@ def check_updates_cmd() -> None:
         raise
     except Exception as e:
         log_exception(e, "Fatal error during check-updates")
+        sys.exit(1)
+
+
+@cli.command("update")
+def update_cmd() -> None:
+    try:
+        asyncio.run(_async_update())
+    except KeyboardInterrupt:
+        console.print("  [error]✗ Interrupted — shutting down[/error]")
+        sys.exit(130)
+    except SystemExit:
+        raise
+    except Exception as e:
+        log_exception(e, "Fatal error during update")
         sys.exit(1)
 
 

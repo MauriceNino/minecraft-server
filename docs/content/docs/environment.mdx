@@ -21,6 +21,14 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Description:** The platform software to run. This determines which variables (like `VERSION` or `MEMORY`) are available and how they behave. See [Server Platforms](../platforms) for details.
   - **Default:** `PAPER`
 
+- **`PLUGINS_UPDATE_STRATEGY`**
+  - **Description:** Controls how the orchestrator handles plugin updates on startup.
+  - **Options:**
+    - `manual`: Checks for updates and removes orphans, but never downloads anything.
+    - `auto`: (Default) Downloads updates and removes orphans; continues on download failure.
+    - `force`: Downloads updates and removes orphans; fails on any download failure.
+  - **Default:** `auto`
+
 ## RCON Variables
 
 If RCON is enabled, the orchestrator automatically configures the server files to expose RCON.

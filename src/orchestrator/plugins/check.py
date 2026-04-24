@@ -6,7 +6,7 @@ import httpx
 from rich.table import Table
 
 from orchestrator.cli import Config
-from orchestrator.constants import SERVER_LOCK_FILENAME, USER_AGENT
+from orchestrator.constants import SERVER_LOCK_FILENAME, USER_AGENT, PluginUpdateStrategy
 from orchestrator.lockfile import ServerLockfile, make_lock_key
 from orchestrator.logging import console, log_exception, log_phase
 from orchestrator.plugins import _build_providers
@@ -97,7 +97,7 @@ async def check_plugin_updates(config: Config) -> None:
     table.add_column("Latest")
     table.add_column("Pinned Target")
     table.add_column("Update Status")
-    table.add_column("Auto-update on next restart?")
+    table.add_column(f"Action on next restart? [dim](strategy: {config.plugins_update_strategy})[/dim]")
 
     warnings_shown = 0
 
@@ -113,28 +113,28 @@ async def check_plugin_updates(config: Config) -> None:
         resolving = res["actual_resolving"]
         pinned = res["spec"].version
 
-        # Compare versions
         installed_str = f"[dim]{installed}[/dim]" if installed else "[yellow]Not installed[/yellow]"
         latest_str = latest if latest else "[yellow]Unknown[/yellow]"
 
-        # Will it auto update on restart?
-        # It will auto update if `actual_resolving` is different from `installed`
         if installed is None:
             auto_update_str = "[cyan]Yes (Will Install)[/cyan]"
             status_str = "[cyan]New Plugin[/cyan]"
         else:
             if resolving != installed:
-                # `resolving` is newer than `installed`? Typically yes if there's an inequality.
-                auto_update_str = "[green]Yes[/green]"
+                match config.plugins_update_strategy:
+                    case PluginUpdateStrategy.MANUAL:
+                        auto_update_str = "[yellow]No (manual mode)[/yellow]"
+                    case PluginUpdateStrategy.AUTO:
+                        auto_update_str = "[green]Yes[/green]"
+                    case PluginUpdateStrategy.FORCE:
+                        auto_update_str = "[bold green]Yes (force)[/bold green]"
+
                 status_str = f"[green]Update available[/green] -> {resolving}"
             else:
-                auto_update_str = "[dim]No[/dim]"
+                auto_update_str = "[dim]No (up to date)[/dim]"
                 if latest and latest != installed:
                     # User requested something pinned maybe?
                     if pinned.lower() == "latest":
-                        # They asked for latest, but `resolving` is same as `installed`, yet `latest_spec`
-                        # gives something else. This can happen if caching is weird or our fallback.
-                        # Actually if pinned is latest, `actual_resolving` should be same as `latest`.
                         status_str = "[yellow]Update available, but not compatible?[/yellow]"
                     else:
                         status_str = f"[yellow]Newer version available ({latest})[/yellow]"

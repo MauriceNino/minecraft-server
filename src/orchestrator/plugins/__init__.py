@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import tempfile
 from pathlib import Path
 
 import httpx
 
-from orchestrator.constants import USER_AGENT, PlatformType
+from orchestrator.constants import USER_AGENT, PlatformType, PluginUpdateStrategy
 from orchestrator.lockfile import ServerLockfile, make_lock_key
-from orchestrator.logging import console, log_version_change
+from orchestrator.logging import console, log_change
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec
 from orchestrator.plugins.curseforge import CurseForgeProvider
 from orchestrator.plugins.github import GithubProvider
@@ -39,29 +41,44 @@ async def _resolve_and_download(
     plugins_dir: Path,
     lockfile: ServerLockfile,
     client: httpx.AsyncClient,
+    strategy: PluginUpdateStrategy,
 ) -> None:
     lock_key = make_lock_key(spec.provider, spec.identifier)
-    resolved = await provider.resolve(spec, platform_type, mc_version, client)
+    try:
+        resolved = await provider.resolve(spec, platform_type, mc_version, client)
 
-    old_entry = lockfile.get_plugin(lock_key)
-    old_version = old_entry.version if old_entry else None
+        old_entry = lockfile.get_plugin(lock_key)
+        old_version = old_entry.version if old_entry else None
 
-    if not lockfile.needs_plugin_update(lock_key, resolved):
-        console.print(
-            f"  [cached]✓[/cached] [label]{spec.identifier}[/label]  "
-            f"[dim]no changes[/dim] [cached]{resolved.version}[/cached]"
+        if old_version == resolved.version:
+            log_change("skipped", lock_key, f"[version.new]{resolved.version}[/version.new]")
+            return
+
+        update_reason = (
+            f"[version.old]{old_version}[/version.old] [dim]→[/dim] "
+            f"[version.new][not dim]{resolved.version}[/not dim][/version.new]"
         )
-        return
+        if strategy == PluginUpdateStrategy.MANUAL and old_version:
+            log_change("updatable", lock_key, update_reason)
+            return
 
-    log_version_change(spec.identifier, old_version, resolved.version)
+        # Download plugin to a temporary directory first to avoid corrupting the plugins directory
+        with tempfile.TemporaryDirectory(dir=plugins_dir, prefix=".dl_") as tmp_dir:
+            tmp_path = await provider.download(resolved, Path(tmp_dir), client)
 
-    if old_entry:
-        old_plugin_path = plugins_dir / old_entry.filename
-        if old_plugin_path.exists():
-            old_plugin_path.unlink()
+            final_path = plugins_dir / resolved.filename
+            os.replace(tmp_path, final_path)
 
-    downloaded_path = await provider.download(resolved, plugins_dir, client)
-    lockfile.update_plugin(lock_key, resolved, downloaded_path)
+            lockfile.update_plugin(lock_key, resolved, final_path)
+
+        if old_version:
+            log_change("updated", lock_key, update_reason)
+        else:
+            log_change("downloaded", lock_key, f"[version.new][not dim]{resolved.version}[/not dim][/version.new]")
+    except Exception as e:
+        if strategy == PluginUpdateStrategy.FORCE:
+            raise
+        log_change("errored", lock_key, f"[version.new][error]{e}[/error][/version.new]")
 
 
 async def download_plugins(
@@ -70,6 +87,7 @@ async def download_plugins(
     mc_version: str,
     plugins_dir: Path,
     lockfile: ServerLockfile,
+    strategy: PluginUpdateStrategy,
 ) -> None:
     specs = parse_plugin_lines(plugin_lines)
 
@@ -82,10 +100,7 @@ async def download_plugins(
             if plugin_path.exists():
                 plugin_path.unlink()
             del lockfile.plugins[key]
-
-            console.print(
-                f"  [removed]✗[/removed] [label]{key}[/label]  [dim]removed[/dim] [cached]{entry.version}[/cached]"
-            )
+            log_change("deleted", key, f"[version.old][not dim]{entry.version}[/not dim][/version.old]")
 
     if not specs:
         console.print("  [info]🛈[/info] [label]No plugins to download[/label]")
@@ -116,6 +131,7 @@ async def download_plugins(
                     plugins_dir=plugins_dir,
                     lockfile=lockfile,
                     client=client,
+                    strategy=strategy,
                 )
             )
 

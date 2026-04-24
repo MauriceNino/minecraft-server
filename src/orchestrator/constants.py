@@ -19,6 +19,14 @@ class PlatformType(StrEnum):
     PURPUR = "PURPUR"
 
 
+class PluginUpdateStrategy(StrEnum):
+    """Strategies for handling plugin updates on startup."""
+
+    FORCE = "force"
+    AUTO = "auto"
+    MANUAL = "manual"
+
+
 SERVER_PLATFORMS = frozenset(
     {
         PlatformType.PAPER,

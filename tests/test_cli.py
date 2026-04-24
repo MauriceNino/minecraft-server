@@ -18,6 +18,7 @@ class TestLoadConfig:
         assert config.memory == "1G"
         assert config.rcon_enabled is True
         assert config.rcon_port == 25575
+        assert config.plugins_update_strategy == "auto"
 
     def test_platform_parsing(self) -> None:
         config = load_config(environ={"TYPE": "velocity"})
@@ -146,6 +147,17 @@ class TestLoadConfig:
     def test_config_overrides_empty_paths(self) -> None:
         config = load_config(environ={})
         assert config.config_overrides == []
+
+    def test_plugins_update_strategy_parsing(self) -> None:
+        config = load_config(environ={"PLUGINS_UPDATE_STRATEGY": "force"})
+        assert config.plugins_update_strategy == "force"
+
+        config = load_config(environ={"PLUGINS_UPDATE_STRATEGY": "AUTO"})
+        assert config.plugins_update_strategy == "auto"
+
+    def test_invalid_plugins_update_strategy(self) -> None:
+        with pytest.raises(SystemExit, match="Unknown PLUGINS_UPDATE_STRATEGY"):
+            load_config(environ={"PLUGINS_UPDATE_STRATEGY": "INVALID"})
 
 
 class TestCollectConfigOverrides:
