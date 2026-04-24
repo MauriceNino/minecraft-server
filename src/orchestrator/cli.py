@@ -59,6 +59,9 @@ class Config:
     # Plugin update strategy
     plugins_update_strategy: PluginUpdateStrategy
 
+    # Optional check-cache TTL in seconds (None = always check)
+    plugins_check_cache_seconds: int | None
+
 
 def _parse_multiline(value: str) -> list[str]:
     """Split a newline-separated env var into non-empty stripped lines."""
@@ -137,6 +140,35 @@ def _collect_config_overrides(
 _STABLE_ALIASES: frozenset[str] = frozenset({"latest", "stable"})
 # Aliases that map to the canonical "experimental" sentinel
 _EXPERIMENTAL_ALIASES: frozenset[str] = frozenset({"experimental", "beta"})
+
+
+_DURATION_MULTIPLIERS: dict[str, int] = {
+    "s": 1,
+    "m": 60,
+    "h": 3600,
+    "d": 86400,
+}
+
+
+def _parse_duration(value: str) -> int:
+    """Parse a human-readable duration string into seconds.
+
+    Accepted formats: ``30s``, ``2m``, ``3h``, ``1d``.
+    Raises ``ValueError`` if the format is unrecognised.
+    """
+    value = value.strip().lower()
+    if not value:
+        raise ValueError("empty duration string")
+    suffix = value[-1]
+    if suffix not in _DURATION_MULTIPLIERS:
+        raise ValueError(f"unsupported duration unit {suffix!r}. Use one of: s, m, h, d")
+    try:
+        amount = int(value[:-1])
+    except ValueError:
+        raise ValueError(f"invalid duration {value!r}: numeric part must be an integer") from None
+    if amount < 0:
+        raise ValueError(f"duration must be non-negative, got {value!r}")
+    return amount * _DURATION_MULTIPLIERS[suffix]
 
 
 def _normalize_version_spec(raw: str) -> str:
@@ -242,6 +274,12 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         msg = f"Unknown PLUGINS_UPDATE_STRATEGY={strategy_raw!r}. Valid options: {valid}"
         raise SystemExit(msg) from None
 
+    plugins_check_cache_raw = env.get("PLUGINS_CHECK_CACHE", "5m").strip()
+    try:
+        plugins_check_cache_seconds: int | None = _parse_duration(plugins_check_cache_raw)
+    except ValueError as e:
+        raise SystemExit(f"Invalid PLUGINS_CHECK_CACHE={plugins_check_cache_raw!r}: {e}") from None
+
     return Config(
         platform=platform,
         version=version,
@@ -261,4 +299,5 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         verbose=verbose,
         accept_eula=accept_eula,
         plugins_update_strategy=plugins_update_strategy,
+        plugins_check_cache_seconds=plugins_check_cache_seconds,
     )

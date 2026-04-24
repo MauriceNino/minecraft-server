@@ -88,6 +88,7 @@ async def download_plugins(
     plugins_dir: Path,
     lockfile: ServerLockfile,
     strategy: PluginUpdateStrategy,
+    check_cache_seconds: int | None = None,
 ) -> None:
     specs = parse_plugin_lines(plugin_lines)
 
@@ -107,6 +108,7 @@ async def download_plugins(
         lockfile.save()
         return
 
+    use_cache = check_cache_seconds is not None and lockfile.is_plugins_check_fresh(check_cache_seconds)
     providers = _build_providers()
 
     async with httpx.AsyncClient(
@@ -117,11 +119,20 @@ async def download_plugins(
         tasks = []
         for spec in specs:
             provider = providers.get(spec.provider)
+            lock_key = make_lock_key(spec.provider, spec.identifier)
+
             if provider is None:
-                console.print(
-                    f"  [warning]⚠[/warning] [label]{spec.identifier}[/label]  [dim]unknown provider -- skipping[/dim]"
-                )
+                log_change("errored", lock_key, "unknown provider")
                 continue
+
+            already_installed = lockfile.get_plugin(lock_key)
+
+            # When the cache is still fresh, skip existing plugins entirely
+            if use_cache and already_installed is not None:
+                current_version = already_installed.version
+                log_change("skipped", lock_key, f"[version.new]{current_version}[/version.new] - check-cache valid")
+                continue
+
             tasks.append(
                 _resolve_and_download(
                     spec=spec,
@@ -136,5 +147,9 @@ async def download_plugins(
             )
 
         await asyncio.gather(*tasks)
+
+    # Record the timestamp only when we performed a full check (cache not used)
+    if not use_cache:
+        lockfile.record_plugins_checked()
 
     lockfile.save()

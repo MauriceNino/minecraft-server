@@ -29,6 +29,11 @@ description: Globals and inline configuration via CONFIG_PATHS
     - `force`: Downloads updates and removes orphans; fails on any download failure.
   - **Default:** `auto`
 
+- **`PLUGINS_CHECK_CACHE`**
+  - **Description:** Defines how long plugin update-checks are considered fresh. When set, the orchestrator will skip re-checking (and re-downloading) **already-installed plugins** if the last full check happened within this window. New plugins are always downloaded and obsolete plugins are always removed, regardless of this setting. This is useful during development to avoid hammering provider APIs when restarting the server frequently.
+  - **Format:** A number followed by a unit — `s` (seconds), `m` (minutes), `h` (hours), or `d` (days). Examples: `30s`, `5m`, `2h`.
+  - **Default:** `5m`
+
 ## RCON Variables
 
 If RCON is enabled, the orchestrator automatically configures the server files to expose RCON.

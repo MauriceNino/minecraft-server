@@ -122,6 +122,7 @@ async def _async_main() -> None:
             plugins_dir=config.plugins_dir,
             lockfile=lockfile,
             strategy=config.plugins_update_strategy,
+            check_cache_seconds=config.plugins_check_cache_seconds,
         )
 
     if config.rcon_enabled:

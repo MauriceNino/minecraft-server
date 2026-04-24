@@ -26,7 +26,7 @@ The orchestrator determines the local filename in the following order:
 
 URLs are cached based on:
 
-- **ETag:** If the server provides an ETag, it is stored in the `.plugin-lock.json`.
+- **ETag:** If the server provides an ETag, it is stored in the `server-lock.json`.
 - **Last-Modified:** If the server provides a modification date, it is used to check for updates.
 
 If neither is provided, the plugin may be re-downloaded more frequently to ensure it is up-to-date.

@@ -60,10 +60,27 @@ PLUGINS: |
 
 ## Intelligent Caching & Removal
 
-During the download phase, `MauriceNino/minecraft-server` builds and manages a `.plugin-lock.json` file inside its runtime directory.
+During the download phase, `MauriceNino/minecraft-server` builds and manages a `server-lock.json` file inside its runtime directory.
 
 - **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped instantly.
 - **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **automatically deletes the `.jar` from your container**, keeping your runtime completely stateless and synchronized.
+
+### Development Check Cache (`PLUGINS_CHECK_CACHE`)
+
+When iterating quickly — e.g. restarting your development server many times — the orchestrator would otherwise hit provider APIs on every boot. `PLUGINS_CHECK_CACHE` defaults to `5m`, meaning existing plugins are only re-checked at most once every 5 minutes. You can override it:
+
+```yaml
+environment:
+  PLUGINS_CHECK_CACHE: 30m  # only re-check existing plugins every 30 minutes
+  # PLUGINS_CHECK_CACHE: 0s  # disable the cache and always check on startup
+```
+
+The timestamp of the last full check is stored in `server-lock.json`. While the cache is valid:
+- **Existing plugins are skipped** — no API calls, no version comparisons.
+- **New plugins are still installed** — any plugin added to `PLUGINS` that isn't already in the lockfile will be downloaded.
+- **Removed plugins are still cleaned up** — orphan `.jar` files are deleted as usual.
+
+The `mc-orchestrator update` command always bypasses this cache and performs a full update.
 
 ## Update Strategies
 
