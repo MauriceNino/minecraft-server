@@ -47,18 +47,17 @@ async def _resolve_and_download(
     try:
         resolved = await provider.resolve(spec, platform_type, mc_version, client)
 
-        old_entry = lockfile.get_plugin(lock_key)
-        old_version = old_entry.version if old_entry else None
-
-        if old_version == resolved.version:
-            log_change("skipped", lock_key, f"[version.new]{resolved.version}[/version.new]")
+        if not lockfile.needs_plugin_update(lock_key, resolved):
+            log_change("skipped", lock_key, f"[version.new]{resolved.version} - no update available[/version.new]")
             return
 
+        old_entry = lockfile.get_plugin(lock_key)
         update_reason = (
-            f"[version.old]{old_version}[/version.old] [dim]→[/dim] "
+            f"[version.old]{old_entry.version if old_entry else 'unknown'}[/version.old] [dim]→[/dim] "
             f"[version.new][not dim]{resolved.version}[/not dim][/version.new]"
         )
-        if strategy == PluginUpdateStrategy.MANUAL and old_version:
+
+        if strategy == PluginUpdateStrategy.MANUAL and old_entry:
             log_change("updatable", lock_key, update_reason)
             return
 
@@ -71,7 +70,7 @@ async def _resolve_and_download(
 
             lockfile.update_plugin(lock_key, resolved, final_path)
 
-        if old_version:
+        if old_entry:
             log_change("updated", lock_key, update_reason)
         else:
             log_change("downloaded", lock_key, f"[version.new][not dim]{resolved.version}[/not dim][/version.new]")
