@@ -143,12 +143,7 @@ class ServerLockfile:
         if entry is None:
             return True
 
-        if resolved.version != "url" and resolved.version != entry.version:
-            return True
-
-        if resolved.etag and resolved.etag != entry.etag:
-            return True
-        return bool(resolved.last_modified and resolved.last_modified != entry.last_modified)
+        return resolved.version != entry.version
 
     def needs_server_update(self, version: str, build: str) -> bool:
         if self.server is None:

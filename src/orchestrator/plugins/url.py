@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import re
-from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -43,18 +42,27 @@ class UrlProvider(AbstractPluginProvider):
     ) -> ResolvedPlugin:
         url = spec.identifier
 
-        try:
-            head_resp = await client.head(url, follow_redirects=True)
-            head_resp.raise_for_status()
-        except httpx.HTTPError:
-            head_resp = None
+        head_resp = await client.head(url, follow_redirects=True)
+        head_resp.raise_for_status()
 
-        etag = head_resp.headers.get("ETag") if head_resp else None
-        etag = etag.strip('"') if etag else None
-        last_modified = head_resp.headers.get("Last-Modified") if head_resp else None
-        last_modified = (
-            datetime.strptime(last_modified, "%a, %d %b %Y %H:%M:%S %Z").isoformat() if last_modified else None
-        )
+        etag = head_resp.headers.get("ETag")
+        if etag:
+            etag = etag.lstrip("W/").strip('"')
+
+        last_modified_raw = head_resp.headers.get("Last-Modified")
+        last_modified_iso: str | None = None
+        version = "url"
+
+        if last_modified_raw:
+            try:
+                dt = parsedate_to_datetime(last_modified_raw)
+                last_modified_iso = dt.isoformat()
+                version = dt.strftime("%Y-%m-%d_%H-%M-%S")
+            except (ValueError, TypeError):
+                pass
+
+        if version == "url" and etag:
+            version = etag
 
         filename: str | None = None
         if head_resp:
@@ -74,11 +82,11 @@ class UrlProvider(AbstractPluginProvider):
         return ResolvedPlugin(
             spec=spec,
             display_name=display_name,
-            version="url",
+            version=version,
             download_url=url,
             filename=filename,
             etag=etag,
-            last_modified=last_modified,
+            last_modified=last_modified_iso,
         )
 
     async def download(
@@ -90,10 +98,8 @@ class UrlProvider(AbstractPluginProvider):
         target = dest / resolved.filename
         async with client.stream("GET", resolved.download_url, follow_redirects=True) as resp:
             resp.raise_for_status()
-            sha = hashlib.sha256()
             with target.open("wb") as f:
                 async for chunk in resp.aiter_bytes(chunk_size=65_536):
                     f.write(chunk)
-                    sha.update(chunk)
 
         return target
