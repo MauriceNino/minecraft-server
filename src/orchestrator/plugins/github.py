@@ -92,7 +92,6 @@ class GithubProvider(AbstractPluginProvider):
         asset = self._select_asset(release["assets"], spec, platform_type)
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=spec.identifier,
             version=release["tag_name"],
             download_url=asset["browser_download_url"],

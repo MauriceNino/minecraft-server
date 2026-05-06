@@ -117,7 +117,6 @@ class HangarProvider(AbstractPluginProvider):
             raise RuntimeError(f"No file info found for {spec.identifier} on {hangar_platform}")
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=spec.identifier,
             version=version_data["name"],
             download_url=str(platform_dl.get("downloadUrl") or ""),

@@ -6,12 +6,14 @@ from pathlib import Path
 
 import httpx
 
-from orchestrator.constants import PlatformType
+from orchestrator.constants import PlatformType, PluginProviderType
 
 
 @dataclass(frozen=True, slots=True)
 class PluginSpec:
-    provider: str  # e.g. "modrinth", "hangar", "url"
+    """Parsed plugin spec from the PLUGINS config variable."""
+
+    provider: PluginProviderType  # e.g. "modrinth", "hangar", "url"
     identifier: str  # project slug / ID / URL
     version: str  # "latest", "5.4", etc.
     force: bool  # True if ``@latest!`` — bypass compatibility filters
@@ -24,7 +26,8 @@ class PluginSpec:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedPlugin:
-    spec: PluginSpec
+    """Final resolved plugin with a download URL."""
+
     display_name: str
     version: str
     download_url: str

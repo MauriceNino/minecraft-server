@@ -83,7 +83,6 @@ class SpigetProvider(AbstractPluginProvider):
             await self._validate_external_download(client, spec, download_url)
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=project_info["name"],
             version=version,
             download_url=download_url,

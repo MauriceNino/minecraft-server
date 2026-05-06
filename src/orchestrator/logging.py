@@ -26,7 +26,7 @@ THEME = Theme(
     }
 )
 
-console = Console(theme=THEME, width=150, force_terminal=True, highlight=False)
+console = Console(theme=THEME, width=200, force_terminal=True, highlight=False)
 
 _LOG_FORMAT = "%(message)s"
 _VERBOSE_ENABLED = True

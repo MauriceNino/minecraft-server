@@ -119,7 +119,6 @@ class CurseForgeProvider(AbstractPluginProvider):
         sha1 = next((h["value"] for h in target_file["hashes"] if h["algo"] == 1), None)
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=mod_info["name"],
             version=target_file["displayName"],
             download_url=target_file["downloadUrl"],

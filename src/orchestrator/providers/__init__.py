@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import httpx
-
-from orchestrator.constants import USER_AGENT, PlatformType
+from orchestrator.constants import PlatformType, create_http_client
 from orchestrator.lockfile import ServerLockfile
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
@@ -41,11 +39,7 @@ def get_platform_provider(platform: PlatformType) -> AbstractPlatformProvider:
 async def resolve_platform(platform_type: PlatformType, version: str, build: str) -> ResolvedVersion:
     provider = get_platform_provider(platform_type)
 
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(120.0, connect=15.0),
-        headers={"User-Agent": USER_AGENT},
-    ) as client:
+    async with create_http_client() as client:
         resolved_version = await provider.resolve_version(version, build, client)
         console.print(
             f"  [success]✓[/success] Resolved [label]{resolved_version.version}[/label] "
@@ -65,11 +59,7 @@ async def download_platform(
 
     jar_path = runtime_dir / resolved_version.filename
 
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(120.0, connect=15.0),
-        headers={"User-Agent": USER_AGENT},
-    ) as client:
+    async with create_http_client() as client:
         if lockfile.needs_server_update(resolved_version.version, str(resolved_version.build)):
             if lockfile.server:
                 old_jar = runtime_dir / lockfile.server.filename

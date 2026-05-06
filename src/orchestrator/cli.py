@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,9 +13,11 @@ from orchestrator.constants import (
     SERVER_PLATFORMS,
     VELOCIRCON_URL,
     PlatformType,
+    PluginProviderType,
     PluginUpdateStrategy,
 )
 from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
+from orchestrator.plugins.base import PluginSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +36,7 @@ class Config:
     plugins_dir: Path
 
     # Plugin specs (raw lines)
-    plugin_lines: list[str]
+    plugin_specs: list[PluginSpec]
 
     # Inline config overrides: list of (sigil, relative_path, raw_content)
     config_overrides: list[tuple[DirSigil, str, str]]
@@ -59,8 +62,8 @@ class Config:
     # Plugin update strategy
     plugins_update_strategy: PluginUpdateStrategy
 
-    # Optional check-cache TTL in seconds (None = always check)
-    plugins_check_cache_seconds: int | None
+    # Optional check-cache TTL in seconds
+    plugins_check_cache_seconds: int
 
 
 def _parse_multiline(value: str) -> list[str]:
@@ -136,12 +139,6 @@ def _collect_config_overrides(
     return result
 
 
-# Aliases that map to the canonical "latest" sentinel
-_STABLE_ALIASES: frozenset[str] = frozenset({"latest", "stable"})
-# Aliases that map to the canonical "experimental" sentinel
-_EXPERIMENTAL_ALIASES: frozenset[str] = frozenset({"experimental", "beta"})
-
-
 _DURATION_MULTIPLIERS: dict[str, int] = {
     "s": 1,
     "m": 60,
@@ -171,6 +168,12 @@ def _parse_duration(value: str) -> int:
     return amount * _DURATION_MULTIPLIERS[suffix]
 
 
+# Aliases that map to the canonical "latest" sentinel
+_STABLE_ALIASES: frozenset[str] = frozenset({"latest", "stable"})
+# Aliases that map to the canonical "experimental" sentinel
+_EXPERIMENTAL_ALIASES: frozenset[str] = frozenset({"experimental", "beta"})
+
+
 def _normalize_version_spec(raw: str) -> str:
     """Normalise a VERSION or BUILD value to a canonical sentinel or leave it as-is.
 
@@ -184,6 +187,50 @@ def _normalize_version_spec(raw: str) -> str:
     if lower in _EXPERIMENTAL_ALIASES:
         return "experimental"
     return raw.strip()
+
+
+_SPEC_RE = re.compile(
+    r"^(?P<provider>[a-z]+):(?P<id>[^\[@]+?)(?:\[(?P<params>[^\]]*)\])?(?:@(?P<version>[^!]+?)(?P<force>!)?)?$"
+)
+
+
+def _parse_params(raw_params: str | None) -> dict[str, str]:
+    if not raw_params:
+        return {}
+    result: dict[str, str] = {}
+    for part in raw_params.split(","):
+        part = part.strip()
+        if "=" not in part:
+            continue
+        key, _, value = part.partition("=")
+        result[key.strip()] = value.strip()
+    return result
+
+
+def _parse_plugin_spec(raw: str) -> PluginSpec:
+    raw = raw.strip()
+    if not raw:
+        msg = "Empty plugin spec"
+        raise ValueError(msg)
+
+    match = _SPEC_RE.match(raw)
+    if not match:
+        msg = f"Invalid plugin spec: {raw!r}. Expected format: provider:id[params]@version"
+        raise ValueError(msg)
+
+    raw_version = match.group("version") or "latest"
+    return PluginSpec(
+        provider=PluginProviderType(match.group("provider")),
+        identifier=match.group("id").strip(),
+        version=_normalize_version_spec(raw_version),
+        force=match.group("force") is not None,
+        params=_parse_params(match.group("params")),
+    )
+
+
+def _parse_plugin_lines(raw: str) -> list[PluginSpec]:
+    """Parse multiple plugin spec lines, skipping blanks and comments."""
+    return [_parse_plugin_spec(line) for line in _parse_multiline(raw) if not line.startswith("#")]
 
 
 def load_config(environ: dict[str, str] | None = None) -> Config:
@@ -208,7 +255,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     else:
         plugins_dir = runtime_dir / "plugins"
 
-    plugin_lines = _parse_multiline(env.get("PLUGINS", ""))
+    plugin_specs = _parse_plugin_lines(env.get("PLUGINS", ""))
     applied_templates = _parse_multiline(env.get("APPLIED_TEMPLATES", ""))
     config_overrides = _collect_config_overrides(env)
 
@@ -219,9 +266,9 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     # Auto-inject RCON bridge plugins for proxies
     if rcon_enabled:
         if platform == PlatformType.VELOCITY:
-            plugin_lines.append(f"url:{VELOCIRCON_URL}")
+            plugin_specs.append(PluginSpec(PluginProviderType.URL, VELOCIRCON_URL, "latest", False, {}))
         elif platform == PlatformType.WATERFALL:
-            plugin_lines.append(f"url:{BUNGEE_RCON_URL}")
+            plugin_specs.append(PluginSpec(PluginProviderType.URL, BUNGEE_RCON_URL, "latest", False, {}))
 
     memory = env.get("MEMORY", "1G")
     jvm_flags_raw = env.get("JVM_FLAGS", "")
@@ -276,7 +323,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
 
     plugins_check_cache_raw = env.get("PLUGINS_CHECK_CACHE", "5m").strip()
     try:
-        plugins_check_cache_seconds: int | None = _parse_duration(plugins_check_cache_raw)
+        plugins_check_cache_seconds = _parse_duration(plugins_check_cache_raw)
     except ValueError as e:
         raise SystemExit(f"Invalid PLUGINS_CHECK_CACHE={plugins_check_cache_raw!r}: {e}") from None
 
@@ -288,7 +335,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         templates_dir=templates_dir,
         runtime_dir=runtime_dir,
         plugins_dir=plugins_dir,
-        plugin_lines=plugin_lines,
+        plugin_specs=plugin_specs,
         config_overrides=config_overrides,
         applied_templates=applied_templates,
         rcon_enabled=rcon_enabled,

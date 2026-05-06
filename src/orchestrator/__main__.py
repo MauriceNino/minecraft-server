@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import sys
 import tempfile
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import click
 
@@ -15,6 +17,7 @@ from orchestrator.constants import (
     PluginUpdateStrategy,
 )
 from orchestrator.fs_orchestrator import orchestrate_templates
+from orchestrator.lockfile import ServerLockfile
 from orchestrator.logging import (
     console,
     log_exception,
@@ -24,7 +27,7 @@ from orchestrator.logging import (
     setup_logging,
 )
 from orchestrator.merger import apply_config_overrides
-from orchestrator.plugins import ServerLockfile, download_plugins
+from orchestrator.plugins import download_plugins
 from orchestrator.plugins.check import check_plugin_updates
 from orchestrator.providers import download_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
@@ -71,6 +74,20 @@ def _check_permissions(config: Config) -> None:
         sys.exit(1)
 
 
+def _run_async(coro_factory: Callable[[], Coroutine[Any, Any, None]], error_context: str) -> None:
+    """Run an async entry-point with standardised error handling."""
+    try:
+        asyncio.run(coro_factory())
+    except KeyboardInterrupt:
+        console.print("  [error]✗ Interrupted — shutting down[/error]")
+        sys.exit(130)
+    except SystemExit:
+        raise
+    except Exception as e:
+        log_exception(e, f"Fatal error during {error_context}")
+        sys.exit(1)
+
+
 async def _async_main() -> None:
     config = load_config()
     lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
@@ -113,10 +130,10 @@ async def _async_main() -> None:
         if config.config_overrides:
             apply_config_overrides(config.config_overrides, config.runtime_dir)
 
-    if (config.plugin_lines or len(lockfile.plugins.keys()) > 0) and config.platform in PLUGIN_PLATFORMS:
+    if (len(config.plugin_specs) > 0 or len(lockfile.plugins.keys()) > 0) and config.platform in PLUGIN_PLATFORMS:
         log_phase("Plugins")
         await download_plugins(
-            plugin_lines=config.plugin_lines,
+            plugin_specs=config.plugin_specs,
             platform_type=config.platform,
             mc_version=resolved_version.version,
             plugins_dir=config.plugins_dir,
@@ -197,13 +214,14 @@ async def _async_update() -> None:
     if config.platform in PLUGIN_PLATFORMS:
         log_phase("Plugins")
         await download_plugins(
-            plugin_lines=config.plugin_lines,
+            plugin_specs=config.plugin_specs,
             platform_type=config.platform,
             mc_version=resolved_version.version,
             plugins_dir=config.plugins_dir,
             lockfile=lockfile,
             # Forcing updates in the explicit update command
             strategy=PluginUpdateStrategy.FORCE,
+            check_cache_seconds=0,
         )
 
     console.print()
@@ -214,58 +232,22 @@ async def _async_update() -> None:
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     if ctx.invoked_subcommand is None:
-        try:
-            asyncio.run(_async_main())
-        except KeyboardInterrupt:
-            console.print("  [error]✗ Interrupted — shutting down[/error]")
-            sys.exit(130)
-        except SystemExit:
-            raise
-        except Exception as e:
-            log_exception(e, "Fatal error during orchestration")
-            sys.exit(1)
+        _run_async(_async_main, "orchestration")
 
 
 @cli.command("reapply")
 def reapply_cmd() -> None:
-    try:
-        asyncio.run(_async_reapply())
-    except KeyboardInterrupt:
-        console.print("  [error]✗ Interrupted — shutting down[/error]")
-        sys.exit(130)
-    except SystemExit:
-        raise
-    except Exception as e:
-        log_exception(e, "Fatal error during reapply")
-        sys.exit(1)
+    _run_async(_async_reapply, "reapply")
 
 
 @cli.command("check-updates")
 def check_updates_cmd() -> None:
-    try:
-        asyncio.run(_async_check_updates())
-    except KeyboardInterrupt:
-        console.print("  [error]✗ Interrupted — shutting down[/error]")
-        sys.exit(130)
-    except SystemExit:
-        raise
-    except Exception as e:
-        log_exception(e, "Fatal error during check-updates")
-        sys.exit(1)
+    _run_async(_async_check_updates, "check-updates")
 
 
 @cli.command("update")
 def update_cmd() -> None:
-    try:
-        asyncio.run(_async_update())
-    except KeyboardInterrupt:
-        console.print("  [error]✗ Interrupted — shutting down[/error]")
-        sys.exit(130)
-    except SystemExit:
-        raise
-    except Exception as e:
-        log_exception(e, "Fatal error during update")
-        sys.exit(1)
+    _run_async(_async_update, "update")
 
 
 def main() -> None:

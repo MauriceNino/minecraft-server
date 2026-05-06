@@ -80,7 +80,6 @@ class UrlProvider(AbstractPluginProvider):
         display_name = filename[:-4] if filename.endswith(".jar") else filename
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=display_name,
             version=version,
             download_url=url,

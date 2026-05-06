@@ -16,6 +16,7 @@ class PluginLockEntry:
     sha256: str | None
     filename: str
     updated_at: str
+    target_version: str
     etag: str | None = None
     last_modified: str | None = None
 
@@ -54,6 +55,7 @@ class ServerLockfile:
                 sha256=val.get("sha256"),
                 filename=val.get("filename", ""),
                 updated_at=val.get("updated_at", ""),
+                target_version=val.get("target_version"),
                 etag=val.get("etag"),
                 last_modified=val.get("last_modified"),
             )
@@ -98,6 +100,7 @@ class ServerLockfile:
             checked = datetime.fromisoformat(self.plugins_checked_at)
         except ValueError:
             return False
+
         return datetime.now(UTC) - checked < timedelta(seconds=ttl_seconds)
 
     def get_plugin(self, key: str) -> PluginLockEntry | None:
@@ -108,6 +111,7 @@ class ServerLockfile:
         key: str,
         resolved: ResolvedPlugin,
         file_path: Path,
+        target_version: str,
     ) -> None:
         sha256 = _compute_sha256(file_path)
         self.plugins[key] = PluginLockEntry(
@@ -116,6 +120,7 @@ class ServerLockfile:
             sha256=sha256,
             filename=resolved.filename,
             updated_at=datetime.now(UTC).isoformat(),
+            target_version=target_version,
             etag=resolved.etag,
             last_modified=resolved.last_modified,
         )

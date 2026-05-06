@@ -116,7 +116,6 @@ class ModrinthProvider(AbstractPluginProvider):
         version_file = version_data["files"][0]
 
         return ResolvedPlugin(
-            spec=spec,
             display_name=project_info["title"],
             version=version_data["version_number"],
             download_url=version_file["url"],

@@ -1,5 +1,3 @@
-"""Tests for CLI config loading."""
-
 from __future__ import annotations
 
 import pytest
@@ -30,10 +28,8 @@ class TestLoadConfig:
 
     def test_plugins_multiline(self) -> None:
         config = load_config(environ={"PLUGINS": "modrinth:luckperms@latest\nhangar:libertybans@latest\n"})
-        assert config.plugin_lines == [
-            "modrinth:luckperms@latest",
-            "hangar:libertybans@latest",
-        ]
+        assert config.plugin_specs[0].identifier == "luckperms"
+        assert config.plugin_specs[1].identifier == "libertybans"
 
     def test_applied_templates(self) -> None:
         config = load_config(environ={"APPLIED_TEMPLATES": "all\nbackends\n"})

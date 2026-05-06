@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
+import httpx
+
 
 # Platform types
 class PlatformType(StrEnum):
@@ -17,6 +19,18 @@ class PlatformType(StrEnum):
     SPIGOT = "SPIGOT"
     PUMPKIN = "PUMPKIN"
     PURPUR = "PURPUR"
+
+
+# Plugin provider types
+class PluginProviderType(StrEnum):
+    """Supported Minecraft plugin provider types."""
+
+    MODRINTH = "modrinth"
+    HANGAR = "hangar"
+    SPIGET = "spiget"
+    CURSEFORGE = "curseforge"
+    GITHUB = "github"
+    URL = "url"
 
 
 class PluginUpdateStrategy(StrEnum):
@@ -121,3 +135,12 @@ USER_AGENT = "MauriceNino/minecraft-server/1.0 (https://github.com/MauriceNino/m
 # RCON Bridge Plugins for Proxies
 VELOCIRCON_URL = "https://github.com/code-lime/Velocircon/releases/download/1.0.6/Velocircon-1.0.6.jar"
 BUNGEE_RCON_URL = "https://github.com/orblazer/bungee-rcon/releases/download/v1.0.0/bungee-rcon-1.0.0.jar"
+
+
+def create_http_client(*, timeout: float = 60.0, connect_timeout: float = 15.0) -> httpx.AsyncClient:
+    """Create a pre-configured async HTTP client with shared defaults."""
+    return httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=httpx.Timeout(timeout, connect=connect_timeout),
+        headers={"User-Agent": USER_AGENT},
+    )

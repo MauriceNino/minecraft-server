@@ -6,148 +6,144 @@ import httpx
 from rich.table import Table
 
 from orchestrator.cli import Config
-from orchestrator.constants import SERVER_LOCK_FILENAME, USER_AGENT, PluginUpdateStrategy
-from orchestrator.lockfile import ServerLockfile, make_lock_key
+from orchestrator.constants import SERVER_LOCK_FILENAME, PlatformType, PluginUpdateStrategy, create_http_client
+from orchestrator.lockfile import ServerLockfile
 from orchestrator.logging import console, log_exception, log_phase
-from orchestrator.plugins import _build_providers
+from orchestrator.plugins import _PROVIDERS, PluginResolution, resolve_all_plugins
 from orchestrator.plugins.base import PluginSpec
-from orchestrator.plugins.resolver import parse_plugin_lines
 from orchestrator.providers import get_platform_provider
 
 
-async def check_plugin_updates(config: Config) -> None:
-    """Check for plugin updates and print a visual summary."""
-    log_phase("Checking for Plugin Updates")
-    if not config.plugin_lines:
-        console.print("[yellow]No plugins configured in PLUGINS line.[/yellow]")
-        return
-
-    # First, we need to resolve the platform version, as plugin compatibility depends on it.
+async def _resolve_mc_version(config: Config) -> str | None:
     platform_provider = get_platform_provider(config.platform)
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(60.0, connect=15.0),
-        headers={"User-Agent": USER_AGENT},
-    ) as client:
+    async with create_http_client() as client:
         try:
             platform_resolved = await platform_provider.resolve_version(config.version, config.build, client)
-            mc_version = platform_resolved.version
             console.print(
                 f"Platform: [platform]{config.platform.value}[/platform] "
-                f"/ Version: [version.new]{mc_version}[/version.new]"
+                f"/ Version: [version.new]{platform_resolved.version}[/version.new]"
             )
+            return platform_resolved.version
         except Exception as e:
             log_exception(e, "Failed to resolve platform version")
-            return
+            return None
 
-        specs = parse_plugin_lines(config.plugin_lines)
-        plugins_dir = config.plugins_dir
-        lock_path = plugins_dir.parent / SERVER_LOCK_FILENAME
-        lockfile = ServerLockfile.load(lock_path)
 
-        providers = _build_providers()
+async def _resolve_latest_versions(
+    resolutions: list[PluginResolution],
+    platform_type: PlatformType,
+    mc_version: str,
+    client: httpx.AsyncClient,
+) -> dict[str, str | None]:
+    async def _resolve_latest(res: PluginResolution) -> tuple[str, str | None]:
+        if res.resolved is None:
+            return res.lock_key, None
+        provider = _PROVIDERS.get(res.spec.provider)
+        if provider is None:
+            return res.lock_key, None
+        latest_spec = PluginSpec(
+            provider=res.spec.provider,
+            identifier=res.spec.identifier,
+            version="latest",
+            force=res.spec.force,
+        )
+        try:
+            resolved_latest = await provider.resolve(latest_spec, platform_type, mc_version, client)
+            return res.lock_key, resolved_latest.version
+        except Exception:
+            return res.lock_key, None
 
-        # Build tasks to resolve versions concurrently
-        async def check_spec(spec: PluginSpec):  # noqa: ANN202
-            provider = providers.get(spec.provider)
-            if not provider:
-                return {"spec": spec, "error": f"Unknown provider {spec.provider}"}
+    pairs = await asyncio.gather(*(_resolve_latest(r) for r in resolutions))
+    return dict(pairs)
 
-            lock_key = make_lock_key(spec.provider, spec.identifier)
-            lock_entry = lockfile.plugins.get(lock_key)
-            installed_version = lock_entry.version if lock_entry else None
 
-            # Resolve the spec as requested by the user
-            try:
-                resolved_current = await provider.resolve(spec, config.platform, mc_version, client)
-                actual_installing_version = resolved_current.version
-                display_name = resolved_current.display_name
-            except Exception as e:
-                # Fallback if we cannot resolve what the user actually wants
-                actual_installing_version = None
-                display_name = spec.identifier
-                error = str(e)
-                return {"spec": spec, "error": error, "installed": installed_version, "display_name": display_name}
-
-            # Now, resolve dummy spec to find "latest" version
-            latest_spec = PluginSpec(
-                provider=spec.provider, identifier=spec.identifier, version="latest", force=spec.force
-            )
-            try:
-                resolved_latest = await provider.resolve(latest_spec, config.platform, mc_version, client)
-                latest_version = resolved_latest.version
-            except Exception:
-                latest_version = None
-
-            return {
-                "spec": spec,
-                "display_name": display_name,
-                "installed": installed_version,
-                "actual_resolving": actual_installing_version,
-                "latest": latest_version,
-            }
-
-        console.print("Resolving plugins... (this might take a few seconds)")
-        results = await asyncio.gather(*(check_spec(spec) for spec in specs))
-
-    # Build the Rich table
+def _print_update_table(
+    resolutions: list[PluginResolution],
+    latest_versions: dict[str, str | None],
+    strategy: PluginUpdateStrategy,
+) -> None:
     table = Table(title="Plugin Update Status", show_header=True, header_style="bold magenta")
     table.add_column("Plugin Name")
     table.add_column("Installed")
     table.add_column("Latest")
     table.add_column("Pinned Target")
     table.add_column("Update Status")
-    table.add_column(f"Action on next restart? [dim](strategy: {config.plugins_update_strategy})[/dim]")
+    table.add_column(f"Action on next restart? [dim](strategy: {strategy})[/dim]")
 
     warnings_shown = 0
 
-    for res in sorted(results, key=lambda x: x.get("display_name", x["spec"].identifier).lower()):
-        display_name = res.get("display_name", res["spec"].identifier)
-        if "error" in res:
-            table.add_row(display_name, "-", "-", res["spec"].version, f"[red]Error: {res['error']}[/red]", "-")
+    for res in sorted(resolutions, key=lambda r: r.display_name.lower()):
+        pinned = res.spec.version
+        target_str = f"[dim]{pinned}[/dim]" if pinned != "latest" else f"[blue]{pinned}[/blue]"
+
+        if res.error is not None:
+            table.add_row(
+                res.display_name,
+                f"[dim]{res.lock_entry.version or '-' if res.lock_entry else '-'}[/dim]",
+                f"{latest_versions.get(res.lock_key) or '[dim]-[/dim]'}",
+                target_str,
+                f"[red]Error: {res.error}[/red]",
+                "[dim]-[/dim]",
+            )
             warnings_shown += 1
             continue
 
-        installed = res["installed"]
-        latest = res["latest"]
-        resolving = res["actual_resolving"]
-        pinned = res["spec"].version
+        installed = res.lock_entry.version if res.lock_entry else None
+        latest = latest_versions.get(res.lock_key)
+        resolving = res.resolved.version if res.resolved else None
 
         installed_str = f"[dim]{installed}[/dim]" if installed else "[yellow]Not installed[/yellow]"
         latest_str = latest if latest else "[yellow]Unknown[/yellow]"
 
         if installed is None:
-            auto_update_str = "[cyan]Yes (Will Install)[/cyan]"
-            status_str = "[cyan]New Plugin[/cyan]"
+            auto_update_str = "[green]Install[/green]"
+            status_str = "[green]New Plugin[/green]"
+        elif resolving != installed:
+            match strategy:
+                case PluginUpdateStrategy.MANUAL:
+                    auto_update_str = "[yellow]None (manual mode)[/yellow]"
+                case PluginUpdateStrategy.AUTO:
+                    auto_update_str = "[green]Auto-Update[/green]"
+                case PluginUpdateStrategy.FORCE:
+                    auto_update_str = "[green]Auto-Update (forced)[/green]"
+
+            status_str = f"[green]Update available ({resolving})[/green]"
         else:
-            if resolving != installed:
-                match config.plugins_update_strategy:
-                    case PluginUpdateStrategy.MANUAL:
-                        auto_update_str = "[yellow]No (manual mode)[/yellow]"
-                    case PluginUpdateStrategy.AUTO:
-                        auto_update_str = "[green]Yes[/green]"
-                    case PluginUpdateStrategy.FORCE:
-                        auto_update_str = "[bold green]Yes (force)[/bold green]"
-
-                status_str = f"[green]Update available[/green] -> {resolving}"
+            if latest and latest != installed:
+                status_str = f"[yellow]Update available ({latest})[/yellow]"
+                auto_update_str = "[dim]None (version pinned)[/dim]"
             else:
-                auto_update_str = "[dim]No (up to date)[/dim]"
-                if latest and latest != installed:
-                    # User requested something pinned maybe?
-                    if pinned.lower() == "latest":
-                        status_str = "[yellow]Update available, but not compatible?[/yellow]"
-                    else:
-                        status_str = f"[yellow]Newer version available ({latest})[/yellow]"
-                else:
-                    status_str = "[dim]Up to date[/dim]"
+                status_str = "[dim]Up to date[/dim]"
+                auto_update_str = "[dim]None (up to date)[/dim]"
 
-        # Highlight if user pinned to something old
-        target_str = f"[dim]{pinned}[/dim]" if pinned != "latest" else f"[blue]{pinned}[/blue]"
-
-        table.add_row(display_name, installed_str, latest_str, target_str, status_str, auto_update_str)
+        table.add_row(res.display_name, installed_str, latest_str, target_str, status_str, auto_update_str)
 
     console.print()
     console.print(table)
 
     if warnings_shown > 0:
         console.print(f"\n[red]Encountered {warnings_shown} error(s) during check.[/red]")
+
+
+async def check_plugin_updates(config: Config) -> None:
+    """Check for plugin updates and print a visual summary."""
+    log_phase("Checking for Plugin Updates")
+
+    if not config.plugin_specs:
+        console.print("[yellow]No plugins configured.[/yellow]")
+        return
+
+    mc_version = await _resolve_mc_version(config)
+    if mc_version is None:
+        return
+
+    lock_path = config.plugins_dir.parent / SERVER_LOCK_FILENAME
+    lockfile = ServerLockfile.load(lock_path)
+
+    console.print("Resolving plugins... (this might take a few seconds)")
+
+    async with create_http_client() as client:
+        resolutions = await resolve_all_plugins(config.plugin_specs, config.platform, mc_version, lockfile, client)
+        latest_versions = await _resolve_latest_versions(resolutions, config.platform, mc_version, client)
+
+    _print_update_table(resolutions, latest_versions, config.plugins_update_strategy)
