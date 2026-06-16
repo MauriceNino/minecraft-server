@@ -49,9 +49,14 @@ $ docker exec CONTAINER_NAME mc-orchestrator check-updates
 ### `mc-orchestrator update`
 
 Explicitly forces an update for all plugins configured in the `PLUGINS` environment variable. This will replace the `.jar` files in the runtime directory and update the `server-lock.json` file.
+You can optionally provide the `--plugin` (or `-p`) flag to selectively update a single plugin by its lockfile entry without affecting others.
 
 **Usage:**
 
 ```bash
+# Update all plugins
 $ docker exec CONTAINER_NAME mc-orchestrator update
+
+# Update a single plugin by its lockfile key
+$ docker exec CONTAINER_NAME mc-orchestrator update --plugin [modrinth:luckperms]
 ```

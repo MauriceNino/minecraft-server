@@ -17,7 +17,7 @@ from orchestrator.constants import (
     PluginUpdateStrategy,
 )
 from orchestrator.fs_orchestrator import orchestrate_templates
-from orchestrator.lockfile import ServerLockfile
+from orchestrator.lockfile import ServerLockfile, make_lock_key
 from orchestrator.logging import (
     console,
     log_exception,
@@ -195,7 +195,7 @@ async def _async_check_updates() -> None:
     await check_plugin_updates(config)
 
 
-async def _async_update() -> None:
+async def _async_update(target_plugin: str | None = None) -> None:
     config = load_config()
     lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
     setup_logging(verbose=config.verbose)
@@ -213,6 +213,16 @@ async def _async_update() -> None:
 
     if config.platform in PLUGIN_PLATFORMS:
         log_phase("Plugins")
+        if target_plugin and not any(
+            make_lock_key(s.provider, s.identifier) == target_plugin for s in config.plugin_specs
+        ):
+            console.print()
+            console.print(
+                f"  [error]✗ Plugin '{target_plugin}' not found in configuration."
+                f" Use a valid lock-key (e.g. [info]modrinth:luckperms[/info])[/error]"
+            )
+            sys.exit(1)
+
         await download_plugins(
             plugin_specs=config.plugin_specs,
             platform_type=config.platform,
@@ -222,6 +232,7 @@ async def _async_update() -> None:
             # Ignoring errors during update command
             strategy=PluginUpdateStrategy.AUTO,
             check_cache_seconds=0,
+            target_plugin=target_plugin,
         )
 
     console.print()
@@ -246,8 +257,12 @@ def check_updates_cmd() -> None:
 
 
 @cli.command("update")
-def update_cmd() -> None:
-    _run_async(_async_update, "update")
+@click.option("--plugin", "-p", help="Update a single plugin by its lockfile entry (e.g. modrinth:luckperms)")
+def update_cmd(plugin: str | None) -> None:
+    async def run_update() -> None:
+        await _async_update(plugin)
+
+    _run_async(run_update, "update")
 
 
 def main() -> None:

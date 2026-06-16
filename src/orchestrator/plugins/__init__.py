@@ -156,7 +156,7 @@ async def _download_resolved(
         tmp_path = await provider.download(resolved, Path(tmp_dir), client)
         final_path = plugins_dir / resolved.filename
         old_backup: Path | None = None
-        
+
         # 1. If plugin exists, back it up first
         # 2. Try to replace the plugin
         # 3. If something goes wrong, restore the old plugin
@@ -165,7 +165,10 @@ async def _download_resolved(
             old_path = plugins_dir / old_entry.filename
 
             if not old_path.exists():
-                raise RuntimeError("Cannot backup old plugin file, because it does not exist - either remove the entry from the lockfile or place the old plugin file in the plugins directory.")
+                raise RuntimeError(
+                    "Cannot backup old plugin file, because it does not exist - either remove "
+                    "the entry from the lockfile or place the old plugin file in the plugins directory."
+                )
 
             old_backup = old_path.with_name(old_path.name + ".old")
             os.replace(old_path, old_backup)
@@ -228,6 +231,7 @@ async def download_plugins(
     lockfile: ServerLockfile,
     strategy: PluginUpdateStrategy,
     check_cache_seconds: int,
+    target_plugin: str | None = None,
 ) -> None:
     plugins_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
 
@@ -245,6 +249,10 @@ async def download_plugins(
 
         for spec in plugin_specs:
             lock_key = make_lock_key(spec.provider, spec.identifier)
+
+            if target_plugin is not None and lock_key != target_plugin:
+                continue
+
             already_installed = lockfile.get_plugin(lock_key)
 
             if spec.provider is None:
@@ -270,7 +278,7 @@ async def download_plugins(
 
         await asyncio.gather(*tasks)
 
-    if not use_cache:
+    if not use_cache and target_plugin is None:
         lockfile.record_plugins_checked()
 
     lockfile.save()
