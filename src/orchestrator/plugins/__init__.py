@@ -154,17 +154,40 @@ async def _download_resolved(
     # Download to a temporary directory first to avoid corrupting the plugins directory
     with tempfile.TemporaryDirectory(dir=plugins_dir, prefix=".dl_") as tmp_dir:
         tmp_path = await provider.download(resolved, Path(tmp_dir), client)
-
         final_path = plugins_dir / resolved.filename
-        os.replace(tmp_path, final_path)
+        old_backup: Path | None = None
+        
+        # 1. If plugin exists, back it up first
+        # 2. Try to replace the plugin
+        # 3. If something goes wrong, restore the old plugin
+        # 4. If everything goes right, remove the old plugin
+        if old_entry:
+            old_path = plugins_dir / old_entry.filename
+
+            if not old_path.exists():
+                raise RuntimeError("Cannot backup old plugin file, because it does not exist - either remove the entry from the lockfile or place the old plugin file in the plugins directory.")
+
+            old_backup = old_path.with_name(old_path.name + ".old")
+            os.replace(old_path, old_backup)
+
+            try:
+                os.replace(tmp_path, final_path)
+
+                if not final_path.exists():
+                    raise RuntimeError("Plugin not found after download")
+            except Exception:
+                if old_backup and old_backup.exists():
+                    os.replace(old_backup, old_path)
+                raise
+
+            if old_backup.exists():
+                old_backup.unlink()
+        else:
+            os.replace(tmp_path, final_path)
 
         lockfile.update_plugin(resolution.lock_key, resolved, final_path, resolution.spec.version)
 
     if old_entry:
-        old_path = plugins_dir / old_entry.filename
-        if old_path.exists():
-            old_path.unlink()
-
         log_change("updated", resolution.lock_key, update_reason)
     else:
         log_change(
