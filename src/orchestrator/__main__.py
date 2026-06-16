@@ -219,8 +219,8 @@ async def _async_update() -> None:
             mc_version=resolved_version.version,
             plugins_dir=config.plugins_dir,
             lockfile=lockfile,
-            # Forcing updates in the explicit update command
-            strategy=PluginUpdateStrategy.FORCE,
+            # Ignoring errors during update command
+            strategy=PluginUpdateStrategy.AUTO,
             check_cache_seconds=0,
         )
 
