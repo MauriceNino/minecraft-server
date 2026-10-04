@@ -4,13 +4,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from orchestrator.env_interpolation import interpolate_env
-from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.logging import log_change
 from orchestrator.merger.conf_merger import merge_conf
 from orchestrator.merger.json_merger import merge_json
 from orchestrator.merger.properties_merger import merge_properties
 from orchestrator.merger.toml_merger import merge_toml
 from orchestrator.merger.yaml_merger import merge_yaml
+from orchestrator.sigils import DirSigil
 
 # String-based merge  (env var content -> runtime file)
 _STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {

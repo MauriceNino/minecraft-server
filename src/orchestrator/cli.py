@@ -16,8 +16,8 @@ from orchestrator.constants import (
     PluginProviderType,
     PluginUpdateStrategy,
 )
-from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
 from orchestrator.plugins.base import PluginSpec
+from orchestrator.sigils import DirSigil, parse_dir_sigil
 
 
 @dataclass(frozen=True, slots=True)

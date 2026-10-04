@@ -5,8 +5,10 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from orchestrator.plugins.base import ResolvedPlugin
+if TYPE_CHECKING:
+    from orchestrator.plugins.base import ResolvedPlugin
 
 
 @dataclass(slots=True)

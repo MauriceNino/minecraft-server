@@ -5,10 +5,10 @@ from pathlib import Path
 
 from orchestrator.constants import MERGEABLE_EXTENSIONS
 from orchestrator.env_interpolation import interpolate_env
-from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.fs_orchestrator.template_reader import TemplateNode, read_template
 from orchestrator.logging import console, log_change
 from orchestrator.merger import merge_file
+from orchestrator.sigils import DirSigil
 
 
 def orchestrate_templates(

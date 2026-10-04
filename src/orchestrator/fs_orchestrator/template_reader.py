@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from orchestrator.fs_orchestrator.sigils import DirSigil, parse_dir_sigil
+from orchestrator.sigils import DirSigil, parse_dir_sigil
 
 
 @dataclass(slots=True)

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator.fs_orchestrator.sigils import DirSigil
 from orchestrator.merger.engine import apply_config_overrides
+from orchestrator.sigils import DirSigil
 
 
 class TestApplyConfigOverrides:

@@ -4,7 +4,7 @@ import pytest
 
 from orchestrator.cli import _collect_config_overrides, load_config
 from orchestrator.constants import PlatformType
-from orchestrator.fs_orchestrator.sigils import DirSigil
+from orchestrator.sigils import DirSigil
 
 
 class TestLoadConfig:
