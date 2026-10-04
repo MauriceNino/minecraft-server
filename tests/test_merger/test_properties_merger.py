@@ -57,3 +57,32 @@ class TestMergeProperties:
         assert "lobby=localhost" in result
         assert "!replace:lobby=localhost" not in result
         assert "old_cache=ignored" not in result
+
+    def test_comments_and_order_preserved(self, tmp_path: Path) -> None:
+        target = tmp_path / "server.properties"
+        target.write_text("#Minecraft server properties\n#Mon Oct 04 12:00:00 UTC 2026\nmotd=Old\npvp=true\n")
+
+        merge_properties(target, "motd=New\n")
+
+        assert target.read_text().splitlines() == [
+            "#Minecraft server properties",
+            "#Mon Oct 04 12:00:00 UTC 2026",
+            "motd=New",
+            "pvp=true",
+        ]
+
+    def test_delete_sigil_without_equals(self, tmp_path: Path) -> None:
+        target = tmp_path / "server.properties"
+        target.write_text("lobby=localhost\nother=kept\n")
+
+        merge_properties(target, "!delete:lobby\n")
+
+        assert target.read_text().splitlines() == ["other=kept"]
+
+    def test_duplicate_keys_collapsed(self, tmp_path: Path) -> None:
+        target = tmp_path / "server.properties"
+        target.write_text("motd=first\nmotd=second\n")
+
+        merge_properties(target, "motd=new\n")
+
+        assert target.read_text().splitlines() == ["motd=new"]

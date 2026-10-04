@@ -1,66 +1,56 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from orchestrator.merger.sigils import KeySigil, parse_key_sigil
 
-# Matches `key=value` or `key = value` lines
-_PROP_RE = re.compile(r"^([^=\s]+)\s*=\s*(.*)$")
 
+def _parse_line(line: str) -> tuple[str, str] | None:
+    """Return `(key, value)` for a property line, or None for blank lines and comments."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    # `!` starts a comment in .properties files, unless it's one of our sigils
+    if stripped.startswith("!") and parse_key_sigil(stripped)[0] == KeySigil.NONE:
+        return None
 
-def _parse_properties(content: str) -> dict[str, str]:
-    """Parse a `.properties` string into an ordered dict."""
-    result: dict[str, str] = {}
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or line.startswith("!"):
-            # Check if it's a sigil-prefixed key
-            m = _PROP_RE.match(line)
-            if m:
-                result[m.group(1)] = m.group(2)
-            continue
-        m = _PROP_RE.match(line)
-        if m:
-            result[m.group(1)] = m.group(2)
-    return result
-
-
-def _serialize_properties(data: dict[str, str]) -> str:
-    """Serialize a dict back to `.properties` format."""
-    lines = [f"{key}={value}" for key, value in data.items()]
-    return "\n".join(lines) + "\n"
+    key, sep, value = stripped.partition("=")
+    key = key.strip()
+    if not sep and parse_key_sigil(key)[0] != KeySigil.DELETE:
+        return None
+    return key, value.strip()
 
 
 def merge_properties(existing_path: Path, overlay_content: str) -> None:
-    """Merge *overlay_content* (`.properties` string) into *existing_path*.
+    """Merge *overlay_content* into the `.properties` file at *existing_path*.
 
-    `.properties` files are flat key-value, so merge simply means
-    overwriting keys.  The `!replace:` sigil is supported for
-    consistency but behaves identically to a normal overwrite.
+    Existing lines, comments and key order are kept. Properties are flat, so `!replace:` behaves like
+    a plain overwrite, and `!delete:key` removes the key.
     """
-    overlay_raw = _parse_properties(overlay_content)
+    overlay: dict[str, str | None] = {}
+    for line in overlay_content.splitlines():
+        if parsed := _parse_line(line):
+            sigil, key = parse_key_sigil(parsed[0])
+            overlay[key] = None if sigil == KeySigil.DELETE else parsed[1]
 
-    # Process sigils
-    overlay: dict[str, str] = {}
-    for key, value in overlay_raw.items():
-        sigil, clean_key = parse_key_sigil(key)
-        if sigil == KeySigil.DELETE:
-            # Mark for deletion using None
-            overlay[clean_key] = None  # type: ignore[assignment]
-        else:
-            overlay[clean_key] = value
+    base_lines = existing_path.read_text(encoding="utf-8").splitlines() if existing_path.exists() else []
+    result: list[str] = []
+    written: set[str] = set()
 
-    if existing_path.exists():
-        base = _parse_properties(existing_path.read_text())
-        for k, v in overlay.items():
-            if v is None:
-                base.pop(k, None)
-            else:
-                base[k] = v
-        merged = base
-    else:
-        merged = {k: v for k, v in overlay.items() if v is not None}
+    for line in base_lines:
+        parsed = _parse_line(line)
+        if parsed is None or parsed[0] not in overlay:
+            result.append(line)
+            continue
+
+        key = parsed[0]
+        value = overlay[key]
+        # Drop duplicates of overridden keys, Java would otherwise use the last (stale) one
+        if value is not None and key not in written:
+            result.append(f"{key}={value}")
+        written.add(key)
+
+    result.extend(f"{key}={value}" for key, value in overlay.items() if value is not None and key not in written)
 
     existing_path.parent.mkdir(parents=True, exist_ok=True)
-    existing_path.write_text(_serialize_properties(merged))
+    existing_path.write_text("\n".join(result) + "\n", encoding="utf-8")

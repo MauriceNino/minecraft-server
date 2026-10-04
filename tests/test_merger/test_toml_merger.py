@@ -94,3 +94,26 @@ class TestMergeToml:
         result = tomlkit.loads(target.read_text())
         assert "servers" in result
         assert "!replace:servers" not in result
+
+    def test_new_file_strips_nested_sigils(self, tmp_path: Path) -> None:
+        target = tmp_path / "config.toml"
+        merge_toml(target, '[servers]\n!replace:lobby = "host"\n!delete:old = true\nkeep = true\n')
+
+        result = tomlkit.loads(target.read_text())
+        assert result == {"servers": {"lobby": "host", "keep": True}}
+
+    def test_sigil_like_values_untouched(self, tmp_path: Path) -> None:
+        target = tmp_path / "config.toml"
+        target.write_text('motd = "old"\n')
+
+        merge_toml(target, 'motd = "!replace:not-a-key"\n')
+
+        assert tomlkit.loads(target.read_text())["motd"] == "!replace:not-a-key"
+
+    def test_already_quoted_sigil_key(self, tmp_path: Path) -> None:
+        target = tmp_path / "config.toml"
+        target.write_text('[servers]\nlobby = "a"\ngame = "b"\n')
+
+        merge_toml(target, '["!replace:servers"]\nlobby = "c"\n')
+
+        assert tomlkit.loads(target.read_text())["servers"] == {"lobby": "c"}

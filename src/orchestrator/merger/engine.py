@@ -12,8 +12,7 @@ from orchestrator.merger.toml_merger import merge_toml
 from orchestrator.merger.yaml_merger import merge_yaml
 from orchestrator.sigils import DirSigil
 
-# String-based merge  (env var content -> runtime file)
-_STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {
+_MERGERS: dict[str, Callable[[Path, str], None]] = {
     ".yml": merge_yaml,
     ".yaml": merge_yaml,
     ".json": merge_json,
@@ -23,44 +22,31 @@ _STRING_MERGERS: dict[str, Callable[[Path, str], None]] = {
 }
 
 
+def is_mergeable(path: Path) -> bool:
+    return path.suffix.lower() in _MERGERS
+
+
 def merge_file_content(target_path: Path, overlay_content: str) -> None:
-    suffix = target_path.suffix.lower()
-    string_merger = _STRING_MERGERS.get(suffix)
-
-    if string_merger is None:
-        raise ValueError(f"Unsupported file format: {suffix} for file {target_path!s}")
-
-    interpolated = interpolate_env(overlay_content)
-    string_merger(target_path, interpolated)
+    """Interpolate `$[VAR]` placeholders in *overlay_content* and deep-merge it into *target_path*."""
+    merger = _MERGERS.get(target_path.suffix.lower())
+    if merger is None:
+        raise ValueError(f"Unsupported file format: {target_path.suffix} for file {target_path}")
+    merger(target_path, interpolate_env(overlay_content))
 
 
 def merge_file(overlay_path: Path, target_path: Path) -> None:
-    if target_path.suffix.lower() not in _STRING_MERGERS:
-        log_change("skipped", target_path.name, reason="unsupported format")
-        return
-
-    raw_overlay = overlay_path.read_text(encoding="utf-8")
-    merge_file_content(target_path, raw_overlay)
+    merge_file_content(target_path, overlay_path.read_text(encoding="utf-8"))
 
 
-def apply_config_overrides(
-    overrides: list[tuple[DirSigil, str, str]],
-    runtime_dir: Path,
-) -> None:
-    """Apply config overrides parsed from `CONFIG_PATHS` + `CONFIG_<key>`.
+def apply_config_overrides(overrides: list[tuple[DirSigil, str, str]], runtime_dir: Path) -> None:
+    """Apply the overrides parsed from `CONFIG_PATHS` + `CONFIG_<key>`.
 
-    Behaviour by sigil
-    ------------------
-    - DirSigil.NONE    - merge into the existing file. If the file does not exist the override is skipped.
-    - DirSigil.FORCE   - create if absent, deep-merge if present.
-    - DirSigil.REPLACE - always write (create or overwrite); no merge.
-    - DirSigil.DELETE  - delete the target file (content ignored).
+    NONE merges into an existing file and skips missing ones, FORCE also creates missing files,
+    REPLACE always overwrites and DELETE removes the file.
     """
     for sigil, rel_path, raw_content in overrides:
         target = runtime_dir / rel_path
-        suffix = target.suffix.lower()
 
-        # --- DELETE ---
         if sigil == DirSigil.DELETE:
             if target.exists():
                 target.unlink()
@@ -69,32 +55,19 @@ def apply_config_overrides(
                 log_change("skipped", rel_path, reason="nothing to delete")
             continue
 
-        content = interpolate_env(raw_content)
-
-        # --- REPLACE ---
-        if sigil == DirSigil.REPLACE:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
-            log_change("replaced", rel_path)
-            continue
-
-        # --- FORCE or NONE ---
-        if not target.exists():
-            if sigil == DirSigil.FORCE:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(content, encoding="utf-8")
-                log_change("created", rel_path)
-            else:
-                log_change("skipped", rel_path, reason="nothing to create")
-            continue
-
-        merger_fn = _STRING_MERGERS.get(suffix)
-        if merger_fn is None:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
-            log_change("replaced", rel_path, reason="merge not supported")
+        if not target.exists() and sigil == DirSigil.NONE:
+            log_change("skipped", rel_path, reason="nothing to create")
             continue
 
         target.parent.mkdir(parents=True, exist_ok=True)
-        merger_fn(target, content)
-        log_change("merged", rel_path)
+        content = interpolate_env(raw_content)
+
+        if sigil == DirSigil.REPLACE or not target.exists():
+            target.write_text(content, encoding="utf-8")
+            log_change("replaced" if sigil == DirSigil.REPLACE else "created", rel_path)
+        elif is_mergeable(target):
+            _MERGERS[target.suffix.lower()](target, content)
+            log_change("merged", rel_path)
+        else:
+            target.write_text(content, encoding="utf-8")
+            log_change("replaced", rel_path, reason="merge not supported")

@@ -9,88 +9,65 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from orchestrator.merger.sigils import KeySigil, parse_key_sigil, strip_sigils
 
-# Shared RT (round-trip) YAML instance that preserves comments & formatting.
+# Round-trip instance, keeps comments and formatting of the existing file
 _yaml = YAML()
 _yaml.preserve_quotes = True
 
 
-def _ruamel_deep_merge(base_doc: CommentedMap, overlay: CommentedMap | dict[str | int, Any]) -> None:
-    """Recursively apply *overlay* into *base_doc* in-place.
-
-    - Comments and whitespace in *base_doc* are preserved wherever possible.
-    - New keys from the overlay are appended without comments (they didn't
-      exist in the original file anyway).
-    - `!replace:key` sigils cause the entire value to be overwritten.
-    - For dicts the merge recurses; scalars and lists overwrite.
-    """
+def _merge_into(base: CommentedMap, overlay: dict[Any, Any]) -> None:
+    """Apply *overlay* to *base* in place. Comments in *base* survive, new keys are appended."""
     for raw_key, overlay_value in overlay.items():
         sigil, clean_key = parse_key_sigil(raw_key)
 
         if sigil == KeySigil.DELETE:
-            if clean_key in base_doc:
-                del base_doc[clean_key]
-        elif sigil == KeySigil.REPLACE:
-            # Full replacement — strip any nested sigils and overwrite
-            base_doc[clean_key] = _to_commented(strip_sigils(overlay_value))
+            base.pop(clean_key, None)
         elif (
-            clean_key in base_doc
-            and isinstance(base_doc[clean_key], CommentedMap)
-            and isinstance(overlay_value, (CommentedMap, dict))
+            sigil == KeySigil.NONE and isinstance(base.get(clean_key), CommentedMap) and isinstance(overlay_value, dict)
         ):
-            # Recurse into matching mapping — base keeps its comments
-            _ruamel_deep_merge(base_doc[clean_key], overlay_value)
+            _merge_into(base[clean_key], overlay_value)
         else:
-            # Scalar / list / new key — overwrite or insert
-            base_doc[clean_key] = _to_commented(strip_sigils(overlay_value))
+            base[clean_key] = _to_commented(strip_sigils(overlay_value))
 
 
-def _to_commented(
-    value: dict[str | int, Any] | list[Any] | str | int | float | bool | None,
-) -> CommentedMap | CommentedSeq | str | int | float | bool | None:
-    """Convert a plain Python value to a ruamel.yaml CommentedMap/Seq (best-effort)."""
+def _to_commented(value: Any) -> Any:
     if isinstance(value, dict):
-        cm = CommentedMap()
-        for k, v in value.items():
-            cm[k] = _to_commented(v)
-        return cm
+        return CommentedMap((k, _to_commented(v)) for k, v in value.items())
     if isinstance(value, list):
-        cs = CommentedSeq(_to_commented(item) for item in value)
-        return cs
+        return CommentedSeq(_to_commented(item) for item in value)
     return value
 
 
-def _strip_sigils_from_doc(doc: CommentedMap) -> None:
-    """Remove sigil prefixes from all keys in a CommentedMap in-place."""
-    keys_to_rename = [(k, parse_key_sigil(k)) for k in list(doc.keys())]
-    for raw_key, (sigil, clean_key) in keys_to_rename:
-        if sigil != KeySigil.NONE:
-            value = doc[raw_key]
-            del doc[raw_key]
+def _strip_sigils_in_place(node: Any) -> None:
+    """Like `strip_sigils`, but keeps comments and key positions of a loaded document."""
+    if isinstance(node, CommentedMap):
+        # Walk backwards so positions of the remaining keys stay valid while renaming
+        for pos, raw_key in reversed(list(enumerate(list(node.keys())))):
+            value = node[raw_key]
+            _strip_sigils_in_place(value)
+            sigil, clean_key = parse_key_sigil(raw_key)
+            if sigil == KeySigil.NONE:
+                continue
+            del node[raw_key]
             if sigil != KeySigil.DELETE:
-                doc[clean_key] = value
+                node.insert(pos, clean_key, value)
+    elif isinstance(node, CommentedSeq):
+        for item in node:
+            _strip_sigils_in_place(item)
 
 
 def merge_yaml(existing_path: Path, overlay_content: str) -> None:
-    """Deep-merge *overlay_content* (YAML string) into *existing_path*.
-
-    Comments already present in *existing_path* are preserved.  New keys
-    from the overlay are appended without comments.
-
-    If *existing_path* does not exist, the overlay is written directly
-    (with sigils stripped).
-    """
+    """Deep-merge *overlay_content* into the YAML file at *existing_path*, creating it if needed."""
     overlay: CommentedMap = _yaml.load(overlay_content) or CommentedMap()
 
     if existing_path.exists():
         with existing_path.open(encoding="utf-8") as f:
-            base_doc: CommentedMap = _yaml.load(f) or CommentedMap()
-        _ruamel_deep_merge(base_doc, overlay)
-        result_doc = base_doc
+            result: CommentedMap = _yaml.load(f) or CommentedMap()
+        _merge_into(result, overlay)
     else:
-        result_doc = _yaml.load(overlay_content) or CommentedMap()
-        _strip_sigils_from_doc(result_doc)
+        result = overlay
+        _strip_sigils_in_place(result)
 
     existing_path.parent.mkdir(parents=True, exist_ok=True)
     buf = io.StringIO()
-    _yaml.dump(result_doc, buf)
+    _yaml.dump(result, buf)
     existing_path.write_text(buf.getvalue(), encoding="utf-8")

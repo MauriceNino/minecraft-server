@@ -7,7 +7,7 @@ When the orchestrator successfully intercepts a file (either via [Templates](../
 
 Each payload also supports [Variable Interpolation](../interpolation) using the `$[VARIABLE_NAME]` syntax. This occurs before any merging logic hits the file!
 
-It actively supports preserving comments across most formats (YAML, TOML, and Properties)! You can also use key-level [sigils](../sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
+Comments in the existing file are kept for YAML, TOML and Properties. HOCON (`.conf`) and JSON files are rewritten without comments. You can also use key-level [sigils](../sigils) (`!replace:` and `!delete:`) directly within these structured configuration files to bypass standard merging logic on specific dictionaries.
 
 ### YAML (`.yml`, `.yaml`)
 

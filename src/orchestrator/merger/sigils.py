@@ -1,59 +1,48 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import Any
 
-REPLACE_PREFIX = "!replace:"
-DELETE_PREFIX = "!delete:"
+from orchestrator.sigils import DELETE_PREFIX, REPLACE_PREFIX
+
+# A bare `!replace:key` / `!delete:key` is not valid syntax in TOML or HOCON, so those mergers quote it first
+SIGIL_KEY_PATTERN = rf"(?:{re.escape(REPLACE_PREFIX)}|{re.escape(DELETE_PREFIX)})[A-Za-z0-9_-]+"
 
 
 class KeySigil(Enum):
-    """Sigil type parsed from a config key."""
-
     NONE = "none"
     REPLACE = "replace"
     DELETE = "delete"
 
 
-def parse_key_sigil(key: str | int) -> tuple[KeySigil, str]:
-    """Parse a config key and return `(sigil, clean_key)`.
-
-    **Examples**
-    - `parse_key_sigil("!replace:servers")` -> `(KeySigil.REPLACE, 'servers')`
-    - `parse_key_sigil("motd")` -> `(KeySigil.NONE, 'motd')`
-    - `parse_key_sigil("!replace:forwarding-mode")` -> `(KeySigil.REPLACE, 'forwarding-mode')`
-    """
+def parse_key_sigil(key: object) -> tuple[KeySigil, str]:
+    """Split a config key into its sigil and the plain key, e.g. `"!replace:servers"` -> `(REPLACE, "servers")`."""
     if not isinstance(key, str):
         return KeySigil.NONE, str(key)
-
     if key.startswith(REPLACE_PREFIX):
-        return KeySigil.REPLACE, key[len(REPLACE_PREFIX) :]
+        return KeySigil.REPLACE, key.removeprefix(REPLACE_PREFIX)
     if key.startswith(DELETE_PREFIX):
-        return KeySigil.DELETE, key[len(DELETE_PREFIX) :]
+        return KeySigil.DELETE, key.removeprefix(DELETE_PREFIX)
     return KeySigil.NONE, key
 
 
-def strip_sigils(data: dict[str | int, Any]) -> dict[str | int, Any]:
-    """Recursively strip all sigil prefixes from dictionary keys.
-
-    Non-dict values are returned as-is."""
+def strip_sigils(data: Any) -> Any:
+    """Return a copy of *data* with sigil prefixes removed from all keys and `!delete:` keys dropped."""
     if isinstance(data, dict):
-        cleaned: dict[str | int, Any] = {}
+        cleaned: dict[Any, Any] = {}
         for key, value in data.items():
             sigil, clean_key = parse_key_sigil(key)
-
             if sigil != KeySigil.DELETE:
                 cleaned[clean_key] = strip_sigils(value)
         return cleaned
-
     if isinstance(data, list):
         return [strip_sigils(item) for item in data]
-
     return data
 
 
-def deep_merge(base: dict[str | int, Any], overlay: dict[str | int, Any]) -> dict[str | int, Any]:
-    """Deep-merge *overlay* into *base* with sigil support."""
+def deep_merge(base: dict[Any, Any], overlay: dict[Any, Any]) -> dict[Any, Any]:
+    """Return *base* deep-merged with *overlay*, honouring `!replace:` and `!delete:` keys in the overlay."""
     result = dict(base)
 
     for raw_key, overlay_value in overlay.items():
@@ -61,14 +50,9 @@ def deep_merge(base: dict[str | int, Any], overlay: dict[str | int, Any]) -> dic
 
         if sigil == KeySigil.DELETE:
             result.pop(clean_key, None)
-        elif sigil == KeySigil.REPLACE:
-            # Overwrite entirely (strip sigils from nested keys too)
-            result[clean_key] = strip_sigils(overlay_value)
-        elif clean_key in result and isinstance(result[clean_key], dict) and isinstance(overlay_value, dict):
-            # Recursive merge
+        elif sigil == KeySigil.NONE and isinstance(result.get(clean_key), dict) and isinstance(overlay_value, dict):
             result[clean_key] = deep_merge(result[clean_key], overlay_value)
         else:
-            # Scalar / list / new key — overwrite
             result[clean_key] = strip_sigils(overlay_value)
 
     return result

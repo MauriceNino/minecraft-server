@@ -67,3 +67,14 @@ def test_merge_conf_no_existing(tmp_path: Path) -> None:
     assert config.get_int("nested.val") == 1
     # Check that sigils were stripped
     assert "!replace:nested" not in config
+
+
+def test_merge_conf_indented_sigil(tmp_path: Path) -> None:
+    existing = tmp_path / "config.conf"
+    existing.write_text('parent {\n  child { a = 1, b = 2 }\n  other = "keep"\n}', encoding="utf-8")
+
+    merge_conf(existing, "parent {\n  !replace:child { c = 3 }\n}")
+
+    config = ConfigFactory.parse_file(str(existing))
+    assert dict(config.get("parent.child")) == {"c": 3}
+    assert config.get_string("parent.other") == "keep"

@@ -90,3 +90,11 @@ class TestMergeYaml:
         result = _yaml.load(target.read_text())
         assert "servers" in result
         assert "!replace:servers" not in result
+
+    def test_new_file_strips_nested_sigils(self, tmp_path: Path) -> None:
+        target = tmp_path / "config.yml"
+        merge_yaml(target, "a: 1\nservers:\n  '!replace:lobby': host\n  '!delete:old': x\n  keep: true\nz: 2\n")
+
+        result = _yaml.load(target.read_text())
+        assert result == {"a": 1, "servers": {"lobby": "host", "keep": True}, "z": 2}
+        assert list(result["servers"]) == ["lobby", "keep"]
