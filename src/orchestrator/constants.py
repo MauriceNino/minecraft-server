@@ -115,6 +115,8 @@ PLUGINS_SUBDIR = "plugins"
 CACHE_SUBDIR = ".cache"
 
 SERVER_LOCK_FILENAME = "server-lock.json"
+# Written next to the server files so `mc-rcon` can connect when RCON_PASSWORD was auto-generated
+RCON_PASSWORD_FILENAME = ".rcon-password"  # noqa: S105
 
 # Config file extensions that can be deep-merged
 MERGEABLE_EXTENSIONS: frozenset[str] = frozenset(

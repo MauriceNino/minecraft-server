@@ -7,9 +7,7 @@ Beyond the orchestrator execution pipeline, your container comes bundled with cu
 
 ## `mc-rcon`
 
-Connecting to Minecraft containers and dispatching commands via stdin or log-tailing can be flaky. `mc-rcon` acts as an robust, interactive wrapper.
-
-Because the orchestrator already injects its `RCON_PASSWORD` setup dynamically, `mc-rcon` pulls these environment credentials and connects flawlessly.
+An RCON client for sending commands to the running server. It reads the port and password from the container's environment, or from `runtime/.rcon-password` when the password was generated automatically, so no setup is needed.
 
 **Usage:**
 

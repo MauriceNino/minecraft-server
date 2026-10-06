@@ -144,7 +144,7 @@ async def _async_main() -> None:
 
     if config.rcon_enabled:
         log_phase("RCON")
-        await inject_rcon(
+        inject_rcon(
             platform=config.platform,
             runtime_dir=config.runtime_dir,
             plugins_dir=config.plugins_dir,

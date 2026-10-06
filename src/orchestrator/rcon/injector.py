@@ -1,82 +1,68 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
-from orchestrator.constants import SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import RCON_PASSWORD_FILENAME, SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 from orchestrator.merger import merge_file_content
 
 
-async def inject_rcon(
+def inject_rcon(
     platform: PlatformType,
     runtime_dir: Path,
     plugins_dir: Path,
     rcon_port: int,
     rcon_password: str,
 ) -> None:
-    """Inject RCON configuration for the given platform."""
+    """Enable RCON in the platform's config files."""
+    # JSON strings are valid YAML and TOML strings, which keeps passwords with special characters intact
+    password = json.dumps(rcon_password)
+
     if platform == PlatformType.PUMPKIN:
-        await _inject_pumpkin_rcon(runtime_dir, rcon_port, rcon_password)
+        merge_file_content(
+            runtime_dir / "config" / "features.toml",
+            f'[networking.rcon]\nenabled = true\naddress = "0.0.0.0:{rcon_port}"\npassword = {password}\n',
+        )
     elif platform in SERVER_PLATFORMS:
-        await _inject_server_properties_rcon(runtime_dir, rcon_port, rcon_password)
+        merge_file_content(
+            runtime_dir / "server.properties",
+            f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={_escape_properties_value(rcon_password)}\n",
+        )
     elif platform == PlatformType.VELOCITY:
-        await _inject_velocity_rcon(plugins_dir, rcon_port, rcon_password)
+        merge_file_content(
+            plugins_dir / "velocircon" / "rcon.yml",
+            f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {password}\ncolors: false\n",
+        )
     elif platform == PlatformType.WATERFALL:
-        await _inject_waterfall_rcon(plugins_dir, rcon_port, rcon_password)
+        merge_file_content(
+            plugins_dir / "bungee-rcon" / "config.yml",
+            f"port: {rcon_port}\npassword: {password}\ncolored: false\n",
+        )
 
-    console.print(f"  [success]✓[/success] Enabled & Reachable  [label][dim]0.0.0.0:[/dim]{rcon_port}[/label]")
-
-
-async def _inject_pumpkin_rcon(
-    runtime_dir: Path,
-    rcon_port: int,
-    rcon_password: str,
-) -> None:
-    """Enable RCON in `config/features.toml` for PumpkinMC."""
-    config_dir = runtime_dir / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "features.toml"
-
-    config_content = (
-        f"[networking.rcon]\nenabled = true\naddress = '0.0.0.0:{rcon_port}'\npassword = '{rcon_password}'\n"
-    )
-    merge_file_content(config_file, config_content)
+    _write_password_file(runtime_dir / RCON_PASSWORD_FILENAME, rcon_password)
+    console.print(f"  [success]✓[/success] Enabled on port [label]{rcon_port}[/label]")
 
 
-async def _inject_server_properties_rcon(
-    runtime_dir: Path,
-    rcon_port: int,
-    rcon_password: str,
-) -> None:
-    """Enable RCON in `server.properties`."""
-    rcon_config = f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={rcon_password}\n"
-    server_props = runtime_dir / "server.properties"
-    merge_file_content(server_props, rcon_config)
+def _escape_properties_value(value: str) -> str:
+    """Escape *value* so Java's `Properties.load` reads it back unchanged."""
+    escaped = value.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    # Leading whitespace would be skipped, non-ASCII is only safe as a \u escape (older servers read ISO-8859-1)
+    if escaped.startswith((" ", "\f")):
+        escaped = "\\" + escaped
+
+    result: list[str] = []
+    for char in escaped:
+        if ord(char) < 0x80:
+            result.append(char)
+            continue
+        utf16 = char.encode("utf-16-be")  # characters outside the BMP become a surrogate pair
+        result.extend(f"\\u{int.from_bytes(utf16[i : i + 2], 'big'):04x}" for i in range(0, len(utf16), 2))
+    return "".join(result)
 
 
-async def _inject_velocity_rcon(
-    plugins_dir: Path,
-    rcon_port: int,
-    rcon_password: str,
-) -> None:
-    """Write Velocircon config,"""
-    config_dir = plugins_dir / "velocircon"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "rcon.yml"
-
-    config_content = f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {rcon_password}\ncolors: false\n"
-    merge_file_content(config_file, config_content)
-
-
-async def _inject_waterfall_rcon(
-    plugins_dir: Path,
-    rcon_port: int,
-    rcon_password: str,
-) -> None:
-    """Write bungee-rcon config,"""
-    config_dir = plugins_dir / "bungee-rcon"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "config.yml"
-
-    config_content = f"port: {rcon_port}\npassword: {rcon_password}\ncolored: false\n"
-    merge_file_content(config_file, config_content)
+def _write_password_file(path: Path, password: str) -> None:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(password)
