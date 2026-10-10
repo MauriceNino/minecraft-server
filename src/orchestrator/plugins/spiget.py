@@ -1,30 +1,31 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import BUKKIT_BASED_PLATFORMS, USER_AGENT, PlatformType
+from orchestrator.constants import BUKKIT_BASED_PLATFORMS, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
 
 API_BASE = "https://api.spiget.org/v2"
 
 
+def _resource_id(identifier: str) -> str:
+    """Accept both `12345` and SpigotMC URL slugs like `supervanish-be-invisible.1331`."""
+    _, _, suffix = identifier.rpartition(".")
+    return suffix if suffix.isdigit() else identifier
+
+
 class SpigetProvider(AbstractPluginProvider):
-    async def _get_plugin_info(self, client: httpx.AsyncClient, resource_id: str) -> SpigotResource:
-        resp = await client.get(
-            f"{API_BASE}/resources/{resource_id}",
-            headers={"User-Agent": USER_AGENT},
-        )
+    async def _get_resource(self, client: httpx.AsyncClient, resource_id: str) -> SpigetResource:
+        resp = await client.get(f"{API_BASE}/resources/{resource_id}")
         resp.raise_for_status()
-        return cast(SpigotResource, resp.json())
+        return cast(SpigetResource, resp.json())
 
     async def _validate_external_download(self, client: httpx.AsyncClient, spec: PluginSpec, download_url: str) -> None:
-        # External resources often redirect to a website (e.g., GitHub, personal site)
-        # rather than a direct JAR download. We check if it's a JAR to fail early.
-        head_resp = await client.head(download_url, follow_redirects=True)
+        # External resources often redirect to a website instead of a JAR, so fail early with a useful message
+        head_resp = await client.head(download_url)
         head_resp.raise_for_status()
 
         content_type = head_resp.headers.get("Content-Type", "").lower()
@@ -49,107 +50,83 @@ class SpigetProvider(AbstractPluginProvider):
         mc_version: str,
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
-        resource_id = spec.identifier
-        if "." in resource_id:
-            try:
-                # SpigotMC resource URLs end with .<id>
-                int(resource_id.split(".")[-1])
-                resource_id = resource_id.split(".")[-1]
-            except ValueError:
-                pass
+        resource_id = _resource_id(spec.identifier)
+        resource = await self._get_resource(client, resource_id)
 
-        project_info = await self._get_plugin_info(client, resource_id)
-        version = str(project_info["version"]["id"]) if spec.version in ("latest", "experimental") else spec.version
-
-        if not any(version == str(v.get("id")) for v in project_info.get("versions", [])):
-            raise self._version_could_not_be_found(spec)
-
-        if project_info.get("premium", False):
+        if resource.get("premium", False):
             raise RuntimeError(
                 f"Plugin '{spec.identifier}' is premium and cannot be downloaded. "
                 "Please download the JAR file manually and place it in the plugins folder."
             )
 
+        # Spiget has no release channels, so "experimental" is the same as "latest"
+        version = str(resource["version"]["id"]) if spec.version in ("latest", "experimental") else spec.version
+        if not any(version == str(v["id"]) for v in resource.get("versions", [])):
+            raise self._version_could_not_be_found(spec)
+
         if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
             raise self._platform_not_supported(spec, [platform_type])
 
-        if not spec.force and not any(is_same_semver(mc_version, v) for v in project_info["testedVersions"]):
+        if not spec.force and not any(is_same_semver(mc_version, v) for v in resource["testedVersions"]):
             raise self._version_not_supported(spec, mc_version)
 
-        filename = f"{spec.identifier}-{version}.jar"
         download_url = f"{API_BASE}/resources/{resource_id}/download?version={version}"
-
-        if project_info.get("external"):
+        if resource.get("external"):
             await self._validate_external_download(client, spec, download_url)
 
         return ResolvedPlugin(
-            display_name=project_info["name"],
+            display_name=resource["name"],
             version=version,
             download_url=download_url,
-            filename=filename,
+            filename=f"{spec.identifier}-{version}.jar",
         )
 
-    async def download(
-        self,
-        resolved: ResolvedPlugin,
-        dest: Path,
-        client: httpx.AsyncClient,
-    ) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url, follow_redirects=True) as resp:
-            resp.raise_for_status()
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
 
-        return target
-
-
-class FileInfo(TypedDict):
+class SpigetFileInfo(TypedDict):
     type: str
     size: float
     sizeUnit: str
     url: str
 
 
-class VersionReference(TypedDict):
+class SpigetVersionReference(TypedDict):
     id: int
     uuid: str
 
 
-class IdReference(TypedDict):
+class SpigetIdReference(TypedDict):
     id: int
 
 
-class RatingInfo(TypedDict):
+class SpigetRating(TypedDict):
     count: int
     average: float
 
 
-class IconInfo(TypedDict):
+class SpigetIcon(TypedDict):
     url: str
     data: str
     info: str
     hash: str
 
 
-class SpigotResource(TypedDict):
+class SpigetResource(TypedDict):
     external: bool
-    file: FileInfo
+    file: SpigetFileInfo
     description: str
     likes: int
     testedVersions: list[str]
-    versions: list[VersionReference]
-    updates: list[IdReference]
-    reviews: list[IdReference]
+    versions: list[SpigetVersionReference]
+    updates: list[SpigetIdReference]
+    reviews: list[SpigetIdReference]
     links: dict[str, str]
     name: str
     tag: str
-    version: VersionReference
-    author: IdReference
-    category: IdReference
-    rating: RatingInfo
-    icon: IconInfo
+    version: SpigetVersionReference
+    author: SpigetIdReference
+    category: SpigetIdReference
+    rating: SpigetRating
+    icon: SpigetIcon
     releaseDate: int
     updateDate: int
     downloads: int

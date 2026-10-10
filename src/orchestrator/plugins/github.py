@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import re
-from pathlib import Path
 from typing import TypedDict, cast
 
 import httpx
@@ -16,98 +14,82 @@ API_BASE = "https://api.github.com"
 
 class GithubProvider(AbstractPluginProvider):
     def _headers(self) -> dict[str, str]:
-        """Build request headers, injecting a Bearer token when GITHUB_TOKEN is set."""
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
         if token := os.environ.get("GITHUB_TOKEN"):
             headers["Authorization"] = f"Bearer {token}"
         return headers
 
-    async def _get_release(self, identifier: str, version: str, client: httpx.AsyncClient) -> GitHubRelease:
-        """Fetch the appropriate release based on the version specifier."""
-        if version == "latest":
-            url = f"{API_BASE}/repos/{identifier}/releases/latest"
-        elif version == "experimental":
-            # Fetch recent releases and find the first pre-release; fall back to the newest if none found
+    async def _get_release(self, spec: PluginSpec, client: httpx.AsyncClient) -> GitHubRelease:
+        if spec.version == "experimental":
             resp = await client.get(
-                f"{API_BASE}/repos/{identifier}/releases", params={"per_page": 100}, headers=self._headers()
+                f"{API_BASE}/repos/{spec.identifier}/releases", params={"per_page": 100}, headers=self._headers()
             )
             resp.raise_for_status()
-            releases = cast(list[GitHubRelease], resp.json())
-            return releases[0]
+            releases = [r for r in cast(list[GitHubRelease], resp.json()) if not r["draft"]]
+            if not releases:
+                raise RuntimeError(f"No releases found for {spec.identifier}")
+            # Newest pre-release, or the newest release if the repo never publishes pre-releases
+            return next((r for r in releases if r["prerelease"]), releases[0])
+
+        if spec.version == "latest":
+            url = f"{API_BASE}/repos/{spec.identifier}/releases/latest"
         else:
-            # Treat as an exact tag name
-            url = f"{API_BASE}/repos/{identifier}/releases/tags/{version}"
+            url = f"{API_BASE}/repos/{spec.identifier}/releases/tags/{spec.version}"
 
         resp = await client.get(url, headers=self._headers())
+        if resp.status_code == 404:
+            raise self._version_could_not_be_found(spec)
         resp.raise_for_status()
         return cast(GitHubRelease, resp.json())
 
-    def _select_asset(
-        self, assets: list[GitHubReleaseAsset], spec: PluginSpec, platform_type: PlatformType
-    ) -> GitHubReleaseAsset:
-        """Pick the single JAR asset to download, using optional regex or automatic detection."""
-        owner, repo = spec.identifier.split("/", 1)
-        regex = spec.param("regex")
-
-        # 1. Regex mode: must match exactly one asset
-        if regex:
+    def _select_asset(self, assets: list[GitHubAsset], spec: PluginSpec, platform_type: PlatformType) -> GitHubAsset:
+        if regex := spec.param("regex"):
             pattern = re.compile(regex)
             matches = [a for a in assets if pattern.search(a["name"])]
             if len(matches) == 1:
                 return matches[0]
-
-            names = ", ".join(f"'{a['name']}'" for a in assets)
             if not matches:
-                raise RuntimeError(f"No assets match regex {regex!r} for {owner}/{repo}. Available: {names}")
+                names = ", ".join(f"'{a['name']}'" for a in assets)
+                raise RuntimeError(f"No assets match regex {regex!r} for {spec.identifier}. Available: {names}")
             raise RuntimeError(
-                f"Multiple assets match regex {regex!r} for {owner}/{repo}: {', '.join(a['name'] for a in matches)}"
+                f"Multiple assets match regex {regex!r} for {spec.identifier}: {', '.join(a['name'] for a in matches)}"
             )
 
-        # 2. Automatic mode: filter to .jar files
         jars = [a for a in assets if a["name"].lower().endswith(".jar")]
         if not jars:
-            raise RuntimeError(f"No JAR assets found for {owner}/{repo}")
+            raise RuntimeError(f"No JAR assets found for {spec.identifier}")
         if len(jars) == 1:
             return jars[0]
 
-        # 3. Loader keyword disambiguation: try to find a JAR matching the platform (e.g. 'paper', 'spigot')
+        # Several JARs: try to pick the one named after the platform (e.g. "-paper", "-velocity")
         loaders = MODRINTH_PLATFORM_TAGS.get(platform_type, [])
         matches = [jar for jar in jars if any(loader in jar["name"].lower() for loader in loaders)]
         if len(matches) == 1:
             return matches[0]
 
+        jar_list = "\n".join(f"- {j['name']}" for j in jars)
         raise RuntimeError(
-            f"Ambiguous JAR selection for {owner}/{repo} (found {len(jars)} JARs). "
-            f"Use \[regex=...] to specify the JAR for {owner}/{repo}. "
-            f"The regex needs to match exactly one of: \n{'\n'.join(f'- {j["name"]}' for j in jars)}"
+            f"Ambiguous JAR selection for {spec.identifier} (found {len(jars)} JARs). "
+            f"Use \\[regex=...] to pick one. The regex needs to match exactly one of:\n{jar_list}"
         )
 
     async def resolve(
         self, spec: PluginSpec, platform_type: PlatformType, mc_version: str, client: httpx.AsyncClient
     ) -> ResolvedPlugin:
-        if "/" not in spec.identifier:
+        if spec.identifier.count("/") != 1:
             raise ValueError(f"Invalid GitHub identifier {spec.identifier!r}. Expected owner/repo")
 
-        release = await self._get_release(spec.identifier, spec.version, client)
+        release = await self._get_release(spec, client)
         asset = self._select_asset(release["assets"], spec, platform_type)
 
+        digest = asset.get("digest") or ""
         return ResolvedPlugin(
             display_name=spec.identifier,
             version=release["tag_name"],
             download_url=asset["browser_download_url"],
             filename=asset["name"],
+            sha256=digest.removeprefix("sha256:") if digest.startswith("sha256:") else None,
         )
-
-    async def download(self, resolved: ResolvedPlugin, dest: Path, client: httpx.AsyncClient) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url, follow_redirects=True) as resp:
-            resp.raise_for_status()
-            sha = hashlib.sha256()
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
-                    sha.update(chunk)
-        return target
 
 
 class GitHubUser(TypedDict):
@@ -132,7 +114,7 @@ class GitHubUser(TypedDict):
     site_admin: bool
 
 
-class GitHubReleaseAsset(TypedDict):
+class GitHubAsset(TypedDict):
     url: str
     id: int
     node_id: str
@@ -166,7 +148,7 @@ class GitHubRelease(TypedDict):
     created_at: str
     updated_at: str
     published_at: str
-    assets: list[GitHubReleaseAsset]
+    assets: list[GitHubAsset]
     tarball_url: str
     zipball_url: str
     body: str

@@ -1,72 +1,53 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
+from collections.abc import Callable
 from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import HANGAR_PLATFORM_TAGS, USER_AGENT, PlatformType
+from orchestrator.constants import HANGAR_PLATFORM_TAGS, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
 
 API_BASE = "https://hangar.papermc.io/api/v1"
+PAGE_SIZE = 50
 
 
 class HangarProvider(AbstractPluginProvider):
-    async def _get_plugin_info(self, spec: PluginSpec, client: httpx.AsyncClient) -> HangarProjectResponse:
-        resp = await client.get(
-            f"{API_BASE}/projects/{spec.identifier}",
-            headers={"User-Agent": USER_AGENT},
-        )
+    async def _get_project(self, spec: PluginSpec, client: httpx.AsyncClient) -> HangarProject:
+        resp = await client.get(f"{API_BASE}/projects/{spec.identifier}")
         resp.raise_for_status()
-        return cast(HangarProjectResponse, resp.json())
+        return cast(HangarProject, resp.json())
 
-    async def _get_plugin_versions(
-        self, spec: PluginSpec, client: httpx.AsyncClient, offset: int = 0, limit: int = 25
-    ) -> HangarVersionResponse:
-        resp = await client.get(
-            f"{API_BASE}/projects/{spec.identifier}/versions",
-            params={"offset": offset, "limit": limit},
-            headers={"User-Agent": USER_AGENT},
-        )
-        resp.raise_for_status()
-        return cast(HangarVersionResponse, resp.json())
-
-    async def _get_plugin_version(
-        self, spec: PluginSpec, client: httpx.AsyncClient, hangar_platform: str, version: str
-    ) -> VersionDict:
-        resp = await client.get(
-            f"{API_BASE}/projects/{spec.identifier}/versions/{version}",
-            headers={"User-Agent": USER_AGENT},
-        )
+    async def _get_version(self, spec: PluginSpec, client: httpx.AsyncClient, hangar_platform: str) -> HangarVersion:
+        resp = await client.get(f"{API_BASE}/projects/{spec.identifier}/versions/{spec.version}")
         if resp.status_code == 404:
             raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
-
         resp.raise_for_status()
-        return cast(VersionDict, resp.json())
+        return cast(HangarVersion, resp.json())
 
-    async def _get_first_plugin_version_by_channel(
+    async def _find_newest_version(
         self,
         spec: PluginSpec,
         client: httpx.AsyncClient,
-        hangar_platform: str,
-        channel_names: list[str],
-        offset: int = 0,
-        limit: int = 25,
-    ) -> VersionDict:
-        versions = await self._get_plugin_versions(spec, client, offset=offset, limit=limit)
+        predicate: Callable[[HangarVersion], bool],
+    ) -> HangarVersion | None:
+        offset = 0
+        while True:
+            resp = await client.get(
+                f"{API_BASE}/projects/{spec.identifier}/versions",
+                params={"offset": offset, "limit": PAGE_SIZE},
+            )
+            resp.raise_for_status()
+            page = cast(HangarVersionPage, resp.json())
 
-        version_data = next((v for v in versions["result"] if v.get("channel", {}).get("name") in channel_names), None)
-        if not version_data:
-            if versions["pagination"]["offset"] + versions["pagination"]["limit"] < versions["pagination"]["count"]:
-                return await self._get_first_plugin_version_by_channel(
-                    spec, client, hangar_platform, channel_names, offset + limit, limit
-                )
-            else:
-                raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
+            for version in page["result"]:
+                if predicate(version):
+                    return version
 
-        return version_data
+            offset += PAGE_SIZE
+            if offset >= page["pagination"]["count"]:
+                return None
 
     async def resolve(
         self,
@@ -76,82 +57,70 @@ class HangarProvider(AbstractPluginProvider):
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
         custom_platform = spec.param("platform")
-        hangar_platform = custom_platform.upper() if custom_platform else HANGAR_PLATFORM_TAGS.get(platform_type)
+        mapped_platform = custom_platform.upper() if custom_platform else HANGAR_PLATFORM_TAGS.get(platform_type)
 
-        project_info = await self._get_plugin_info(spec, client)
+        project = await self._get_project(spec, client)
 
-        # Make sure platform is supported
         if not spec.force:
-            if not hangar_platform:
+            if not mapped_platform:
                 raise self._platform_not_supported(spec, [custom_platform or platform_type.value])
-
-            if platform_type == PlatformType.FOLIA and "SUPPORTS_FOLIA" not in project_info["settings"]["tags"]:
+            if platform_type == PlatformType.FOLIA and "SUPPORTS_FOLIA" not in project["settings"]["tags"]:
                 raise self._platform_not_supported(spec, [PlatformType.FOLIA.value])
+            if not project["supportedPlatforms"].get(mapped_platform):
+                raise self._platform_not_supported(spec, [mapped_platform])
 
-            if not project_info["supportedPlatforms"].get(hangar_platform):
-                raise self._platform_not_supported(spec, [hangar_platform])
+        hangar_platform = mapped_platform or "PAPER"
 
-        # Default to Paper if no platform is supported
-        hangar_platform = hangar_platform or "PAPER"
+        def supports_mc_version(version: HangarVersion) -> bool:
+            supported = version.get("platformDependencies", {}).get(hangar_platform, [])
+            return spec.force or any(is_same_semver(mc_version, v) for v in supported)
 
-        # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
-            channel_names = ["Release"] if spec.version == "latest" else ["Beta", "Alpha", "Snapshot"]
-            version_data = await self._get_first_plugin_version_by_channel(spec, client, hangar_platform, channel_names)
+            channels = ["Release"] if spec.version == "latest" else ["Beta", "Alpha", "Snapshot"]
 
-            if not version_data:
-                raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
+            def matches(version: HangarVersion) -> bool:
+                return (
+                    version["channel"]["name"] in channels
+                    and hangar_platform in version["downloads"]
+                    and supports_mc_version(version)
+                )
 
-        # Just load the specific version
+            version_data = await self._find_newest_version(spec, client, matches)
+            if version_data is None:
+                if spec.force:
+                    raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
+                raise self._version_not_supported(spec, mc_version)
         else:
-            version_data = await self._get_plugin_version(spec, client, hangar_platform, spec.version)
+            version_data = await self._get_version(spec, client, hangar_platform)
+            if hangar_platform not in version_data["downloads"]:
+                raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])
+            if not supports_mc_version(version_data):
+                raise self._version_not_supported(spec, mc_version)
 
-        supported_platform_versions = version_data.get("platformDependencies", {}).get(hangar_platform, [])
-        if not spec.force and not any(is_same_semver(mc_version, v) for v in supported_platform_versions):
-            raise self._version_not_supported(spec, mc_version)
-
-        platform_dl = version_data["downloads"][hangar_platform]
-        file_info = platform_dl["fileInfo"]
-
-        if file_info is None:
-            raise RuntimeError(f"No file info found for {spec.identifier} on {hangar_platform}")
+        download = version_data["downloads"][hangar_platform]
+        file_info = download["fileInfo"]
+        if file_info is None or not download["downloadUrl"]:
+            external = download.get("externalUrl")
+            raise RuntimeError(
+                f"Plugin {spec.identifier} is hosted externally and cannot be downloaded automatically"
+                + (f": {external}" if external else "")
+            )
 
         return ResolvedPlugin(
-            display_name=spec.identifier,
+            display_name=project["name"],
             version=version_data["name"],
-            download_url=str(platform_dl.get("downloadUrl") or ""),
+            download_url=download["downloadUrl"],
             filename=file_info["name"],
             sha256=file_info["sha256Hash"],
         )
 
-    async def download(
-        self,
-        resolved: ResolvedPlugin,
-        dest: Path,
-        client: httpx.AsyncClient,
-    ) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url) as resp:
-            resp.raise_for_status()
-            sha = hashlib.sha256()
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
-                    sha.update(chunk)
 
-        if resolved.sha256 and sha.hexdigest() != resolved.sha256:
-            target.unlink()
-            raise RuntimeError(f"SHA-256 mismatch for {resolved.filename}")
-
-        return target
-
-
-class NamespaceDict(TypedDict):
+class HangarNamespace(TypedDict):
     owner: str
     slug: str
 
 
-class StatsDict(TypedDict):
+class HangarStats(TypedDict):
     views: int
     downloads: int
     recentViews: int
@@ -160,75 +129,75 @@ class StatsDict(TypedDict):
     watchers: int
 
 
-class UserActionsDict(TypedDict):
+class HangarUserActions(TypedDict):
     starred: bool
     watching: bool
     flagged: bool
 
 
-class SubLinkDict(TypedDict):
+class HangarLink(TypedDict):
     id: int
     name: str
     url: str
 
 
-class LinkGroupDict(TypedDict):
+class HangarLinkGroup(TypedDict):
     id: int
     type: str
     title: str
-    links: list[SubLinkDict]
+    links: list[HangarLink]
 
 
-class LicenseDict(TypedDict):
+class HangarLicense(TypedDict):
     name: str
     url: str
     type: str
 
 
-class DonationDict(TypedDict):
+class HangarDonation(TypedDict):
     subject: str
     enable: bool
 
 
-class SettingsDict(TypedDict):
-    links: list[LinkGroupDict]
+class HangarProjectSettings(TypedDict):
+    links: list[HangarLinkGroup]
     tags: list[str]
-    license: LicenseDict
+    license: HangarLicense
     keywords: list[str]
     sponsors: str
-    donation: DonationDict
+    donation: HangarDonation
 
 
-class HangarProjectResponse(TypedDict):
+class HangarProject(TypedDict):
     createdAt: str
     id: int
     name: str
-    namespace: NamespaceDict
-    stats: StatsDict
+    namespace: HangarNamespace
+    stats: HangarStats
     category: str
     description: str
     lastUpdated: str
     visibility: str
-    userActions: UserActionsDict
-    settings: SettingsDict
+    userActions: HangarUserActions
+    settings: HangarProjectSettings
     supportedPlatforms: dict[str, list[str]]
     mainPageContent: str | None
     memberNames: list[str] | None
     avatarUrl: str
 
 
-class PaginationDict(TypedDict):
+class HangarPagination(TypedDict):
     count: int
     limit: int
     offset: int
 
 
-class VersionStatsDict(TypedDict):
+class HangarVersionStats(TypedDict):
     totalDownloads: int
     platformDownloads: dict[str, int]
 
 
-class ChannelDict(TypedDict):
+class HangarChannel(TypedDict):
     createdAt: str
     name: str
     description: str
@@ -236,19 +205,19 @@ class ChannelDict(TypedDict):
     flags: list[str]
 
 
-class FileInfoDto(TypedDict):
+class HangarFileInfo(TypedDict):
     name: str
     sizeBytes: int
     sha256Hash: str
 
 
-class DownloadEntryDict(TypedDict):
-    fileInfo: FileInfoDto | None
+class HangarDownload(TypedDict):
+    fileInfo: HangarFileInfo | None
     externalUrl: str | None
     downloadUrl: str | None
 
 
-class PluginDependencyDict(TypedDict):
+class HangarPluginDependency(TypedDict):
     name: str
     projectId: int | None
     required: bool
@@ -256,28 +225,28 @@ class PluginDependencyDict(TypedDict):
     platform: str
 
 
-class VersionDict(TypedDict):
+class HangarVersion(TypedDict):
     createdAt: str
     id: int
     projectId: int
     name: str
     visibility: str
     description: str
-    stats: VersionStatsDict
+    stats: HangarVersionStats
     author: str
     reviewState: str
-    channel: ChannelDict
+    channel: HangarChannel
     pinnedStatus: str
-    # Maps platform name (e.g., "PAPER") to its download info
-    downloads: dict[str, DownloadEntryDict]
-    # Maps platform name to a list of dependencies
-    pluginDependencies: dict[str, list[PluginDependencyDict]]
-    # Maps platform name to a list of supported versions (e.g., ["1.21"])
+    # Platform name (e.g. "PAPER") -> download info
+    downloads: dict[str, HangarDownload]
+    # Platform name -> dependencies
+    pluginDependencies: dict[str, list[HangarPluginDependency]]
+    # Platform name -> supported Minecraft versions, e.g. {"PAPER": ["1.21", "1.21.1"]}
     platformDependencies: dict[str, list[str]]
     platformDependenciesFormatted: dict[str, list[str]]
     memberNames: list[str]
 
 
-class HangarVersionResponse(TypedDict):
-    pagination: PaginationDict
-    result: list[VersionDict]
+class HangarVersionPage(TypedDict):
+    pagination: HangarPagination
+    result: list[HangarVersion]

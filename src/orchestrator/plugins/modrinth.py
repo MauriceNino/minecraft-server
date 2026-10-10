@@ -1,78 +1,34 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
 from typing import TypedDict, cast
 
 import httpx
 
-from orchestrator.constants import MODRINTH_PLATFORM_TAGS, PROXY_PLATFORMS, USER_AGENT, PlatformType
+from orchestrator.constants import MODRINTH_PLATFORM_TAGS, PROXY_PLATFORMS, PlatformType
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.modrinth.com/v2"
 
 
 class ModrinthProvider(AbstractPluginProvider):
-    async def _get_plugin_info(self, spec: PluginSpec, client: httpx.AsyncClient) -> ModrinthProjectDict:
-        resp = await client.get(
-            f"{API_BASE}/project/{spec.identifier}",
-            headers={"User-Agent": USER_AGENT},
-        )
+    async def _get_project(self, spec: PluginSpec, client: httpx.AsyncClient) -> ModrinthProject:
+        resp = await client.get(f"{API_BASE}/project/{spec.identifier}")
         resp.raise_for_status()
-        return cast(ModrinthProjectDict, resp.json())
+        return cast(ModrinthProject, resp.json())
 
-    async def _get_plugin_versions(self, spec: PluginSpec, client: httpx.AsyncClient) -> ModrinthVersionList:
-        resp = await client.get(
-            f"{API_BASE}/project/{spec.identifier}/version",
-            headers={"User-Agent": USER_AGENT},
-        )
+    async def _get_versions(self, spec: PluginSpec, client: httpx.AsyncClient) -> list[ModrinthVersion]:
+        # Newest first
+        resp = await client.get(f"{API_BASE}/project/{spec.identifier}/version")
         resp.raise_for_status()
-        return cast(ModrinthVersionList, resp.json())
+        return cast(list[ModrinthVersion], resp.json())
 
-    async def _get_plugin_version(
-        self, spec: PluginSpec, client: httpx.AsyncClient, version: str, platforms: list[str]
-    ) -> ModrinthVersionDict:
-        # We need to find the version that matches the spec.version and the platforms so
-        # we cant simply use the direct /version/{version} endpoint
-        versions = await self._get_plugin_versions(spec, client)
-        possible_matches = [
-            v
-            for v in versions
-            if v.get("version_number") == version and any(platform in v.get("loaders", []) for platform in platforms)
-        ]
-
-        if len(possible_matches) == 0:
-            raise self._version_could_not_be_found_for_platform(spec, platforms)
-
+    @staticmethod
+    def _pick_by_platform_preference(candidates: list[ModrinthVersion], platforms: list[str]) -> ModrinthVersion | None:
         for platform in platforms:
-            for p_match in possible_matches:
-                if platform in p_match.get("loaders", []):
-                    return p_match
-
-        raise self._version_could_not_be_found_for_platform(spec, platforms)
-
-    async def _get_first_plugin_version_by_channel(
-        self,
-        spec: PluginSpec,
-        client: httpx.AsyncClient,
-        platforms: list[str],
-        channel_names: list[str],
-    ) -> ModrinthVersionDict:
-        versions = await self._get_plugin_versions(spec, client)
-
-        version_data = None
-        for platform in platforms:
-            version_data = next(
-                (v for v in versions if v.get("version_type") in channel_names and platform in v.get("loaders", [])),
-                None,
-            )
-            if version_data:
-                break
-
-        if not version_data:
-            raise self._version_could_not_be_found_for_platform(spec, platforms)
-
-        return version_data
+            for version in candidates:
+                if platform in version["loaders"]:
+                    return version
+        return None
 
     async def resolve(
         self,
@@ -82,82 +38,57 @@ class ModrinthProvider(AbstractPluginProvider):
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
         custom_platform = spec.param("platform")
-        modrinth_platforms = (
-            [custom_platform.lower()] if custom_platform else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
-        )
+        platforms = [custom_platform.lower()] if custom_platform else MODRINTH_PLATFORM_TAGS.get(platform_type, [])
 
-        project_info = await self._get_plugin_info(spec, client)
+        project = await self._get_project(spec, client)
+        if not spec.force and not any(p in project["loaders"] for p in platforms):
+            raise self._platform_not_supported(spec, platforms)
 
-        # Make sure platform is supported
-        if not spec.force and not any(platform in project_info.get("loaders", []) for platform in modrinth_platforms):
-            raise self._platform_not_supported(spec, modrinth_platforms)
+        check_mc_version = not spec.force and platform_type not in PROXY_PLATFORMS
+        versions = await self._get_versions(spec, client)
 
-        # Iterate through versions to find one that matches the spec
         if spec.version in ("latest", "experimental"):
-            channel_names = ["release"] if spec.version == "latest" else ["beta", "alpha"]
-            version_data = await self._get_first_plugin_version_by_channel(
-                spec, client, modrinth_platforms, channel_names
-            )
+            channels = ["release"] if spec.version == "latest" else ["beta", "alpha"]
+            in_channel = [v for v in versions if v["version_type"] in channels]
+            if not self._pick_by_platform_preference(in_channel, platforms):
+                raise self._version_could_not_be_found_for_platform(spec, platforms)
 
-            if not version_data:
-                raise self._version_could_not_be_found_for_platform(spec, modrinth_platforms)
-
-        # Just load the specific version
+            if check_mc_version:
+                in_channel = [v for v in in_channel if mc_version in v["game_versions"]]
+            version = self._pick_by_platform_preference(in_channel, platforms)
+            if version is None:
+                raise self._version_not_supported(spec, mc_version)
         else:
-            version_data = await self._get_plugin_version(spec, client, spec.version, modrinth_platforms)
+            matching = [v for v in versions if spec.version in (v["version_number"], v["id"])]
+            version = self._pick_by_platform_preference(matching, platforms)
+            if version is None:
+                raise self._version_could_not_be_found_for_platform(spec, platforms)
+            if check_mc_version and mc_version not in version["game_versions"]:
+                raise self._version_not_supported(spec, mc_version)
 
-        if (
-            not spec.force
-            and platform_type not in PROXY_PLATFORMS
-            and mc_version not in version_data.get("game_versions", [])
-        ):
-            raise self._version_not_supported(spec, mc_version)
-
-        version_file = version_data["files"][0]
-
+        file = next((f for f in version["files"] if f["primary"]), version["files"][0])
         return ResolvedPlugin(
-            display_name=project_info["title"],
-            version=version_data["version_number"],
-            download_url=version_file["url"],
-            filename=version_file["filename"],
-            sha512=version_file["hashes"]["sha512"],
+            display_name=project["title"],
+            version=version["version_number"],
+            download_url=file["url"],
+            filename=file["filename"],
+            sha512=file["hashes"].get("sha512"),
         )
 
-    async def download(
-        self,
-        resolved: ResolvedPlugin,
-        dest: Path,
-        client: httpx.AsyncClient,
-    ) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url) as resp:
-            resp.raise_for_status()
-            sha = hashlib.sha512()
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
-                    sha.update(chunk)
 
-        if resolved.sha512 and sha.hexdigest() != resolved.sha512:
-            target.unlink()
-            raise RuntimeError(f"SHA-512 mismatch for {resolved.filename}")
-
-        return target
-
-
-class LicenseDict(TypedDict):
+class ModrinthLicense(TypedDict):
     id: str
     name: str
     url: str | None
 
 
-class DonationUrlDict(TypedDict):
+class ModrinthDonationUrl(TypedDict):
     id: str
     platform: str
     url: str
 
 
-class GalleryEntryDict(TypedDict):
+class ModrinthGalleryEntry(TypedDict):
     url: str
     featured: bool
     title: str | None
@@ -165,7 +96,7 @@ class GalleryEntryDict(TypedDict):
     created: str
 
 
-class ModrinthProjectDict(TypedDict):
+class ModrinthProject(TypedDict):
     id: str
     slug: str
     project_type: str
@@ -182,7 +113,7 @@ class ModrinthProjectDict(TypedDict):
     status: str
     requested_status: str | None
     moderator_message: str | None
-    license: LicenseDict
+    license: ModrinthLicense
     client_side: str
     server_side: str
     game_versions: list[str]
@@ -197,21 +128,21 @@ class ModrinthProjectDict(TypedDict):
     source_url: str
     wiki_url: str
     discord_url: str
-    donation_urls: list[DonationUrlDict]
-    gallery: list[GalleryEntryDict]
+    donation_urls: list[ModrinthDonationUrl]
+    gallery: list[ModrinthGalleryEntry]
     color: int
     thread_id: str
     monetization_status: str
 
 
-class HashesDict(TypedDict):
+class ModrinthHashes(TypedDict):
     sha1: str
     sha512: str
 
 
-class FileDict(TypedDict):
+class ModrinthFile(TypedDict):
     id: str
-    hashes: HashesDict
+    hashes: ModrinthHashes
     url: str
     filename: str
     primary: bool
@@ -219,14 +150,14 @@ class FileDict(TypedDict):
     file_type: str | None
 
 
-class DependencyDict(TypedDict):
+class ModrinthDependency(TypedDict):
     version_id: str | None
     project_id: str
     file_name: str | None
     dependency_type: str
 
 
-class ModrinthVersionDict(TypedDict):
+class ModrinthVersion(TypedDict):
     id: str
     project_id: str
     author_id: str
@@ -240,10 +171,7 @@ class ModrinthVersionDict(TypedDict):
     version_type: str
     status: str
     requested_status: str | None
-    files: list[FileDict]
-    dependencies: list[DependencyDict]
+    files: list[ModrinthFile]
+    dependencies: list[ModrinthDependency]
     game_versions: list[str]
     loaders: list[str]
-
-
-ModrinthVersionList = list[ModrinthVersionDict]

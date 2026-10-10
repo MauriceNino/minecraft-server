@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import tempfile
-from collections.abc import Callable, Coroutine
+from collections.abc import Coroutine
 from typing import Any
 
 import click
@@ -55,8 +55,8 @@ def _accept_eula(config: Config) -> None:
 
 
 def _check_permissions(config: Config) -> None:
-    """Verify that the orchestrator has write access to the data directory."""
     try:
+        config.runtime_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=config.runtime_dir, prefix=".perm_test_"):
             pass
     except OSError:
@@ -68,16 +68,15 @@ def _check_permissions(config: Config) -> None:
             "  This usually occurs when Docker bind mounts create directories owned by root.\n"
             "\n"
             "  [bold]To fix this, run the following command on your host:[/bold]\n"
-            f"    sudo chown -R 1000:1000 /path/to/your/data"
+            "    sudo chown -R 1000:1000 /path/to/your/data"
         )
         console.print()
         sys.exit(1)
 
 
-def _run_async(coro_factory: Callable[[], Coroutine[Any, Any, None]], error_context: str) -> None:
-    """Run an async entry-point with standardised error handling."""
+def _run_async(coro: Coroutine[Any, Any, None], error_context: str) -> None:
     try:
-        asyncio.run(coro_factory())
+        asyncio.run(coro)
     except KeyboardInterrupt:
         console.print("  [error]✗ Interrupted — shutting down[/error]")
         sys.exit(130)
@@ -88,9 +87,19 @@ def _run_async(coro_factory: Callable[[], Coroutine[Any, Any, None]], error_cont
         sys.exit(1)
 
 
+def _apply_templates_and_overrides(config: Config) -> None:
+    if config.applied_templates:
+        orchestrate_templates(
+            templates_dir=config.templates_dir,
+            runtime_dir=config.runtime_dir,
+            applied_templates=config.applied_templates,
+        )
+    if config.config_overrides:
+        apply_config_overrides(config.config_overrides, config.runtime_dir)
+
+
 async def _async_main() -> None:
     config = load_config()
-    lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
     setup_logging(verbose=config.verbose)
 
     console.print()
@@ -104,6 +113,7 @@ async def _async_main() -> None:
     )
     console.print()
     _check_permissions(config)
+    lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
 
     log_phase("Platform JAR")
     resolved_version = await resolve_platform(
@@ -115,22 +125,15 @@ async def _async_main() -> None:
     server_executable = await download_platform(
         runtime_dir=config.runtime_dir,
         platform_type=config.platform,
-        resolved_version=resolved_version,
+        resolved=resolved_version,
         lockfile=lockfile,
     )
 
     if config.applied_templates or config.config_overrides:
         log_phase("Templates & Configs")
-        if config.applied_templates:
-            orchestrate_templates(
-                templates_dir=config.templates_dir,
-                runtime_dir=config.runtime_dir,
-                applied_templates=config.applied_templates,
-            )
-        if config.config_overrides:
-            apply_config_overrides(config.config_overrides, config.runtime_dir)
+        _apply_templates_and_overrides(config)
 
-    if (len(config.plugin_specs) > 0 or len(lockfile.plugins.keys()) > 0) and config.platform in PLUGIN_PLATFORMS:
+    if (config.plugin_specs or lockfile.plugins) and config.platform in PLUGIN_PLATFORMS:
         log_phase("Plugins")
         await download_plugins(
             plugin_specs=config.plugin_specs,
@@ -168,22 +171,15 @@ async def _async_main() -> None:
 
 async def _async_reapply() -> None:
     config = load_config()
-    _check_permissions(config)
     setup_logging(verbose=config.verbose)
+    _check_permissions(config)
 
     if not config.applied_templates and not config.config_overrides:
         console.print("[yellow]No templates or config overrides configured.[/yellow]")
         return
 
     log_phase("Reapplying Templates & Configs")
-    if config.applied_templates:
-        orchestrate_templates(
-            templates_dir=config.templates_dir,
-            runtime_dir=config.runtime_dir,
-            applied_templates=config.applied_templates,
-        )
-    if config.config_overrides:
-        apply_config_overrides(config.config_overrides, config.runtime_dir)
+    _apply_templates_and_overrides(config)
 
     console.print()
     console.print("  [success]✓[/success] Successfully reapplied templates and configs!")
@@ -197,13 +193,26 @@ async def _async_check_updates() -> None:
 
 async def _async_update(target_plugin: str | None = None) -> None:
     config = load_config()
-    lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
     setup_logging(verbose=config.verbose)
+
+    if config.platform not in PLUGIN_PLATFORMS:
+        console.print(f"[yellow]{config.platform.value} does not support plugins.[/yellow]")
+        return
+
+    if target_plugin and not any(make_lock_key(s.provider, s.identifier) == target_plugin for s in config.plugin_specs):
+        console.print(
+            f"  [error]✗ Plugin '{target_plugin}' not found in configuration."
+            f" Use a valid lock-key (e.g. [info]modrinth:luckperms[/info])[/error]"
+        )
+        sys.exit(1)
+
+    _check_permissions(config)
+    lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
 
     log_header("⚡ Updating Plugins")
     console.print()
 
-    # We need the platform version for compatibility checks
+    # The Minecraft version is needed for compatibility checks
     log_phase("Platform JAR")
     resolved_version = await resolve_platform(
         platform_type=config.platform,
@@ -211,58 +220,51 @@ async def _async_update(target_plugin: str | None = None) -> None:
         build=config.build,
     )
 
-    if config.platform in PLUGIN_PLATFORMS:
-        log_phase("Plugins")
-        if target_plugin and not any(
-            make_lock_key(s.provider, s.identifier) == target_plugin for s in config.plugin_specs
-        ):
-            console.print()
-            console.print(
-                f"  [error]✗ Plugin '{target_plugin}' not found in configuration."
-                f" Use a valid lock-key (e.g. [info]modrinth:luckperms[/info])[/error]"
-            )
-            sys.exit(1)
-
-        await download_plugins(
-            plugin_specs=config.plugin_specs,
-            platform_type=config.platform,
-            mc_version=resolved_version.version,
-            plugins_dir=config.plugins_dir,
-            lockfile=lockfile,
-            # Ignoring errors during update command
-            strategy=PluginUpdateStrategy.AUTO,
-            check_cache_seconds=0,
-            target_plugin=target_plugin,
-        )
+    log_phase("Plugins")
+    failures = await download_plugins(
+        plugin_specs=config.plugin_specs,
+        platform_type=config.platform,
+        mc_version=resolved_version.version,
+        plugins_dir=config.plugins_dir,
+        lockfile=lockfile,
+        # Update every plugin that can be updated, even if others fail
+        strategy=PluginUpdateStrategy.AUTO,
+        check_cache_seconds=0,
+        target_plugin=target_plugin,
+    )
 
     console.print()
+    if failures:
+        console.print(f"  [error]✗ {len(failures)} plugin(s) could not be updated[/error]")
+        sys.exit(1)
     console.print("  [success]✓[/success] Successfully updated plugins!")
 
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
+    """Prepare the server and start it. Subcommands are meant to be run inside a running container."""
     if ctx.invoked_subcommand is None:
-        _run_async(_async_main, "orchestration")
+        _run_async(_async_main(), "orchestration")
 
 
 @cli.command("reapply")
 def reapply_cmd() -> None:
-    _run_async(_async_reapply, "reapply")
+    """Re-apply templates and CONFIG_* overrides to the runtime directory."""
+    _run_async(_async_reapply(), "reapply")
 
 
 @cli.command("check-updates")
 def check_updates_cmd() -> None:
-    _run_async(_async_check_updates, "check-updates")
+    """Show which plugins have updates available."""
+    _run_async(_async_check_updates(), "check-updates")
 
 
 @cli.command("update")
 @click.option("--plugin", "-p", help="Update a single plugin by its lockfile entry (e.g. modrinth:luckperms)")
 def update_cmd(plugin: str | None) -> None:
-    async def run_update() -> None:
-        await _async_update(plugin)
-
-    _run_async(run_update, "update")
+    """Download plugin updates. Restart the server afterwards to load them."""
+    _run_async(_async_update(plugin), "update")
 
 
 def main() -> None:

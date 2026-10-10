@@ -3,13 +3,8 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-import httpx
 
-
-# Platform types
 class PlatformType(StrEnum):
-    """Supported Minecraft server / proxy platform types."""
-
     PAPER = "PAPER"
     FOLIA = "FOLIA"
     VELOCITY = "VELOCITY"
@@ -21,10 +16,7 @@ class PlatformType(StrEnum):
     PURPUR = "PURPUR"
 
 
-# Plugin provider types
 class PluginProviderType(StrEnum):
-    """Supported Minecraft plugin provider types."""
-
     MODRINTH = "modrinth"
     HANGAR = "hangar"
     SPIGET = "spiget"
@@ -34,8 +26,6 @@ class PluginProviderType(StrEnum):
 
 
 class PluginUpdateStrategy(StrEnum):
-    """Strategies for handling plugin updates on startup."""
-
     FORCE = "force"
     AUTO = "auto"
     MANUAL = "manual"
@@ -71,20 +61,9 @@ BUKKIT_BASED_PLATFORMS = frozenset(
     }
 )
 
-PLUGIN_PLATFORMS = frozenset(
-    {
-        PlatformType.PAPER,
-        PlatformType.FOLIA,
-        PlatformType.VELOCITY,
-        PlatformType.WATERFALL,
-        PlatformType.SPIGOT,
-        PlatformType.BUKKIT,
-        PlatformType.PUMPKIN,
-        PlatformType.PURPUR,
-    }
-)
+PLUGIN_PLATFORMS = BUKKIT_BASED_PLATFORMS | PROXY_PLATFORMS
 
-# Loader tags used by Modrinth to filter compatible versions
+# Loader tags used by Modrinth to filter compatible versions, in order of preference
 MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PAPER: ["paper", "spigot", "bukkit"],
     PlatformType.FOLIA: ["folia"],
@@ -96,7 +75,7 @@ MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.PURPUR: ["purpur", "paper", "spigot", "bukkit"],
 }
 
-# Hangar uses its own platform enum
+# Hangar only knows PAPER, VELOCITY and WATERFALL
 HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.PAPER: "PAPER",
     PlatformType.FOLIA: "PAPER",
@@ -105,44 +84,16 @@ HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.WATERFALL: "WATERFALL",
 }
 
-
-# Directory layout (inside the container / working directory)
 DEFAULT_DATA_DIR = Path("/data")
-
 TEMPLATES_SUBDIR = "templates"
 RUNTIME_SUBDIR = "runtime"
-PLUGINS_SUBDIR = "plugins"
-CACHE_SUBDIR = ".cache"
 
 SERVER_LOCK_FILENAME = "server-lock.json"
 # Written next to the server files so `mc-rcon` can connect when RCON_PASSWORD was auto-generated
 RCON_PASSWORD_FILENAME = ".rcon-password"  # noqa: S105
 
-# Config file extensions that can be deep-merged
-MERGEABLE_EXTENSIONS: frozenset[str] = frozenset(
-    {
-        ".yml",
-        ".yaml",
-        ".json",
-        ".toml",
-        ".properties",
-        ".conf",
-    }
-)
-
-# User-Agent for HTTP requests
 USER_AGENT = "MauriceNino/minecraft-server/1.0 (https://github.com/MauriceNino/minecraft-server)"
 
-
-# RCON Bridge Plugins for Proxies
+# RCON bridge plugins for proxies
 VELOCIRCON_URL = "https://github.com/code-lime/Velocircon/releases/download/1.0.7/Velocircon-1.0.7.jar"
 BUNGEE_RCON_URL = "https://github.com/orblazer/bungee-rcon/releases/download/v1.0.0/bungee-rcon-1.0.0.jar"
-
-
-def create_http_client(*, timeout: float = 60.0, connect_timeout: float = 15.0) -> httpx.AsyncClient:
-    """Create a pre-configured async HTTP client with shared defaults."""
-    return httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=httpx.Timeout(timeout, connect=connect_timeout),
-        headers={"User-Agent": USER_AGENT},
-    )

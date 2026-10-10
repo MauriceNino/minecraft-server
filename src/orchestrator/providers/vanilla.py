@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import httpx
 
@@ -11,72 +9,47 @@ from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersio
 MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 
 
+async def fetch_version_manifest(client: httpx.AsyncClient) -> VersionManifest:
+    resp = await client.get(MANIFEST_URL)
+    resp.raise_for_status()
+    return cast(VersionManifest, resp.json())
+
+
 class VanillaProvider(AbstractPlatformProvider):
-    async def resolve_version(
-        self,
-        version: str,
-        build: str,
-        client: httpx.AsyncClient,
-    ) -> ResolvedVersion:
-        resp = await client.get(MANIFEST_URL)
+    async def resolve_version(self, version: str, build: str, client: httpx.AsyncClient) -> ResolvedVersion:
+        manifest = await fetch_version_manifest(client)
+
+        if version == "latest":
+            version = manifest["latest"]["release"]
+        elif version == "experimental":
+            version = manifest["latest"]["snapshot"]
+
+        entry = next((v for v in manifest["versions"] if v["id"] == version), None)
+        if entry is None:
+            raise RuntimeError(f"Vanilla version {version} not found")
+
+        resp = await client.get(entry["url"])
         resp.raise_for_status()
-        manifest: MinecraftVersionManifest = resp.json()
-
-        latest_release = manifest["latest"]["release"]
-        latest_snapshot = manifest["latest"]["snapshot"]
-
-        target_version = version
-        if target_version == "latest":
-            target_version = latest_release
-        elif target_version == "experimental":
-            target_version = latest_snapshot
-
-        # Find version info
-        version_entry = next((v for v in manifest["versions"] if v["id"] == target_version), None)
-        if not version_entry:
-            raise RuntimeError(f"Vanilla version {target_version} not found")
-
-        # Fetch version-specific metadata
-        v_resp = await client.get(version_entry["url"])
-        v_resp.raise_for_status()
-        data: MinecraftVersionProfile = v_resp.json()
-
-        server_download = data["downloads"].get("server")
+        server_download = cast(VersionProfile, resp.json())["downloads"].get("server")
         if not server_download:
-            raise RuntimeError(f"No server download found for Vanilla {target_version}")
+            raise RuntimeError(f"No server download found for Vanilla {version}")
 
         return ResolvedVersion(
             project="vanilla",
-            version=target_version,
-            build="1",  # Vanilla doesn't have builds
+            version=version,
+            build="1",  # Vanilla has no builds
             download_url=server_download["url"],
-            filename=f"vanilla-{target_version}.jar",
+            filename=f"vanilla-{version}.jar",
             sha1=server_download["sha1"],
         )
 
-    async def download(self, resolved: ResolvedVersion, dest: Path, client: httpx.AsyncClient) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url) as resp:
-            resp.raise_for_status()
-            sha = hashlib.sha1()  # noqa: S324
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
-                    sha.update(chunk)
 
-        if resolved.sha1 and sha.hexdigest() != resolved.sha1:
-            target.unlink()
-            raise RuntimeError(f"SHA-1 mismatch for {resolved.filename}")
-
-        return target
-
-
-class MinecraftLatest(TypedDict):
+class LatestVersions(TypedDict):
     release: str
     snapshot: str
 
 
-class MinecraftVersion(TypedDict):
+class ManifestEntry(TypedDict):
     id: str
     type: str
     url: str
@@ -86,33 +59,33 @@ class MinecraftVersion(TypedDict):
     complianceLevel: int
 
 
-class MinecraftVersionManifest(TypedDict):
-    latest: MinecraftLatest
-    versions: list[MinecraftVersion]
+class VersionManifest(TypedDict):
+    latest: LatestVersions
+    versions: list[ManifestEntry]
 
 
-class MinecraftJavaVersion(TypedDict):
+class JavaVersion(TypedDict):
     component: str
     majorVersion: int
 
 
-class DownloadInfo(TypedDict):
+class ProfileDownload(TypedDict):
     sha1: str
     size: int
     url: str
 
 
-class MinecraftRootDownloads(TypedDict):
-    client: DownloadInfo
-    server: DownloadInfo
+class ProfileDownloads(TypedDict):
+    client: ProfileDownload
+    server: ProfileDownload
 
 
-class MinecraftVersionProfile(TypedDict):
+class VersionProfile(TypedDict):
     assets: str
     complianceLevel: int
-    downloads: MinecraftRootDownloads
+    downloads: ProfileDownloads
     id: str
-    javaVersion: MinecraftJavaVersion
+    javaVersion: JavaVersion
     mainClass: str
     minimumLauncherVersion: int
     releaseTime: str

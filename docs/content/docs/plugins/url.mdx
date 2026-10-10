@@ -24,9 +24,10 @@ The orchestrator determines the local filename in the following order:
 
 ## Caching
 
-URLs are cached based on:
+To detect updates, the orchestrator sends a `HEAD` request (or a `GET` if the host doesn't allow `HEAD`) and uses:
 
-- **ETag:** If the server provides an ETag, it is stored in the `server-lock.json`.
-- **Last-Modified:** If the server provides a modification date, it is used to check for updates.
+- **Last-Modified:** the modification date becomes the plugin's version.
+- **ETag:** used as the version if there is no modification date.
 
-If neither is provided, the plugin may be re-downloaded more frequently to ensure it is up-to-date.
+If the server sends neither, updates can't be detected and the file is only downloaded once. Remove and re-add the
+line in `PLUGINS` (or run `mc-orchestrator update`) to force a new download.

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
-from orchestrator.constants import PlatformType, create_http_client
+from orchestrator.constants import PlatformType
+from orchestrator.http import create_http_client
 from orchestrator.lockfile import ServerLockfile
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
@@ -12,9 +15,9 @@ from orchestrator.providers.purpur import PurpurProvider
 from orchestrator.providers.spigotmc import GetBukkitProvider
 from orchestrator.providers.vanilla import VanillaProvider
 
-__all__ = ["download_platform", "get_platform_provider", "resolve_platform"]
+__all__ = ["PROVIDERS", "download_platform", "resolve_platform"]
 
-_PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
+PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.PAPER: PaperProvider(project="paper"),
     PlatformType.FOLIA: PaperProvider(project="folia"),
     PlatformType.VELOCITY: PaperProvider(project="velocity"),
@@ -27,60 +30,48 @@ _PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
 }
 
 
-def get_platform_provider(platform: PlatformType) -> AbstractPlatformProvider:
-    """Return the concrete provider for *platform*."""
-    try:
-        return _PROVIDERS[platform]
-    except KeyError:
-        msg = f"No provider registered for platform {platform.value!r}"
-        raise ValueError(msg) from None
-
-
 async def resolve_platform(platform_type: PlatformType, version: str, build: str) -> ResolvedVersion:
-    provider = get_platform_provider(platform_type)
-
     async with create_http_client() as client:
-        resolved_version = await provider.resolve_version(version, build, client)
-        console.print(
-            f"  [success]✓[/success] Resolved [label]{resolved_version.version}[/label] "
-            f"(build {resolved_version.build})"
-        )
-        return resolved_version
+        resolved = await PROVIDERS[platform_type].resolve_version(version, build, client)
+
+    console.print(f"  [success]✓[/success] Resolved [label]{resolved.version}[/label] (build {resolved.build})")
+    return resolved
 
 
 async def download_platform(
     runtime_dir: Path,
     platform_type: PlatformType,
-    resolved_version: ResolvedVersion,
+    resolved: ResolvedVersion,
     lockfile: ServerLockfile,
 ) -> Path:
-    provider = get_platform_provider(platform_type)
+    """Make sure the server executable for *resolved* is in *runtime_dir* and return its path."""
     runtime_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
+    jar_path = runtime_dir / resolved.filename
 
-    jar_path = runtime_dir / resolved_version.filename
+    if jar_path.is_file() and not lockfile.needs_server_update(resolved.project, resolved.version, resolved.build):
+        console.print(
+            f"  [cached]✓[/cached] [label]{resolved.filename}[/label]  "
+            f"[dim]no changes[/dim] [cached]{resolved.version}[/cached]"
+        )
+        return jar_path
 
+    provider = PROVIDERS[platform_type]
     async with create_http_client() as client:
-        if lockfile.needs_server_update(resolved_version.version, str(resolved_version.build)):
-            if lockfile.server:
-                old_jar = runtime_dir / lockfile.server.filename
-                if old_jar.exists():
-                    old_jar.unlink()
+        # Only touch the old executable once the new one has been downloaded and verified
+        with tempfile.TemporaryDirectory(dir=runtime_dir, prefix=".dl_") as tmp_dir:
+            downloaded = await provider.download(resolved, Path(tmp_dir), client)
+            os.replace(downloaded, jar_path)
+        await provider.install_extras(runtime_dir, client)
 
-            await provider.download(resolved_version, runtime_dir, client)
-            console.print(f"  [success]✓[/success] Downloaded [label]{resolved_version.filename}[/label]")
+    if lockfile.server and lockfile.server.filename != resolved.filename:
+        (runtime_dir / lockfile.server.filename).unlink(missing_ok=True)
 
-            lockfile.update_server(
-                project=resolved_version.project,
-                version=resolved_version.version,
-                build=str(resolved_version.build),
-                filename=resolved_version.filename,
-                file_path=jar_path,
-            )
-            lockfile.save()
-        else:
-            console.print(
-                f"  [cached]✓[/cached] [label]{resolved_version.filename}[/label]  "
-                f"[dim]no changes[/dim] [cached]{resolved_version.version}[/cached]"
-            )
-
+    console.print(f"  [success]✓[/success] Downloaded [label]{resolved.filename}[/label]")
+    lockfile.update_server(
+        project=resolved.project,
+        version=resolved.version,
+        build=resolved.build,
+        file_path=jar_path,
+    )
+    lockfile.save()
     return jar_path

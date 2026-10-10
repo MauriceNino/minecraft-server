@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
 from typing import TypedDict, cast
 
 import httpx
@@ -12,116 +10,86 @@ API_BASE = "https://fill.papermc.io/v3/projects"
 
 
 class PaperProvider(AbstractPlatformProvider):
-    def __init__(self, project: str = "paper") -> None:
+    """Paper, Folia, Velocity and Waterfall, all served by the PaperMC Fill API."""
+
+    def __init__(self, project: str) -> None:
         self._project = project
 
     async def _resolve_latest_version(self, client: httpx.AsyncClient, allow_snapshots: bool) -> str:
         resp = await client.get(f"{API_BASE}/{self._project}")
         resp.raise_for_status()
         data = cast(PaperProject, resp.json())
-        versions = [v for sublist in data["versions"].values() for v in sublist]
+        # Grouped by major version, newest first: {"1.21": ["1.21.4", "1.21.3", ...], ...}
+        versions = [v for group in data["versions"].values() for v in group]
 
-        if allow_snapshots:
-            return versions[0]
-        else:
-            for version in versions:
-                if not version.endswith("-SNAPSHOT"):
-                    return version
-            raise RuntimeError(f"No stable {self._project} versions found")
+        for version in versions:
+            if allow_snapshots or not version.endswith("-SNAPSHOT"):
+                return version
+        raise RuntimeError(f"No stable {self._project} versions found")
 
     async def _resolve_latest_build(
         self, client: httpx.AsyncClient, version: str, allowed_channels: list[str]
-    ) -> PaperBuildVersion:
+    ) -> PaperBuild:
         resp = await client.get(f"{API_BASE}/{self._project}/versions/{version}/builds")
         resp.raise_for_status()
-        data = cast(PaperBuildVersionList, resp.json())
 
-        for build in data:
-            if build.get("channel") in allowed_channels:
+        for build in cast(list[PaperBuild], resp.json()):
+            if build["channel"] in allowed_channels:
                 return build
-
         raise RuntimeError(f"No builds found for {self._project} {version} in channels {allowed_channels}")
 
-    async def _load_build_data(self, client: httpx.AsyncClient, version: str, build: str) -> PaperBuildVersion:
+    async def _load_build(self, client: httpx.AsyncClient, version: str, build: str) -> PaperBuild:
         resp = await client.get(f"{API_BASE}/{self._project}/versions/{version}/builds/{build}")
         resp.raise_for_status()
-        return cast(PaperBuildVersion, resp.json())
+        return cast(PaperBuild, resp.json())
 
-    async def resolve_version(
-        self,
-        version: str,
-        build: str,
-        client: httpx.AsyncClient,
-    ) -> ResolvedVersion:
-        # Resolve version
-        vel_version = version
-        if vel_version in ("latest", "experimental"):
-            vel_version = await self._resolve_latest_version(client, version == "experimental")
+    async def resolve_version(self, version: str, build: str, client: httpx.AsyncClient) -> ResolvedVersion:
+        if version in ("latest", "experimental"):
+            version = await self._resolve_latest_version(client, allow_snapshots=version == "experimental")
 
-        # Resolve build
         if build in ("latest", "experimental"):
             channels = ["STABLE"] if build == "latest" else ["STABLE", "BETA", "ALPHA"]
-            vel_build = await self._resolve_latest_build(client, vel_version, channels)
+            build_data = await self._resolve_latest_build(client, version, channels)
         else:
-            vel_build = await self._load_build_data(client, vel_version, build)
+            build_data = await self._load_build(client, version, build)
 
-        download = vel_build["downloads"]["server:default"]
-
+        download = build_data["downloads"]["server:default"]
         return ResolvedVersion(
             project=self._project,
-            version=vel_version,
-            build=str(vel_build["id"]),
+            version=version,
+            build=str(build_data["id"]),
             download_url=download["url"],
             filename=download["name"],
             sha256=download["checksums"]["sha256"],
         )
 
-    async def download(self, resolved: ResolvedVersion, dest: Path, client: httpx.AsyncClient) -> Path:
-        target = dest / resolved.filename
-        async with client.stream("GET", resolved.download_url) as resp:
-            resp.raise_for_status()
-            sha = hashlib.sha256()
-            with target.open("wb") as f:
-                async for chunk in resp.aiter_bytes(chunk_size=65_536):
-                    f.write(chunk)
-                    sha.update(chunk)
 
-        if resolved.sha256 and sha.hexdigest() != resolved.sha256:
-            target.unlink()
-            raise RuntimeError(f"SHA-256 mismatch for {resolved.filename}")
-
-        return target
-
-
-class Project(TypedDict):
+class PaperProjectInfo(TypedDict):
     id: str
     name: str
 
 
 class PaperProject(TypedDict):
-    project: Project
+    project: PaperProjectInfo
     versions: dict[str, list[str]]
 
 
-class Commit(TypedDict):
+class PaperCommit(TypedDict):
     sha: str
     time: str
     message: str
 
 
-class DownloadInfo(TypedDict):
+class PaperDownload(TypedDict):
     name: str
     checksums: dict[str, str]
     size: int
     url: str
 
 
-class PaperBuildVersion(TypedDict):
+class PaperBuild(TypedDict):
     id: int
     time: str
     channel: str
-    commits: list[Commit]
-    downloads: dict[str, DownloadInfo]
-
-
-PaperBuildVersionList = list[PaperBuildVersion]
+    commits: list[PaperCommit]
+    downloads: dict[str, PaperDownload]

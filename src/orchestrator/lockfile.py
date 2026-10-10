@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -18,7 +19,7 @@ class PluginLockEntry:
     sha256: str | None
     filename: str
     updated_at: str
-    target_version: str
+    target_version: str | None  # the version spec (e.g. "latest") this entry was installed for
     etag: str | None = None
     last_modified: str | None = None
 
@@ -38,16 +39,16 @@ class ServerLockfile:
     path: Path
     plugins: dict[str, PluginLockEntry]
     server: ServerJarEntry | None = None
-    # ISO-8601 timestamp of the last successful plugins check cycle
+    # ISO-8601 timestamp of the last complete, error-free plugin check
     plugins_checked_at: str | None = None
 
     @classmethod
     def load(cls, path: Path) -> ServerLockfile:
         if not path.exists():
             return cls(path=path, plugins={}, server=None)
-        with path.open() as f:
+        with path.open(encoding="utf-8") as f:
             raw = json.load(f)
-            server_raw = raw.get("server")
+        server_raw = raw.get("server")
 
         plugins: dict[str, PluginLockEntry] = {}
         for key, val in raw.get("plugins", {}).items():
@@ -88,9 +89,12 @@ class ServerLockfile:
             data["plugins_checked_at"] = self.plugins_checked_at
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("w") as f:
+        # Write to a temp file first so a crash mid-write can't leave a truncated lockfile behind
+        tmp_path = self.path.with_name(self.path.name + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, sort_keys=True)
             f.write("\n")
+        os.replace(tmp_path, self.path)
 
     def record_plugins_checked(self) -> None:
         self.plugins_checked_at = datetime.now(UTC).isoformat()
@@ -115,12 +119,11 @@ class ServerLockfile:
         file_path: Path,
         target_version: str,
     ) -> None:
-        sha256 = _compute_sha256(file_path)
         self.plugins[key] = PluginLockEntry(
             display_name=resolved.display_name,
             version=resolved.version,
-            sha256=sha256,
-            filename=resolved.filename,
+            sha256=_compute_sha256(file_path),
+            filename=file_path.name,
             updated_at=datetime.now(UTC).isoformat(),
             target_version=target_version,
             etag=resolved.etag,
@@ -132,30 +135,21 @@ class ServerLockfile:
         project: str,
         version: str,
         build: str,
-        filename: str,
         file_path: Path,
     ) -> None:
-        sha256 = _compute_sha256(file_path)
         self.server = ServerJarEntry(
             project=project,
             version=version,
             build=build,
-            sha256=sha256,
-            filename=filename,
+            sha256=_compute_sha256(file_path),
+            filename=file_path.name,
             updated_at=datetime.now(UTC).isoformat(),
         )
 
-    def needs_plugin_update(self, key: str, resolved: ResolvedPlugin) -> bool:
-        entry = self.get_plugin(key)
-        if entry is None:
-            return True
-
-        return resolved.version != entry.version
-
-    def needs_server_update(self, version: str, build: str) -> bool:
+    def needs_server_update(self, project: str, version: str, build: str) -> bool:
         if self.server is None:
             return True
-        return self.server.version != version or self.server.build != build
+        return (self.server.project, self.server.version, self.server.build) != (project, version, build)
 
 
 def _compute_sha256(path: Path) -> str:

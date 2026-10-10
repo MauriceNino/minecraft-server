@@ -40,8 +40,8 @@ The orchestrator supports several plugin repositories. Each provider handles ver
 
 Across most providers, you can use special aliases and flags in the `@version` part of the spec:
 
-- **`@latest`**: Resolves to the highest stable/release version.
-- **`@experimental`**: Resolves to the latest beta, alpha, or snapshot if available.
+- **`@latest`**: Resolves to the newest stable release that supports your server's Minecraft version.
+- **`@experimental`**: Resolves to the newest beta, alpha or snapshot that supports your server's Minecraft version.
 - **`!` flag**: Appending `!` (e.g., `@latest!`) forces the orchestrator to ignore compatibility filters. Use this if a plugin is known to work but its metadata is incorrect.
 
 ## Optional Parameters
