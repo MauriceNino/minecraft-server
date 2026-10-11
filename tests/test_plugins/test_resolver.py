@@ -82,6 +82,13 @@ class TestParsePluginSpec:
         assert spec.version == "1.2.3"
         assert spec.params == {"regex": "foo.jar"}
 
+    def test_param_with_brackets_and_commas(self) -> None:
+        spec = _parse_plugin_spec("github:Foo/Bar[regex=Bar-[0-9]{1,3}\\.jar,platform=paper]@1.2.3!")
+        assert spec.identifier == "Foo/Bar"
+        assert spec.params == {"regex": "Bar-[0-9]{1,3}\\.jar", "platform": "paper"}
+        assert spec.version == "1.2.3"
+        assert spec.force is True
+
     def test_param_accessor_returns_value(self) -> None:
         spec = _parse_plugin_spec("github:Foo/Bar[regex=foo.jar]@latest")
         assert spec.param("regex") == "foo.jar"

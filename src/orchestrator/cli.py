@@ -10,7 +10,9 @@ from orchestrator.constants import (
     BUNGEE_RCON_URL,
     DEFAULT_DATA_DIR,
     PROXY_PLATFORMS,
+    RUNTIME_SUBDIR,
     SERVER_PLATFORMS,
+    TEMPLATES_SUBDIR,
     VELOCIRCON_URL,
     PlatformType,
     PluginProviderType,
@@ -19,51 +21,72 @@ from orchestrator.constants import (
 from orchestrator.plugins.base import PluginSpec
 from orchestrator.sigils import DirSigil, parse_dir_sigil
 
+# Aikar's flags (https://docs.papermc.io/paper/aikars-flags)
+_DEFAULT_SERVER_JVM_FLAGS = [
+    "--add-modules=jdk.incubator.vector",
+    "-XX:+UseG1GC",
+    "-XX:+ParallelRefProcEnabled",
+    "-XX:MaxGCPauseMillis=200",
+    "-XX:+UnlockExperimentalVMOptions",
+    "-XX:+DisableExplicitGC",
+    "-XX:+AlwaysPreTouch",
+    "-XX:G1HeapWastePercent=5",
+    "-XX:G1MixedGCCountTarget=4",
+    "-XX:InitiatingHeapOccupancyPercent=15",
+    "-XX:G1MixedGCLiveThresholdPercent=90",
+    "-XX:G1RSetUpdatingPauseTimePercent=5",
+    "-XX:SurvivorRatio=32",
+    "-XX:+PerfDisableSharedMem",
+    "-XX:MaxTenuringThreshold=1",
+    "-Dusing.aikars.flags=https://mcflags.emc.gs",
+    "-Daikars.new.flags=true",
+    "-XX:G1NewSizePercent=30",
+    "-XX:G1MaxNewSizePercent=40",
+    "-XX:G1HeapRegionSize=8M",
+    "-XX:G1ReservePercent=20",
+]
+
+# Recommended by Velocity (https://docs.papermc.io/velocity/tuning)
+_DEFAULT_PROXY_JVM_FLAGS = [
+    "-XX:+UseG1GC",
+    "-XX:G1HeapRegionSize=4M",
+    "-XX:+UnlockExperimentalVMOptions",
+    "-XX:+ParallelRefProcEnabled",
+    "-XX:+AlwaysPreTouch",
+    "-XX:MaxInlineLevel=15",
+]
+
 
 @dataclass(frozen=True, slots=True)
 class Config:
-    """Immutable configuration resolved from environment variables."""
-
-    # Core
     platform: PlatformType
     version: str
     build: str
     data_dir: Path
-
-    # Derived paths
     templates_dir: Path
     runtime_dir: Path
     plugins_dir: Path
 
-    # Plugin specs (raw lines)
     plugin_specs: list[PluginSpec]
-
-    # Inline config overrides: list of (sigil, relative_path, raw_content)
+    # (sigil, path relative to the runtime dir, raw content)
     config_overrides: list[tuple[DirSigil, str, str]]
-
-    # Template names to apply
     applied_templates: list[str]
 
-    # RCON
     rcon_enabled: bool
     rcon_password: str
     rcon_port: int
 
-    # JVM
     memory: str
     jvm_flags: list[str]
 
-    # Verbose logging
     verbose: bool
-
-    # EULA acceptance
     accept_eula: bool
-
-    # Plugin update strategy
     plugins_update_strategy: PluginUpdateStrategy
-
-    # Optional check-cache TTL in seconds
     plugins_check_cache_seconds: int
+
+
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in ("true", "1", "yes")
 
 
 def _parse_multiline(value: str) -> list[str]:
@@ -76,65 +99,30 @@ def _collect_config_overrides(
 ) -> list[tuple[DirSigil, str, str]]:
     """Parse `CONFIG_PATHS` + `CONFIG_<key>` env vars into override entries.
 
-    `CONFIG_PATHS` is a multiline key-to-path mapping:
+    `CONFIG_PATHS` holds one `[<sigil>]<key> -> <relative/path>` mapping per line, e.g.:
 
         CONFIG_PATHS: |
           !force:server_properties -> server.properties
           luckperms -> plugins/luckperms/config.yml
 
-    Each non-empty line must have the form::
-
-        [<sigil>:]<key> -> <relative/path>
-
-    Recognised sigils (same as directory sigils):
-
-    - `!force:`   — create even if absent, merge if present.
-    - `!replace:` — always overwrite (create or replace).
-    - `!delete:`  — delete the target file (no content needed).
-
-    The *key* is used to look up `CONFIG_<KEY>` in the environment.
-    Lines whose `CONFIG_<KEY>` env var is not set (or empty) are silently
-    skipped, **except** for `!delete:` entries which need no content.
+    The content for each line is read from `CONFIG_<key>`. Lines without content are skipped,
+    except for `!delete:` lines, which don't need any. Malformed lines are skipped as well.
     """
-    paths_raw = environ.get("CONFIG_PATHS", "")
-    if not paths_raw.strip():
-        return []
-
     result: list[tuple[DirSigil, str, str]] = []
 
-    for line in paths_raw.splitlines():
-        line = line.strip()
-        if not line:
+    for line in _parse_multiline(environ.get("CONFIG_PATHS", "")):
+        lhs, arrow, rhs = (part.strip() for part in line.partition("->"))
+        if not arrow or not lhs or not rhs:
             continue
 
-        if "->" not in line:
-            # Malformed line — ignore
-            continue
-
-        lhs, _, rhs = line.partition("->")
-        lhs = lhs.strip()
-        rhs = rhs.strip()
-
-        if not lhs or not rhs:
-            continue
-
-        # Parse optional sigil from the lhs
         sigil, key = parse_dir_sigil(lhs)
-
-        # Look up the content env var
-        env_key = f"CONFIG_{key}"
-        raw_content = environ.get(env_key, "")
-
-        # !delete entries need no content
         if sigil == DirSigil.DELETE:
-            result.append((DirSigil.DELETE, rhs, ""))
+            result.append((sigil, rhs, ""))
             continue
 
-        if not raw_content.strip():
-            # No content defined — skip
-            continue
-
-        result.append((sigil, rhs, raw_content))
+        raw_content = environ.get(f"CONFIG_{key}", "")
+        if raw_content.strip():
+            result.append((sigil, rhs, raw_content))
 
     return result
 
@@ -148,11 +136,7 @@ _DURATION_MULTIPLIERS: dict[str, int] = {
 
 
 def _parse_duration(value: str) -> int:
-    """Parse a human-readable duration string into seconds.
-
-    Accepted formats: ``30s``, ``2m``, ``3h``, ``1d``.
-    Raises ``ValueError`` if the format is unrecognised.
-    """
+    """Parse a duration like `30s`, `2m`, `3h` or `1d` into seconds."""
     value = value.strip().lower()
     if not value:
         raise ValueError("empty duration string")
@@ -168,42 +152,32 @@ def _parse_duration(value: str) -> int:
     return amount * _DURATION_MULTIPLIERS[suffix]
 
 
-# Aliases that map to the canonical "latest" sentinel
-_STABLE_ALIASES: frozenset[str] = frozenset({"latest", "stable"})
-# Aliases that map to the canonical "experimental" sentinel
-_EXPERIMENTAL_ALIASES: frozenset[str] = frozenset({"experimental", "beta"})
-
-
 def _normalize_version_spec(raw: str) -> str:
-    """Normalise a VERSION or BUILD value to a canonical sentinel or leave it as-is.
-
-    - `latest` / `stable` -> `latest`
-    - `experimental` / `beta` -> `experimental`
-    - anything else (e.g. `1.21.4`, `123`) -> unchanged
-    """
+    """Map the `stable` and `beta` aliases to `latest` and `experimental`, leave anything else as-is."""
     lower = raw.strip().lower()
-    if lower in _STABLE_ALIASES:
+    if lower in ("latest", "stable"):
         return "latest"
-    if lower in _EXPERIMENTAL_ALIASES:
+    if lower in ("experimental", "beta"):
         return "experimental"
     return raw.strip()
 
 
+# Params run up to the last `]`, so values like regexes may contain brackets themselves
 _SPEC_RE = re.compile(
-    r"^(?P<provider>[a-z]+):(?P<id>[^\[@]+?)(?:\[(?P<params>[^\]]*)\])?(?:@(?P<version>[^!]+?)(?P<force>!)?)?$"
+    r"^(?P<provider>[a-z]+):(?P<id>[^\[@]+?)(?:\[(?P<params>.*)\])?(?:@(?P<version>[^!@\]]+?)(?P<force>!)?)?$"
 )
+# Only split on commas that start a new `key=` pair, so values may contain commas
+_PARAM_SEPARATOR_RE = re.compile(r",(?=\s*\w+\s*=)")
 
 
 def _parse_params(raw_params: str | None) -> dict[str, str]:
     if not raw_params:
         return {}
     result: dict[str, str] = {}
-    for part in raw_params.split(","):
-        part = part.strip()
-        if "=" not in part:
-            continue
-        key, _, value = part.partition("=")
-        result[key.strip()] = value.strip()
+    for part in _PARAM_SEPARATOR_RE.split(raw_params):
+        key, sep, value = part.partition("=")
+        if sep:
+            result[key.strip()] = value.strip()
     return result
 
 
@@ -218,9 +192,15 @@ def _parse_plugin_spec(raw: str) -> PluginSpec:
         msg = f"Invalid plugin spec: {raw!r}. Expected format: provider:id[params]@version"
         raise ValueError(msg)
 
+    try:
+        provider = PluginProviderType(match.group("provider"))
+    except ValueError:
+        valid = ", ".join(p.value for p in PluginProviderType)
+        raise ValueError(f"Unknown plugin provider in {raw!r}. Valid providers: {valid}") from None
+
     raw_version = match.group("version") or "latest"
     return PluginSpec(
-        provider=PluginProviderType(match.group("provider")),
+        provider=provider,
         identifier=match.group("id").strip(),
         version=_normalize_version_spec(raw_version),
         force=match.group("force") is not None,
@@ -248,22 +228,28 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     build = _normalize_version_spec(env.get("BUILD", "latest"))
     data_dir = Path(env.get("DATA_DIR", str(DEFAULT_DATA_DIR)))
 
-    templates_dir = data_dir / "templates"
-    runtime_dir = data_dir / "runtime"
+    templates_dir = data_dir / TEMPLATES_SUBDIR
+    runtime_dir = data_dir / RUNTIME_SUBDIR
     if platform == PlatformType.PUMPKIN:
         plugins_dir = runtime_dir / "patchbukkit" / "patchbukkit-plugins"
     else:
         plugins_dir = runtime_dir / "plugins"
 
-    plugin_specs = _parse_plugin_lines(env.get("PLUGINS", ""))
+    try:
+        plugin_specs = _parse_plugin_lines(env.get("PLUGINS", ""))
+    except ValueError as e:
+        raise SystemExit(f"Invalid PLUGINS entry: {e}") from None
     applied_templates = _parse_multiline(env.get("APPLIED_TEMPLATES", ""))
     config_overrides = _collect_config_overrides(env)
 
-    rcon_enabled = env.get("RCON_ENABLED", "true").lower() in ("true", "1", "yes")
-    rcon_password = env.get("RCON_PASSWORD", str(uuid.uuid4()))
-    rcon_port = int(env.get("RCON_PORT", "25575"))
+    rcon_enabled = _parse_bool(env.get("RCON_ENABLED", "true"))
+    rcon_password = env.get("RCON_PASSWORD") or str(uuid.uuid4())
+    rcon_port_raw = env.get("RCON_PORT", "25575")
+    if not rcon_port_raw.strip().isdigit() or not 0 < int(rcon_port_raw) < 65536:
+        raise SystemExit(f"Invalid RCON_PORT={rcon_port_raw!r}: must be a port number between 1 and 65535")
+    rcon_port = int(rcon_port_raw)
 
-    # Auto-inject RCON bridge plugins for proxies
+    # Proxies have no built-in RCON, so a bridge plugin is installed for them
     if rcon_enabled:
         if platform == PlatformType.VELOCITY:
             plugin_specs.append(PluginSpec(PluginProviderType.URL, VELOCIRCON_URL, "latest", False, {}))
@@ -271,47 +257,15 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
             plugin_specs.append(PluginSpec(PluginProviderType.URL, BUNGEE_RCON_URL, "latest", False, {}))
 
     memory = env.get("MEMORY", "1G")
-    jvm_flags_raw = env.get("JVM_FLAGS", "")
-    jvm_flags = jvm_flags_raw.split() if jvm_flags_raw.strip() else []
-
-    # Adding default JVM flags if not specified (https://flags.sh/)
+    jvm_flags = env.get("JVM_FLAGS", "").split()
     if not jvm_flags:
         if platform in SERVER_PLATFORMS:
-            jvm_flags = [
-                "--add-modules=jdk.incubator.vector",
-                "-XX:+UseG1GC",
-                "-XX:+ParallelRefProcEnabled",
-                "-XX:MaxGCPauseMillis=200",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+DisableExplicitGC",
-                "-XX:+AlwaysPreTouch",
-                "-XX:G1HeapWastePercent=5",
-                "-XX:G1MixedGCCountTarget=4",
-                "-XX:InitiatingHeapOccupancyPercent=15",
-                "-XX:G1MixedGCLiveThresholdPercent=90",
-                "-XX:G1RSetUpdatingPauseTimePercent=5",
-                "-XX:SurvivorRatio=32",
-                "-XX:+PerfDisableSharedMem",
-                "-XX:MaxTenuringThreshold=1",
-                "-Dusing.aikars.flags=https://mcflags.emc.gs",
-                "-Daikars.new.flags=true",
-                "-XX:G1NewSizePercent=30",
-                "-XX:G1MaxNewSizePercent=40",
-                "-XX:G1HeapRegionSize=8M",
-                "-XX:G1ReservePercent=20",
-            ]
+            jvm_flags = list(_DEFAULT_SERVER_JVM_FLAGS)
         elif platform in PROXY_PLATFORMS:
-            jvm_flags = [
-                "-XX:+UseG1GC",
-                "-XX:G1HeapRegionSize=4M",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+ParallelRefProcEnabled",
-                "-XX:+AlwaysPreTouch",
-                "-XX:MaxInlineLevel=15",
-            ]
+            jvm_flags = list(_DEFAULT_PROXY_JVM_FLAGS)
 
-    verbose = env.get("VERBOSE", "false").lower() in ("true", "1", "yes")
-    accept_eula = env.get("ACCEPT_EULA", "false").lower() in ("true", "1", "yes")
+    verbose = _parse_bool(env.get("VERBOSE", "false"))
+    accept_eula = _parse_bool(env.get("ACCEPT_EULA", "false"))
 
     strategy_raw = env.get("PLUGINS_UPDATE_STRATEGY", "auto").lower()
     try:

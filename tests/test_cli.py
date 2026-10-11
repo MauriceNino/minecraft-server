@@ -26,6 +26,18 @@ class TestLoadConfig:
         with pytest.raises(SystemExit, match="Unknown platform"):
             load_config(environ={"TYPE": "INVALID"})
 
+    def test_unknown_plugin_provider(self) -> None:
+        with pytest.raises(SystemExit, match="Unknown plugin provider"):
+            load_config(environ={"PLUGINS": "foo:bar@latest"})
+
+    @pytest.mark.parametrize("port", ["abc", "0", "70000"])
+    def test_invalid_rcon_port(self, port: str) -> None:
+        with pytest.raises(SystemExit, match="Invalid RCON_PORT"):
+            load_config(environ={"RCON_PORT": port})
+
+    def test_empty_rcon_password_is_generated(self) -> None:
+        assert load_config(environ={"RCON_PASSWORD": ""}).rcon_password
+
     def test_plugins_multiline(self) -> None:
         config = load_config(environ={"PLUGINS": "modrinth:luckperms@latest\nhangar:libertybans@latest\n"})
         assert config.plugin_specs[0].identifier == "luckperms"
