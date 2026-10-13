@@ -3,7 +3,7 @@
     <img src="docs/public/banner.png" alt="MauriceNino/minecraft-server" width="100%" style="border-radius: 25px;">
   </h1>
   
-  <p><b>A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.</b></p>
+  <p><b>Docker image that sets up and runs Minecraft servers and proxies from environment variables: server JAR, plugins, config templates and RCON.</b></p>
 
   [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
   [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
@@ -13,17 +13,16 @@
 
 ## Overview
 
-`MauriceNino/minecraft-server` is a powerful Python utility and Docker-first environment designed to streamline the deployment and management of stateless Minecraft server instances. Say goodbye to manual plugin updates and messy configuration files.
+On every start, the container downloads the server JAR, installs and updates your plugins, applies your config templates and then launches the server. Everything is declared in environment variables, so the whole server lives in your `docker-compose.yml`.
 
-📖 **[Check out the Full Documentation Site!](https://mauricenino.github.io/minecraft-server/)**
+📖 **[Documentation](https://mauricenino.github.io/minecraft-server/)**
 
-## Key Features
+## Features
 
-- **Multi-Platform Support**: Native support for **Paper**, **Purpur**, **Folia**, **Velocity**, **Waterfall**, **Vanilla**, **Spigot**, and **Bukkit**.
-- **Dynamic Plugin Resolution**: Seamlessly download and cache plugins from **Modrinth**, **Hangar**, **Spiget**, **CurseForge**, **GitHub**, or direct **URLs**.
-- **Sigil-Based Config Merging**: Intelligently merge `YAML`, `JSON`, `TOML`, `HOCON`, and `.properties` files using `!replace:`, `!force:`, and `!delete:` lifecycle sigils.
-- **Auto-RCON**: Integrated `mc-rcon` module for secure, automated remote console access inside the container.
-- **Docker-First Architecture**: Built for stateless deployments via Docker Compose with deterministic startup routines.
+- **Platforms**: Paper, Purpur, Folia, Spigot, Bukkit, Vanilla, Pumpkin (experimental), Velocity and Waterfall.
+- **Plugins**: from Modrinth, Hangar, Spiget, CurseForge, GitHub releases or direct URLs, with compatibility checks against your server version and a lockfile to track what's installed.
+- **Config merging**: deep-merge `YAML`, `JSON`, `TOML`, `HOCON` and `.properties` files from templates or environment variables, controlled with `!replace:`, `!force:` and `!delete:` sigils.
+- **RCON**: enabled automatically, use `docker exec -it <container> mc-rcon` to get a console.
 
 ## Getting Started
 
@@ -32,15 +31,16 @@ The quickest way to get started is using Docker Compose. Here is a minimal examp
 ```yaml
 services:
   minecraft:
-    image: ghcr.io/MauriceNino/minecraft-server:latest
+    image: ghcr.io/mauricenino/minecraft-server:latest
     environment:
       TYPE: PAPER
       VERSION: latest
       MEMORY: 2G
+      ACCEPT_EULA: "true"
       PLUGINS: |
         modrinth:luckperms@latest
     ports:
       - "25565:25565"
 ```
 
-For more in-depth setup guides, including orchestration scripts runbooks, environment variable dictionaries, and sigil usage, please visit the **[Documentation](https://mauricenino.github.io/minecraft-server/)**.
+See the **[Documentation](https://mauricenino.github.io/minecraft-server/)** for all environment variables, templates and sigils.

@@ -1,17 +1,13 @@
 # Contributing to MauriceNino/minecraft-server
 
-First off, thank you for considering contributing to `minecraft-server`! It's people like you that make this a great tool for the Minecraft community.
-
-This document provides guidelines and instructions for contributing to the project.
-
 ## Quick Start
 
 The project uses [uv](https://github.com/astral-sh/uv) for dependency management and project orchestration.
 
 1.  **Fork and Clone** the repository.
-2.  **Install dependencies**:
+2.  **Install dependencies** (the `dev` group is included by default):
     ```bash
-    uv sync --extra dev
+    uv sync
     ```
 3.  **Create a branch**:
     ```bash
@@ -22,7 +18,7 @@ The project uses [uv](https://github.com/astral-sh/uv) for dependency management
 
 ## Development Workflow
 
-To maintain high code quality, we use several tools for linting, type checking, and testing.
+CI runs all of the following, so run them before opening a PR.
 
 ### Linting and Formatting
 We use [Ruff](https://github.com/astral-sh/ruff) for both linting and formatting.
@@ -80,10 +76,13 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 ## Project Structure
 
 - `src/orchestrator/`: Core Python source code.
-  - `plugins/`: Plugin resolution logic (Modrinth, Hangar, etc.).
-  - `merger/`: Sigil-based configuration merging logic.
-  - `rcon/`: RCON integration.
-- `tests/`: Comprehensive test suite using `pytest`.
+  - `providers/`: Server JAR download per platform (Paper, Vanilla, etc.).
+  - `plugins/`: Plugin resolution and download (Modrinth, Hangar, etc.).
+  - `fs_orchestrator/`: Applying template directories to the runtime directory.
+  - `merger/`: Sigil-aware config file merging.
+  - `rcon/`: RCON config injection.
+- `src/rcon/`: The `mc-rcon` client.
+- `tests/`: Test suite using `pytest`.
 - `examples/`: Docker Compose examples for different server types.
 - `docs/`: Documentation site (built with Next.js/Fumadocs).
 
@@ -91,7 +90,4 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 1.  **Sync your fork**: Ensure your fork is up-to-date with the `main` branch.
 2.  **Verify your changes**: Run linting, type checking, and tests before submitting.
-3.  **Submit the PR**: Provide a clear description of the changes and link any related issues.
-4.  **Stay engaged**: Be prepared to address feedback or requested changes during the review process.
-
-Happy coding!
+3.  **Submit the PR**: Describe the change and link any related issues.

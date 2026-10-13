@@ -6,7 +6,7 @@ description: Globals and inline configuration via CONFIG_PATHS
 ## Core Variables
 
 - **`DATA_DIR`**
-  - **Description:** The root directory where `templates`, `runtime`, and `.cache` folders are mapped inside the container.
+  - **Description:** The root directory containing the `templates` and `runtime` folders inside the container.
   - **Default:** `/data`
 
 - **`VERBOSE`**
@@ -24,7 +24,7 @@ description: Globals and inline configuration via CONFIG_PATHS
 - **`PLUGINS_UPDATE_STRATEGY`**
   - **Description:** Controls how the orchestrator handles plugin updates on startup.
   - **Options:**
-    - `manual`: Checks for updates and removes orphans, but never downloads anything.
+    - `manual`: Installs newly added plugins and removes orphans, but never updates installed plugins.
     - `auto`: (Default) Downloads updates and removes orphans; continues on download failure.
     - `force`: Downloads updates and removes orphans; fails on any download failure.
   - **Default:** `auto`
@@ -48,4 +48,4 @@ If RCON is enabled, the orchestrator automatically configures the server files t
 
 - **`RCON_PASSWORD`**
   - **Description:** The password for RCON.
-  - **Default:** A securely generated random UUID (`uuid.uuid4()`). _You do not need to know this password to use `mc-rcon` interactively inside the container._
+  - **Default:** A random UUID, generated on every start. It is stored in `runtime/.rcon-password`, so `mc-rcon` works inside the container without you knowing the password.

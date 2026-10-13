@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "minecraft-server"
 version = "1.0.0"
-description = "A modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection."
+description = "Docker image that sets up and runs Minecraft servers and proxies from environment variables: server JAR, plugins, config templates and RCON."
 readme = "README.md"
 license = "GPL-3.0-only"
 requires-python = ">=3.12"
