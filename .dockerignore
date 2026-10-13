@@ -4,7 +4,7 @@
 .pytest_cache
 .ruff_cache
 docs
-example
+examples
 tests
 *.pyc
 __pycache__

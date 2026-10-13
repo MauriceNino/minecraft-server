@@ -6,18 +6,15 @@ from datetime import datetime
 
 
 def run_command(command: str) -> str:
-    """Runs a shell command and returns the stripped output."""
     result = subprocess.run(command, capture_output=True, text=True, shell=True)  # noqa: S602
     return result.stdout.strip()
 
 
 def get_last_tag() -> str:
-    """Finds the most recent tag in the repository."""
     return run_command("git describe --tags --abbrev=0 2>/dev/null")
 
 
 def get_commits(since_tag: str | None = None) -> list[str]:
-    """Fetches commits since a specific tag (or all if None)."""
     range_str = f"{since_tag}..HEAD" if since_tag else ""
 
     output = run_command(f'git log {range_str} --pretty=format:"%s _by @%cn_ (%h)"')
@@ -40,36 +37,19 @@ def main() -> None:
         "docs": "📚 Documentation",
         "maintenance": "🧹 Maintenance",
     }
-
-    grouped = {k: [] for k in categories}
     maintenance_types = {"chore", "refactor", "style", "test", "ci"}
+    grouped: dict[str, list[str]] = {k: [] for k in categories}
 
     for commit in commits:
-        if not commit:
-            continue
-
-        # Match "type(scope): description" or "type: description"
-        # The regex looks for the type at the start, followed by optional (scope) and then a colon
-        match = re.match(r"^(\w+)(?:\(.*\))?:\s*(.*)", commit)
+        # "type(scope): description" or "type: description"
+        match = re.match(r"^(\w+)(?:\([^)]*\))?!?:\s*(.*)", commit)
         if not match:
             continue
 
-        ctype, _ = match.groups()
-
-        # Extract the full descriptive part (everything after the first colon)
-        if ":" in commit:
-            desc = commit.split(":", 1)[1].strip()
-        else:
-            continue
-
-        if ctype == "feat":
-            grouped["feat"].append(desc)
-        elif ctype == "fix":
-            grouped["fix"].append(desc)
-        elif ctype == "docs":
-            grouped["docs"].append(desc)
-        elif ctype in maintenance_types:
-            grouped["maintenance"].append(desc)
+        ctype, desc = match.groups()
+        group = "maintenance" if ctype in maintenance_types else ctype
+        if group in grouped:
+            grouped[group].append(desc)
 
     # Compile the final Markdown release notes
     notes = []
