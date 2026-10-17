@@ -6,7 +6,7 @@ from pathlib import Path
 
 from orchestrator.constants import PlatformType
 from orchestrator.http import create_http_client
-from orchestrator.lockfile import ServerLockfile
+from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
 from orchestrator.providers.paper import PaperProvider
@@ -48,7 +48,8 @@ async def download_platform(
     runtime_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     jar_path = runtime_dir / resolved.filename
 
-    if jar_path.is_file() and not lockfile.needs_server_update(resolved.project, resolved.version, resolved.build):
+    up_to_date = not lockfile.needs_server_update(resolved.project, resolved.version, resolved.build)
+    if up_to_date and lockfile.server and file_matches(jar_path, lockfile.server.sha256):
         console.print(
             f"  [cached]✓[/cached] [label]{resolved.filename}[/label]  "
             f"[dim]no changes[/dim] [cached]{resolved.version}[/cached]"

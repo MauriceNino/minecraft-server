@@ -10,7 +10,7 @@ import httpx
 
 from orchestrator.constants import PlatformType, PluginProviderType, PluginUpdateStrategy
 from orchestrator.http import create_http_client
-from orchestrator.lockfile import PluginLockEntry, ServerLockfile, make_lock_key
+from orchestrator.lockfile import PluginLockEntry, ServerLockfile, file_matches, make_lock_key
 from orchestrator.logging import console, log_change
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 from orchestrator.plugins.curseforge import CurseForgeProvider
@@ -83,7 +83,8 @@ def _cleanup_removed_plugins(specs: list[PluginSpec], plugins_dir: Path, lockfil
 
 
 def _is_installed(entry: PluginLockEntry | None, plugins_dir: Path) -> bool:
-    return entry is not None and bool(entry.filename) and (plugins_dir / entry.filename).is_file()
+    """Whether the locked JAR is on disk and unmodified."""
+    return entry is not None and bool(entry.filename) and file_matches(plugins_dir / entry.filename, entry.sha256)
 
 
 async def _install(
@@ -118,7 +119,8 @@ async def _install(
         final_path = plugins_dir / tmp_path.name
         os.replace(tmp_path, final_path)
 
-    if installed and old_entry is not None and old_entry.filename != final_path.name:
+    # Also when the old JAR was modified, otherwise the server would load both copies
+    if old_entry is not None and old_entry.filename and old_entry.filename != final_path.name:
         (plugins_dir / old_entry.filename).unlink(missing_ok=True)
 
     lockfile.update_plugin(resolution.lock_key, resolved, final_path, spec.version)

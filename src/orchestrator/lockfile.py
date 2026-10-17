@@ -8,8 +8,18 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from orchestrator.logging import console
+
 if TYPE_CHECKING:
     from orchestrator.plugins.base import ResolvedPlugin
+
+# Only bump for breaking changes. Older images refuse to start with a newer schema, while added
+# fields need no bump because `_parse` ignores unknown keys.
+SCHEMA_VERSION = 1
+
+
+class NewerSchemaError(Exception):
+    """The lockfile was written by a newer version with an incompatible format."""
 
 
 @dataclass(slots=True)
@@ -46,8 +56,28 @@ class ServerLockfile:
     def load(cls, path: Path) -> ServerLockfile:
         if not path.exists():
             return cls(path=path, plugins={}, server=None)
-        with path.open(encoding="utf-8") as f:
-            raw = json.load(f)
+        try:
+            return cls._parse(path, json.loads(path.read_text(encoding="utf-8")))
+        except NewerSchemaError as e:
+            # Starting fresh would lose track of the installed server and plugins, so leave the file alone
+            raise SystemExit(
+                f"{path} was written by a newer version of this image ({e}). "
+                "Use that version again, or delete the file to start fresh (everything is downloaded again)."
+            ) from None
+        except (ValueError, TypeError, AttributeError) as e:
+            backup = path.with_name(f"{path.name}.corrupt-{datetime.now(UTC):%Y%m%d%H%M%S}")
+            os.replace(path, backup)
+            console.print(
+                f"  [warning]⚠[/warning] Lockfile is unreadable ({e}), moved it to [label]{backup.name}[/label] "
+                "and starting fresh. Plugins will be re-downloaded."
+            )
+            return cls(path=path, plugins={}, server=None)
+
+    @classmethod
+    def _parse(cls, path: Path, raw: dict) -> ServerLockfile:
+        schema_version = raw.get("schema_version", 1)
+        if schema_version > SCHEMA_VERSION:
+            raise NewerSchemaError(f"lockfile schema {schema_version}, this image supports up to {SCHEMA_VERSION}")
         server_raw = raw.get("server")
 
         plugins: dict[str, PluginLockEntry] = {}
@@ -82,7 +112,7 @@ class ServerLockfile:
         )
 
     def save(self) -> None:
-        data: dict = {"plugins": {k: asdict(v) for k, v in self.plugins.items()}}
+        data: dict = {"schema_version": SCHEMA_VERSION, "plugins": {k: asdict(v) for k, v in self.plugins.items()}}
         if self.server is not None:
             data["server"] = asdict(self.server)
         if self.plugins_checked_at is not None:
@@ -150,6 +180,13 @@ class ServerLockfile:
         if self.server is None:
             return True
         return (self.server.project, self.server.version, self.server.build) != (project, version, build)
+
+
+def file_matches(path: Path, sha256: str | None) -> bool:
+    """Whether *path* is a file and, if a checksum is known, has that checksum."""
+    if not path.is_file():
+        return False
+    return sha256 is None or _compute_sha256(path) == sha256
 
 
 def _compute_sha256(path: Path) -> str:

@@ -62,7 +62,7 @@ PLUGINS: |
 
 During the download phase, `MauriceNino/minecraft-server` builds and manages a `server-lock.json` file inside its runtime directory.
 
-- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped instantly.
+- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped. JARs that were deleted or modified on disk (checked by checksum) are downloaded again.
 - **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **automatically deletes the `.jar` from your container**, keeping your runtime completely stateless and synchronized.
 
 ### Development Check Cache (`PLUGINS_CHECK_CACHE`)

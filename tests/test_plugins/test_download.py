@@ -99,6 +99,31 @@ class TestDownloadPlugins:
         assert await self._run(plugins_dir, ServerLockfile.load(tmp_path / "server-lock.json")) == []
         assert jar.read_bytes() == JAR
 
+    async def test_modified_jar_is_replaced(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+        _mock_modrinth(httpx_mock, [_version("2.0", ["1.21.4"])])
+        httpx_mock.add_response(url="https://cdn.example/demo-2.0.jar", content=JAR, is_reusable=True)
+        plugins_dir = tmp_path / "plugins"
+
+        await self._run(plugins_dir, ServerLockfile.load(tmp_path / "server-lock.json"))
+        jar = plugins_dir / "demo-2.0.jar"
+        jar.write_bytes(b"half-copied")
+
+        assert await self._run(plugins_dir, ServerLockfile.load(tmp_path / "server-lock.json")) == []
+        assert jar.read_bytes() == JAR
+
+    async def test_modified_jar_is_removed_when_filename_changes(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
+        for number in ("2.0", "2.1"):
+            httpx_mock.add_response(url=API, json={"title": "Demo", "loaders": ["paper"]})
+            httpx_mock.add_response(url=f"{API}/version", json=[_version(number, ["1.21.4"])])
+            httpx_mock.add_response(url=f"https://cdn.example/demo-{number}.jar", content=JAR)
+        plugins_dir = tmp_path / "plugins"
+
+        await self._run(plugins_dir, ServerLockfile.load(tmp_path / "server-lock.json"))
+        (plugins_dir / "demo-2.0.jar").write_bytes(b"half-copied")
+
+        assert await self._run(plugins_dir, ServerLockfile.load(tmp_path / "server-lock.json")) == []
+        assert sorted(p.name for p in plugins_dir.iterdir()) == ["demo-2.1.jar"]
+
     async def test_failure_is_reported(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         _mock_modrinth(httpx_mock, [_version("2.0", ["1.21.4"])])
         httpx_mock.add_response(url="https://cdn.example/demo-2.0.jar", content=b"tampered")
