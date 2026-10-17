@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ import httpx
 
 from orchestrator.http import download_file
 from orchestrator.logging import console
-from orchestrator.plugins.github import GitHubAsset, GitHubRelease
+from orchestrator.plugins.github import GitHubAsset, GitHubRelease, raise_for_github_status
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
 from orchestrator.providers.vanilla import fetch_version_manifest
 
@@ -37,8 +38,9 @@ def _asset_names() -> tuple[str, str]:
 
 
 async def _find_asset(client: httpx.AsyncClient, release_url: str, name: str) -> GitHubAsset | None:
-    resp = await client.get(release_url)
-    resp.raise_for_status()
+    headers = {"Authorization": f"Bearer {token}"} if (token := os.environ.get("GITHUB_TOKEN")) else {}
+    resp = await client.get(release_url, headers=headers)
+    raise_for_github_status(resp)
     release = cast(GitHubRelease, resp.json())
     return next((a for a in release["assets"] if a["name"] == name), None)
 

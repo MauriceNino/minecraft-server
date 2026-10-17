@@ -12,6 +12,14 @@ from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, Resolv
 API_BASE = "https://api.github.com"
 
 
+def raise_for_github_status(resp: httpx.Response) -> None:
+    """Like `raise_for_status`, with a helpful message when the API rate limit is exhausted."""
+    if resp.status_code in (403, 429) and resp.headers.get("x-ratelimit-remaining") == "0":
+        hint = "" if "Authorization" in resp.request.headers else " Set GITHUB_TOKEN to raise the limit."
+        raise RuntimeError(f"GitHub API rate limit exceeded.{hint}")
+    resp.raise_for_status()
+
+
 class GithubProvider(AbstractPluginProvider):
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
@@ -24,7 +32,7 @@ class GithubProvider(AbstractPluginProvider):
             resp = await client.get(
                 f"{API_BASE}/repos/{spec.identifier}/releases", params={"per_page": 100}, headers=self._headers()
             )
-            resp.raise_for_status()
+            raise_for_github_status(resp)
             releases = [r for r in cast(list[GitHubRelease], resp.json()) if not r["draft"]]
             if not releases:
                 raise RuntimeError(f"No releases found for {spec.identifier}")
@@ -39,7 +47,7 @@ class GithubProvider(AbstractPluginProvider):
         resp = await client.get(url, headers=self._headers())
         if resp.status_code == 404:
             raise self._version_could_not_be_found(spec)
-        resp.raise_for_status()
+        raise_for_github_status(resp)
         return cast(GitHubRelease, resp.json())
 
     def _select_asset(self, assets: list[GitHubAsset], spec: PluginSpec, platform_type: PlatformType) -> GitHubAsset:
