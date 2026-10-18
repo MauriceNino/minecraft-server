@@ -10,6 +10,8 @@ API_BASE = "https://api.purpurmc.org/v2/purpur"
 
 
 class PurpurProvider(AbstractPlatformProvider):
+    project = "purpur"
+
     async def _get(self, client: httpx.AsyncClient, path: str = "") -> object:
         resp = await client.get(f"{API_BASE}{path}")
         resp.raise_for_status()
@@ -26,7 +28,7 @@ class PurpurProvider(AbstractPlatformProvider):
         build_data = cast(PurpurBuild, await self._get(client, f"/{version}/{build}"))
 
         return ResolvedVersion(
-            project="purpur",
+            project=self.project,
             version=version,
             build=build,
             download_url=f"{API_BASE}/{version}/{build}/download",

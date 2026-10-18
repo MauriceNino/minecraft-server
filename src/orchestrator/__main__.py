@@ -29,7 +29,7 @@ from orchestrator.logging import (
 from orchestrator.merger import apply_config_overrides
 from orchestrator.plugins import download_plugins
 from orchestrator.plugins.check import check_plugin_updates
-from orchestrator.providers import download_platform, resolve_platform
+from orchestrator.providers import prepare_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
 from orchestrator.runner import exec_server
 
@@ -116,16 +116,11 @@ async def _async_main() -> None:
     lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
 
     log_phase("Platform JAR")
-    resolved_version = await resolve_platform(
+    server_executable, mc_version, offline = await prepare_platform(
+        runtime_dir=config.runtime_dir,
         platform_type=config.platform,
         version=config.version,
         build=config.build,
-    )
-
-    server_executable = await download_platform(
-        runtime_dir=config.runtime_dir,
-        platform_type=config.platform,
-        resolved=resolved_version,
         lockfile=lockfile,
     )
 
@@ -138,11 +133,12 @@ async def _async_main() -> None:
         await download_plugins(
             plugin_specs=config.plugin_specs,
             platform_type=config.platform,
-            mc_version=resolved_version.version,
+            mc_version=mc_version,
             plugins_dir=config.plugins_dir,
             lockfile=lockfile,
             strategy=config.plugins_update_strategy,
             check_cache_seconds=config.plugins_check_cache_seconds,
+            offline=offline,
         )
 
     if config.rcon_enabled:

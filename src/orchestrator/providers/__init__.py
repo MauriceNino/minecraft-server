@@ -4,6 +4,8 @@ import os
 import tempfile
 from pathlib import Path
 
+import httpx
+
 from orchestrator.constants import PlatformType
 from orchestrator.http import create_http_client
 from orchestrator.lockfile import ServerLockfile, file_matches
@@ -15,7 +17,7 @@ from orchestrator.providers.purpur import PurpurProvider
 from orchestrator.providers.spigotmc import GetBukkitProvider
 from orchestrator.providers.vanilla import VanillaProvider
 
-__all__ = ["PROVIDERS", "download_platform", "resolve_platform"]
+__all__ = ["PROVIDERS", "download_platform", "prepare_platform", "resolve_platform"]
 
 PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.PAPER: PaperProvider(project="paper"),
@@ -76,3 +78,46 @@ async def download_platform(
     )
     lockfile.save()
     return jar_path
+
+
+def _installed_server(
+    runtime_dir: Path, platform_type: PlatformType, version: str, build: str, lockfile: ServerLockfile
+) -> tuple[Path, str] | None:
+    """The locked server executable, if it is intact and satisfies the requested version and build."""
+    server = lockfile.server
+    if server is None or server.project != PROVIDERS[platform_type].project:
+        return None
+    if version not in ("latest", "experimental", server.version):
+        return None
+    if build not in ("latest", "experimental", server.build):
+        return None
+    jar_path = runtime_dir / server.filename
+    if not file_matches(jar_path, server.sha256):
+        return None
+    return jar_path, server.version
+
+
+async def prepare_platform(
+    runtime_dir: Path,
+    platform_type: PlatformType,
+    version: str,
+    build: str,
+    lockfile: ServerLockfile,
+) -> tuple[Path, str, bool]:
+    """Resolve and download the server executable.
+
+    If that fails because an API or the network is unavailable, fall back to the installed executable.
+    Returns the executable, the Minecraft version and whether the fallback was used.
+    """
+    try:
+        resolved = await resolve_platform(platform_type, version, build)
+        executable = await download_platform(runtime_dir, platform_type, resolved, lockfile)
+    except (httpx.HTTPError, RuntimeError) as e:
+        installed = _installed_server(runtime_dir, platform_type, version, build, lockfile)
+        if installed is None:
+            raise
+        executable, mc_version = installed
+        console.print(f"  [warning]⚠[/warning] Could not check for server updates: {e or type(e).__name__}")
+        console.print(f"  [warning]⚠[/warning] Starting the installed [label]{executable.name}[/label] instead")
+        return executable, mc_version, True
+    return executable, resolved.version, False

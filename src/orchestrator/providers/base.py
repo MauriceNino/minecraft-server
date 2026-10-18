@@ -22,6 +22,8 @@ class ResolvedVersion:
 
 
 class AbstractPlatformProvider(ABC):
+    project: str  # stored in the lockfile as `server.project`
+
     @abstractmethod
     async def resolve_version(
         self,

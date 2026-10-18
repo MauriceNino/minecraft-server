@@ -82,6 +82,13 @@ The timestamp of the last full check is stored in `server-lock.json`. While the 
 
 The `mc-orchestrator update` command always bypasses this cache and performs a full update.
 
+## Offline Startup
+
+API requests are retried a few times on network errors and rate limits. If the server JAR can still not be
+resolved, for example because there is no network or an API is down, the server starts with the JAR and plugins
+that are already installed, as long as they match your `VERSION` and `BUILD`. Plugins that aren't installed yet are
+reported as errors.
+
 ## Update Strategies
 
 You can control how the orchestrator handles plugin downloads and updates via the `PLUGINS_UPDATE_STRATEGY` environment variable.

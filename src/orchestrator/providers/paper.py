@@ -13,10 +13,10 @@ class PaperProvider(AbstractPlatformProvider):
     """Paper, Folia, Velocity and Waterfall, all served by the PaperMC Fill API."""
 
     def __init__(self, project: str) -> None:
-        self._project = project
+        self.project = project
 
     async def _resolve_latest_version(self, client: httpx.AsyncClient, allow_snapshots: bool) -> str:
-        resp = await client.get(f"{API_BASE}/{self._project}")
+        resp = await client.get(f"{API_BASE}/{self.project}")
         resp.raise_for_status()
         data = cast(PaperProject, resp.json())
         # Grouped by major version, newest first: {"1.21": ["1.21.4", "1.21.3", ...], ...}
@@ -25,21 +25,21 @@ class PaperProvider(AbstractPlatformProvider):
         for version in versions:
             if allow_snapshots or not version.endswith("-SNAPSHOT"):
                 return version
-        raise RuntimeError(f"No stable {self._project} versions found")
+        raise RuntimeError(f"No stable {self.project} versions found")
 
     async def _resolve_latest_build(
         self, client: httpx.AsyncClient, version: str, allowed_channels: list[str]
     ) -> PaperBuild:
-        resp = await client.get(f"{API_BASE}/{self._project}/versions/{version}/builds")
+        resp = await client.get(f"{API_BASE}/{self.project}/versions/{version}/builds")
         resp.raise_for_status()
 
         for build in cast(list[PaperBuild], resp.json()):
             if build["channel"] in allowed_channels:
                 return build
-        raise RuntimeError(f"No builds found for {self._project} {version} in channels {allowed_channels}")
+        raise RuntimeError(f"No builds found for {self.project} {version} in channels {allowed_channels}")
 
     async def _load_build(self, client: httpx.AsyncClient, version: str, build: str) -> PaperBuild:
-        resp = await client.get(f"{API_BASE}/{self._project}/versions/{version}/builds/{build}")
+        resp = await client.get(f"{API_BASE}/{self.project}/versions/{version}/builds/{build}")
         resp.raise_for_status()
         return cast(PaperBuild, resp.json())
 
@@ -55,7 +55,7 @@ class PaperProvider(AbstractPlatformProvider):
 
         download = build_data["downloads"]["server:default"]
         return ResolvedVersion(
-            project=self._project,
+            project=self.project,
             version=version,
             build=str(build_data["id"]),
             download_url=download["url"],

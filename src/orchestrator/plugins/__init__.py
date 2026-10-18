@@ -164,9 +164,11 @@ async def download_plugins(
     strategy: PluginUpdateStrategy,
     check_cache_seconds: int,
     target_plugin: str | None = None,
+    offline: bool = False,
 ) -> list[str]:
     """Install, update and remove plugins so the plugins directory matches *plugin_specs*.
 
+    In *offline* mode no APIs are contacted and installed plugins are kept as they are.
     Returns the failures. With the FORCE strategy any failure raises a RuntimeError instead.
     """
     plugins_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
@@ -179,6 +181,7 @@ async def download_plugins(
 
     use_cache = check_cache_seconds > 0 and lockfile.is_plugins_check_fresh(check_cache_seconds)
     pending: list[PluginSpec] = []
+    failures: list[str] = []
 
     for spec in plugin_specs:
         lock_key = make_lock_key(spec.provider, spec.identifier)
@@ -186,6 +189,14 @@ async def download_plugins(
             continue
 
         entry = lockfile.get_plugin(lock_key)
+        if offline:
+            if _is_installed(entry, plugins_dir) and entry is not None:
+                log_change("skipped", lock_key, f"[version.new]{entry.version}[/version.new] - offline")
+            else:
+                log_change("errored", lock_key, "[error]not installed and the APIs are unreachable[/error]")
+                failures.append(f"{lock_key}: not installed and the APIs are unreachable")
+            continue
+
         if (
             use_cache
             and entry is not None
@@ -197,16 +208,17 @@ async def download_plugins(
 
         pending.append(spec)
 
-    async with create_http_client() as client:
-        errors = await asyncio.gather(
-            *(
-                _resolve_and_install(spec, platform_type, mc_version, plugins_dir, lockfile, client, strategy)
-                for spec in pending
+    if pending:
+        async with create_http_client() as client:
+            errors = await asyncio.gather(
+                *(
+                    _resolve_and_install(spec, platform_type, mc_version, plugins_dir, lockfile, client, strategy)
+                    for spec in pending
+                )
             )
-        )
-    failures = [e for e in errors if e is not None]
+        failures.extend(e for e in errors if e is not None)
 
-    if not use_cache and target_plugin is None and not failures:
+    if not use_cache and not offline and target_plugin is None and not failures:
         lockfile.record_plugins_checked()
     lockfile.save()
 

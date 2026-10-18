@@ -51,6 +51,8 @@ def _sha256_from_digest(asset: GitHubAsset) -> str | None:
 
 
 class PumpkinProvider(AbstractPlatformProvider):
+    project = "pumpkin"
+
     async def resolve_version(self, version: str, build: str, client: httpx.AsyncClient) -> ResolvedVersion:
         if version != "experimental":
             raise ValueError(
@@ -66,7 +68,7 @@ class PumpkinProvider(AbstractPlatformProvider):
         manifest = await fetch_version_manifest(client)
 
         return ResolvedVersion(
-            project="pumpkin",
+            project=self.project,
             # Pumpkin targets the latest vanilla release
             version=manifest["latest"]["release"],
             # The nightly tag is re-published in place, so the asset checksum is what identifies a build

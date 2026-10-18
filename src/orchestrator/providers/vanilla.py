@@ -16,6 +16,8 @@ async def fetch_version_manifest(client: httpx.AsyncClient) -> VersionManifest:
 
 
 class VanillaProvider(AbstractPlatformProvider):
+    project = "vanilla"
+
     async def resolve_version(self, version: str, build: str, client: httpx.AsyncClient) -> ResolvedVersion:
         manifest = await fetch_version_manifest(client)
 
@@ -35,7 +37,7 @@ class VanillaProvider(AbstractPlatformProvider):
             raise RuntimeError(f"No server download found for Vanilla {version}")
 
         return ResolvedVersion(
-            project="vanilla",
+            project=self.project,
             version=version,
             build="1",  # Vanilla has no builds
             download_url=server_download["url"],
