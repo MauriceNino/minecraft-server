@@ -1,10 +1,56 @@
 from __future__ import annotations
 
 import os
+import re
+import subprocess
 from pathlib import Path
 
 from orchestrator.constants import SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
+
+# (first Minecraft version, minimum Java version), newest first
+_MIN_JAVA_BY_MC_VERSION = [
+    ((26, 1), 25),
+    ((1, 20, 5), 21),
+    ((1, 18), 17),
+    ((1, 17), 16),
+]
+# Versions before 1.17 commonly break on newer Java releases
+_MAX_JAVA_BEFORE_1_17 = 17
+
+
+def _parse_mc_version(version: str) -> tuple[int, ...] | None:
+    match = re.match(r"^(\d+(?:\.\d+)*)", version)
+    return tuple(int(part) for part in match.group(1).split(".")) if match else None
+
+
+def _java_major_version() -> int | None:
+    try:
+        result = subprocess.run(["java", "-version"], capture_output=True, text=True, timeout=30, check=False)  # noqa: S607
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    # e.g. `openjdk version "21.0.5" 2024-10-15` or `java version "1.8.0_392"`
+    match = re.search(r'version "(\d+)(?:\.(\d+))?', result.stderr + result.stdout)
+    if not match:
+        return None
+    major = int(match.group(1))
+    return int(match.group(2) or 0) if major == 1 else major
+
+
+def java_compatibility_warning(mc_version: str, java_version: int) -> str | None:
+    parsed = _parse_mc_version(mc_version)
+    if parsed is None or "w" in mc_version:  # snapshots like 25w14a
+        return None
+
+    min_java = next((java for first, java in _MIN_JAVA_BY_MC_VERSION if parsed >= first), 8)
+    if java_version < min_java:
+        return f"Minecraft {mc_version} requires Java {min_java} or newer, but this image has Java {java_version}."
+    if min_java == 8 and java_version > _MAX_JAVA_BEFORE_1_17:
+        return (
+            f"Minecraft {mc_version} often doesn't run on Java newer than {_MAX_JAVA_BEFORE_1_17}, "
+            f"but this image has Java {java_version}. Use an image with an older Java if the server fails to start."
+        )
+    return None
 
 
 def build_java_command(
@@ -36,6 +82,7 @@ def exec_server(
     memory: str,
     jvm_flags: list[str],
     platform: PlatformType,
+    mc_version: str,
 ) -> None:
     """Build the server command and replace this process with it.
 
@@ -48,6 +95,9 @@ def exec_server(
     else:
         args = build_java_command(server_executable, memory, jvm_flags, platform)
         executable = "java"
+        java_version = _java_major_version() if platform in SERVER_PLATFORMS else None
+        if java_version is not None and (warning := java_compatibility_warning(mc_version, java_version)):
+            console.print(f"  [warning]⚠[/warning] {warning}")
 
     console.print(f"  🚀 [dim]Executing  →[/dim]  {' '.join(args)}")
     console.print()

@@ -162,6 +162,7 @@ async def _async_main() -> None:
         memory=config.memory,
         jvm_flags=config.jvm_flags,
         platform=config.platform,
+        mc_version=mc_version,
     )
 
 
