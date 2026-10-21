@@ -35,6 +35,15 @@ class TestLoadConfig:
         with pytest.raises(SystemExit, match="Invalid RCON_PORT"):
             load_config(environ={"RCON_PORT": port})
 
+    @pytest.mark.parametrize("memory", ["2G", "1536M", "512m", "4096"])
+    def test_valid_memory(self, memory: str) -> None:
+        assert load_config(environ={"MEMORY": memory}).memory == memory
+
+    @pytest.mark.parametrize("memory", ["2GB", "1.5G", "-1G", ""])
+    def test_invalid_memory(self, memory: str) -> None:
+        with pytest.raises(SystemExit, match="Invalid MEMORY"):
+            load_config(environ={"MEMORY": memory})
+
     def test_empty_rcon_password_is_generated(self) -> None:
         assert load_config(environ={"RCON_PASSWORD": ""}).rcon_password
 

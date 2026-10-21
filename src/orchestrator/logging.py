@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import traceback
 
 from rich.console import Console
@@ -25,9 +26,12 @@ THEME = Theme(
     }
 )
 
-console = Console(theme=THEME, width=200, force_terminal=True, highlight=False)
+# Docker logs are usually not a TTY, so colours are forced unless NO_COLOR is set (https://no-color.org)
+_FORCE_COLOR = not os.environ.get("NO_COLOR")
 
-phase_console = Console(theme=THEME, width=65, force_terminal=True, highlight=False)
+console = Console(theme=THEME, width=200, force_terminal=_FORCE_COLOR, highlight=False)
+
+phase_console = Console(theme=THEME, width=65, force_terminal=_FORCE_COLOR, highlight=False)
 
 _VERBOSE_ENABLED = True
 

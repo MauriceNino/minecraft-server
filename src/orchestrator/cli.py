@@ -256,7 +256,9 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         elif platform == PlatformType.WATERFALL:
             plugin_specs.append(PluginSpec(PluginProviderType.URL, BUNGEE_RCON_URL, "latest", False, {}))
 
-    memory = env.get("MEMORY", "1G")
+    memory = env.get("MEMORY", "1G").strip()
+    if not re.fullmatch(r"\d+[KkMmGgTt]?", memory):
+        raise SystemExit(f"Invalid MEMORY={memory!r}: use a size like 1536M or 2G")
     jvm_flags = env.get("JVM_FLAGS", "").split()
     if not jvm_flags:
         if platform in SERVER_PLATFORMS:

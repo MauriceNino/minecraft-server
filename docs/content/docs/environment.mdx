@@ -9,6 +9,10 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Description:** The root directory containing the `templates` and `runtime` folders inside the container.
   - **Default:** `/data`
 
+- **`NO_COLOR`**
+  - **Description:** Set to any value to disable coloured log output, e.g. for log aggregators. See [no-color.org](https://no-color.org).
+  - **Default:** unset (colours are on, even when the output is not a terminal)
+
 - **`VERBOSE`**
   - **Description:** Enables verbose debug log output from the Python orchestrator script.
   - **Default:** `false`
