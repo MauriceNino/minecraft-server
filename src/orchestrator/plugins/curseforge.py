@@ -12,6 +12,8 @@ API_BASE = "https://api.curseforge.com/v1"
 MINECRAFT_GAME_ID = 432
 RELEASE_TYPE_RELEASE = 1  # 2 = beta, 3 = alpha
 HASH_ALGO_SHA1 = 1
+PAGE_SIZE = 50  # maximum allowed by the API
+MAX_PAGES = 20
 
 
 class CurseForgeProvider(AbstractPluginProvider):
@@ -26,10 +28,27 @@ class CurseForgeProvider(AbstractPluginProvider):
             )
         return {"x-api-key": key}
 
-    async def _get(self, client: httpx.AsyncClient, path: str, **params: str | int) -> object:
+    async def _get_json(self, client: httpx.AsyncClient, path: str, **params: str | int) -> dict:
         resp = await client.get(f"{API_BASE}{path}", params=params, headers=self._headers())
         resp.raise_for_status()
-        return resp.json()["data"]
+        return resp.json()
+
+    async def _get(self, client: httpx.AsyncClient, path: str, **params: str | int) -> object:
+        return (await self._get_json(client, path, **params))["data"]
+
+    async def _get_files(self, client: httpx.AsyncClient, mod_id: int, mc_version: str | None) -> list[CurseForgeFile]:
+        """All files of a mod, optionally only those for *mc_version*."""
+        params: dict[str, str | int] = {"pageSize": PAGE_SIZE}
+        if mc_version:
+            params["gameVersion"] = mc_version
+
+        files: list[CurseForgeFile] = []
+        for page in range(MAX_PAGES):
+            body = await self._get_json(client, f"/mods/{mod_id}/files", index=page * PAGE_SIZE, **params)
+            files.extend(body["data"])
+            if len(files) >= body["pagination"]["totalCount"] or not body["data"]:
+                break
+        return files
 
     async def _get_mod(self, spec: PluginSpec, client: httpx.AsyncClient) -> CurseForgeMod:
         if spec.identifier.isdigit():
@@ -64,16 +83,15 @@ class CurseForgeProvider(AbstractPluginProvider):
         mod = await self._get_mod(spec, client)
 
         if is_alias:
-            files = cast(list[CurseForgeFile], await self._get(client, f"/mods/{mod['id']}/files"))
-            target_file = next(
-                (
-                    f
-                    for f in files
-                    if (spec.force or mc_version in f["gameVersions"])
-                    and (spec.version == "experimental" or f["releaseType"] == RELEASE_TYPE_RELEASE)
-                ),
-                None,
-            )
+            files = await self._get_files(client, mod["id"], None if spec.force else mc_version)
+            candidates = [
+                f
+                for f in files
+                if (spec.force or mc_version in f["gameVersions"])
+                and (spec.version == "experimental" or f["releaseType"] == RELEASE_TYPE_RELEASE)
+            ]
+            # The API doesn't guarantee an order, ISO-8601 dates sort chronologically
+            target_file = max(candidates, key=lambda f: f["fileDate"], default=None)
             if target_file is None:
                 raise RuntimeError(
                     f"No compatible CurseForge version found for {spec.identifier} "
