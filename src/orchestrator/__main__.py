@@ -17,6 +17,7 @@ from orchestrator.constants import (
     PluginUpdateStrategy,
 )
 from orchestrator.fs_orchestrator import orchestrate_templates
+from orchestrator.healthcheck import check_health
 from orchestrator.lockfile import ServerLockfile, make_lock_key
 from orchestrator.logging import (
     console,
@@ -255,6 +256,14 @@ def reapply_cmd() -> None:
 def check_updates_cmd() -> None:
     """Show which plugins have updates available."""
     _run_async(_async_check_updates(), "check-updates")
+
+
+@cli.command("healthcheck")
+def healthcheck_cmd() -> None:
+    """Exit 0 if the server answers a status ping, used as the Docker HEALTHCHECK."""
+    healthy, message = check_health(load_config())
+    click.echo(message)
+    sys.exit(0 if healthy else 1)
 
 
 @cli.command("update")

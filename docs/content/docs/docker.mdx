@@ -27,6 +27,27 @@ services:
       - '25565:25565'
 ```
 
+## Shutdown
+
+On `docker stop`, the server gets a `SIGTERM` and saves its worlds before exiting. Docker kills the container
+after 10 seconds by default, which is often not enough for larger worlds. Raise the limit per service:
+
+```yaml
+services:
+  minecraft:
+    stop_grace_period: 2m
+```
+
+## Health Check
+
+The image has a `HEALTHCHECK` that sends a Minecraft status ping to the server, so `docker ps` shows the
+container as `healthy` once players can connect. You can run it manually with
+`docker exec <container> mc-orchestrator healthcheck`.
+
+The address and port are read from the server's config (`server-ip` and `server-port`, or the proxy's bind
+address). With `enable-status=false` the server doesn't answer status pings, so the check only tests that the
+port accepts connections.
+
 ## Volumes & State
 
 Inside the container, `/data` is the target directory via `DEFAULT_DATA_DIR`.

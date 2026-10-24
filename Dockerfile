@@ -102,4 +102,7 @@ USER minecraft:minecraft
 VOLUME ["/data/templates", "/data/runtime"]
 EXPOSE 25565 25575
 
+# The first start can take a while: downloads, world generation
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5m --retries=3 CMD ["mc-orchestrator", "healthcheck"]
+
 ENTRYPOINT ["/opt/venv/bin/python", "-m", "orchestrator"]

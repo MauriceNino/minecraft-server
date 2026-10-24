@@ -57,3 +57,13 @@ $ docker exec CONTAINER_NAME mc-orchestrator update
 # Update a single plugin by its lockfile key
 $ docker exec CONTAINER_NAME mc-orchestrator update --plugin [modrinth:luckperms]
 ```
+
+### `mc-orchestrator healthcheck`
+
+Sends a Minecraft status ping to the server and exits with code 0 if it answers. The image uses it as its Docker `HEALTHCHECK`.
+
+**Usage:**
+
+```bash
+$ docker exec CONTAINER_NAME mc-orchestrator healthcheck
+```

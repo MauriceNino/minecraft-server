@@ -8,6 +8,8 @@ services:
       - ./data/paper:/data/runtime
     ports:
       - "25570:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: PAPER
@@ -24,6 +26,8 @@ services:
       - ./data/folia:/data/runtime
     ports:
       - "25571:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: FOLIA
@@ -40,6 +44,8 @@ services:
       - ./data/vanilla:/data/runtime
     ports:
       - "25572:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: VANILLA
@@ -56,6 +62,8 @@ services:
       - ./data/bukkit:/data/runtime
     ports:
       - "25573:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: BUKKIT
@@ -72,6 +80,8 @@ services:
       - ./data/spigot:/data/runtime
     ports:
       - "25574:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: SPIGOT
@@ -88,6 +98,8 @@ services:
       - ./data/velocity:/data/runtime
     ports:
       - "25578:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: VELOCITY
@@ -103,6 +115,8 @@ services:
       - ./data/waterfall:/data/runtime
     ports:
       - "25579:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: WATERFALL
@@ -118,6 +132,8 @@ services:
       - ./data/pumpkin:/data/runtime
     ports:
       - "25580:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: PUMPKIN
@@ -137,6 +153,8 @@ services:
       - ./data/purpur:/data/runtime
     ports:
       - "25581:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
     env_file: .env
     environment:
       TYPE: PURPUR

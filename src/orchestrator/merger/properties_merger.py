@@ -21,6 +21,15 @@ def _parse_line(line: str) -> tuple[str, str] | None:
     return key, value.strip()
 
 
+def read_properties(path: Path) -> dict[str, str]:
+    """Read a `.properties` file into a dict, later duplicates win like in Java."""
+    result: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if parsed := _parse_line(line):
+            result[parsed[0]] = parsed[1]
+    return result
+
+
 def merge_properties(existing_path: Path, overlay_content: str) -> None:
     """Merge *overlay_content* into the `.properties` file at *existing_path*.
 
