@@ -40,9 +40,58 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+  smoke-test:
+    name: Smoke Test
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: minecraft-server:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start a Paper server
+        run: |
+          docker run -d --name smoke \
+            -e TYPE=PAPER -e VERSION=latest -e ACCEPT_EULA=true -e MEMORY=1G \
+            -e PLUGINS="modrinth:luckperms@latest" \
+            minecraft-server:smoke
+
+      - name: Wait until healthy
+        run: |
+          for _ in $(seq 1 60); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' smoke 2>/dev/null || echo missing)
+            echo "health: $status"
+            [ "$status" = healthy ] && exit 0
+            [ "$(docker inspect --format '{{.State.Running}}' smoke)" = true ] || break
+            sleep 10
+          done
+          exit 1
+
+      - name: Check RCON and plugins
+        run: |
+          docker exec smoke mc-rcon list
+          docker exec smoke mc-rcon plugins | tee plugins.txt
+          grep -i luckperms plugins.txt
+
+      - name: Show logs
+        if: always()
+        run: docker logs smoke 2>&1 | tail -200
+
   deploy-image:
     name: Build & Push
-    needs: test
+    needs: [test, smoke-test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
