@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from orchestrator.runner import java_compatibility_warning
+from orchestrator.constants import PlatformType
+from orchestrator.runner import build_java_command, java_compatibility_warning
 
 
 @pytest.mark.parametrize(
@@ -27,3 +30,14 @@ def test_incompatible(mc_version: str, java_version: int, message: str) -> None:
     warning = java_compatibility_warning(mc_version, java_version)
     assert warning is not None
     assert message in warning
+
+
+@pytest.mark.parametrize(("java_version", "kept"), [(8, False), (11, False), (17, True), (None, True)])
+def test_vector_module_flag_only_on_java_16_plus(java_version: int | None, kept: bool) -> None:
+    flags = ["--add-modules=jdk.incubator.vector", "-XX:+UseG1GC"]
+
+    args = build_java_command(Path("server.jar"), "1G", flags, PlatformType.PAPER, java_version)
+
+    assert ("--add-modules=jdk.incubator.vector" in args) is kept
+    assert "-XX:+UseG1GC" in args
+    assert args[-3:] == ["-jar", "server.jar", "--nogui"]

@@ -50,14 +50,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-version: [21, 23, 25]
+        # 8, 11 and 17 are only built with Temurin, for Minecraft versions before 1.17
+        java-version: [8, 11, 17, 21, 23, 25]
         java-flavor: [temurin, corretto, microsoft, azul, graalvm]
         is-main: ["${{ github.ref == 'refs/heads/main' }}"]
         exclude:
           # Version 23 does not exist for microsoft
           - java-flavor: microsoft
             java-version: 23
+          - { java-version: 8, java-flavor: corretto }
+          - { java-version: 8, java-flavor: microsoft }
+          - { java-version: 8, java-flavor: azul }
+          - { java-version: 8, java-flavor: graalvm }
+          - { java-version: 11, java-flavor: corretto }
+          - { java-version: 11, java-flavor: microsoft }
+          - { java-version: 11, java-flavor: azul }
+          - { java-version: 11, java-flavor: graalvm }
+          - { java-version: 17, java-flavor: corretto }
+          - { java-version: 17, java-flavor: microsoft }
+          - { java-version: 17, java-flavor: azul }
+          - { java-version: 17, java-flavor: graalvm }
           # On non-main branches, only build Java 25 Temurin to save resources
+          - is-main: false
+            java-version: 8
+          - is-main: false
+            java-version: 11
+          - is-main: false
+            java-version: 17
           - is-main: false
             java-version: 21
           - is-main: false

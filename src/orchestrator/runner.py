@@ -44,13 +44,21 @@ def java_compatibility_warning(mc_version: str, java_version: int) -> str | None
 
     min_java = next((java for first, java in _MIN_JAVA_BY_MC_VERSION if parsed >= first), 8)
     if java_version < min_java:
-        return f"Minecraft {mc_version} requires Java {min_java} or newer, but this image has Java {java_version}."
+        return (
+            f"Minecraft {mc_version} requires Java {min_java} or newer, but this image has Java {java_version}. "
+            "Use a newer image, e.g. the java25-temurin tag."
+        )
     if min_java == 8 and java_version > _MAX_JAVA_BEFORE_1_17:
         return (
             f"Minecraft {mc_version} often doesn't run on Java newer than {_MAX_JAVA_BEFORE_1_17}, "
-            f"but this image has Java {java_version}. Use an image with an older Java if the server fails to start."
+            f"but this image has Java {java_version}. If the server fails to start, use an older image: "
+            "java8-temurin for 1.12 and older, java11-temurin or java17-temurin for 1.13 - 1.16."
         )
     return None
+
+
+# Only exists since Java 16, older JVMs refuse to start with it
+_VECTOR_MODULE_FLAG = "--add-modules=jdk.incubator.vector"
 
 
 def build_java_command(
@@ -58,6 +66,7 @@ def build_java_command(
     memory: str,
     jvm_flags: list[str],
     platform: PlatformType,
+    java_version: int | None = None,
 ) -> list[str]:
     args: list[str] = [
         "java",
@@ -65,7 +74,8 @@ def build_java_command(
         f"-Xms{memory}",
     ]
 
-    # Add user-supplied JVM flags
+    if java_version is not None and java_version < 16:
+        jvm_flags = [flag for flag in jvm_flags if flag != _VECTOR_MODULE_FLAG]
     args.extend(jvm_flags)
     args.extend(["-jar", str(server_jar)])
 
@@ -93,10 +103,14 @@ def exec_server(
         args = [str(server_executable)]
         executable = str(server_executable)
     else:
-        args = build_java_command(server_executable, memory, jvm_flags, platform)
+        java_version = _java_major_version()
+        args = build_java_command(server_executable, memory, jvm_flags, platform, java_version)
         executable = "java"
-        java_version = _java_major_version() if platform in SERVER_PLATFORMS else None
-        if java_version is not None and (warning := java_compatibility_warning(mc_version, java_version)):
+        if (
+            platform in SERVER_PLATFORMS
+            and java_version is not None
+            and (warning := java_compatibility_warning(mc_version, java_version))
+        ):
             console.print(f"  [warning]⚠[/warning] {warning}")
 
     console.print(f"  🚀 [dim]Executing  →[/dim]  {' '.join(args)}")

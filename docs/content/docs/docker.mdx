@@ -69,11 +69,14 @@ We provide a variety of Docker image flavors to suit your needs, varying by Java
 
 ### Java Versions
 
-We support the following Long-Term Support (LTS) and current Java versions:
-
 - **Java 25** (Default)
 - **Java 23**
 - **Java 21**
+- **Java 17**, **Java 11** and **Java 8** (Temurin only), for Minecraft versions before 1.17
+
+Minecraft 26.1 and newer need Java 25, 1.20.5 - 1.21.11 need Java 21, 1.18 - 1.20.4 need Java 17. Versions
+before 1.17 often don't run on anything newer than Java 17, and 1.12 and older need Java 8. The orchestrator
+prints a warning on startup when the image's Java doesn't fit your `VERSION`.
 
 ### Java Distributions
 
