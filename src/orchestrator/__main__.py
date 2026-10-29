@@ -8,6 +8,7 @@ from typing import Any
 
 import click
 
+from orchestrator import __version__
 from orchestrator.cli import Config, load_config
 from orchestrator.constants import (
     PLUGIN_PLATFORMS,
@@ -239,6 +240,7 @@ async def _async_update(target_plugin: str | None = None) -> None:
 
 
 @click.group(invoke_without_command=True)
+@click.version_option(__version__, prog_name="mc-orchestrator")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """Prepare the server and start it. Subcommands are meant to be run inside a running container."""

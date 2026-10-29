@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
+from orchestrator import __version__
+
 
 class PlatformType(StrEnum):
     PAPER = "PAPER"
@@ -92,7 +94,7 @@ SERVER_LOCK_FILENAME = "server-lock.json"
 # Written next to the server files so `mc-rcon` can connect when RCON_PASSWORD was auto-generated
 RCON_PASSWORD_FILENAME = ".rcon-password"  # noqa: S105
 
-USER_AGENT = "MauriceNino/minecraft-server/1.0 (https://github.com/MauriceNino/minecraft-server)"
+USER_AGENT = f"MauriceNino/minecraft-server/{__version__} (https://github.com/MauriceNino/minecraft-server)"
 
 # RCON bridge plugins for proxies
 VELOCIRCON_URL = "https://github.com/code-lime/Velocircon/releases/download/1.0.7/Velocircon-1.0.7.jar"
