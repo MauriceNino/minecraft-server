@@ -33,12 +33,12 @@ def inject_rcon(
     elif platform == PlatformType.VELOCITY:
         merge_file_content(
             plugins_dir / "velocircon" / "rcon.yml",
-            f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {password}\ncolors: false\n",
+            f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {password}\ncolors: true\n",
         )
     elif platform == PlatformType.WATERFALL:
         merge_file_content(
             plugins_dir / "bungee-rcon" / "config.yml",
-            f"port: {rcon_port}\npassword: {password}\ncolored: false\n",
+            f"port: {rcon_port}\npassword: {password}\ncolored: true\n",
         )
 
     _write_password_file(runtime_dir / RCON_PASSWORD_FILENAME, rcon_password)

@@ -37,6 +37,7 @@ class TestInjectRcon:
         config = YAML().load((tmp_path / "plugins" / "velocircon" / "rcon.yml").read_text())
         assert config["password"] == self.TRICKY_VALUE
         assert config["port"] == 25576
+        assert config["colors"] is True
 
     def test_pumpkin_toml_keeps_special_characters(self, tmp_path: Path) -> None:
         inject_rcon(PlatformType.PUMPKIN, tmp_path, tmp_path / "plugins", 25575, self.TRICKY_VALUE)
@@ -49,7 +50,7 @@ class TestInjectRcon:
         inject_rcon(PlatformType.WATERFALL, tmp_path, tmp_path / "plugins", 25577, self.TRICKY_VALUE)
 
         config = YAML().load((tmp_path / "plugins" / "bungee-rcon" / "config.yml").read_text())
-        assert config == {"port": 25577, "password": self.TRICKY_VALUE, "colored": False}
+        assert config == {"port": 25577, "password": self.TRICKY_VALUE, "colored": True}
         assert not (tmp_path / "server.properties").exists()
 
     @pytest.mark.parametrize("platform", [PlatformType.VANILLA, PlatformType.FOLIA, PlatformType.PURPUR])
