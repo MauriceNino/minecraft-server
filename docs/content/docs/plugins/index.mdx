@@ -82,6 +82,21 @@ The timestamp of the last full check is stored in `server-lock.json`. While the 
 
 The `mc-orchestrator update` command always bypasses this cache and performs a full update.
 
+## Dependencies
+
+Dependencies are not installed automatically. Modrinth and Hangar list the plugins a version requires, and the
+orchestrator prints a warning when one of them is missing from `PLUGINS`:
+
+```
+⚠ hangar:Multiverse-Inventories requires Multiverse-Core, which is not in PLUGINS
+```
+
+A dependency counts as present when the name or ID of any configured plugin matches it, ignoring case and
+punctuation. It can come from any provider, so `spiget:34315` for Vault counts once Vault is installed. Because
+names are only compared, you may see a warning for a plugin you have installed under a different name. You can
+ignore it then. The check runs whenever plugins are checked for updates, so it is skipped while
+`PLUGINS_CHECK_CACHE` is still fresh.
+
 ## Offline Startup
 
 API requests are retried a few times on network errors and rate limits. If the server JAR can still not be

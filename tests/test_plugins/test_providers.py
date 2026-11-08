@@ -5,7 +5,7 @@ from pytest_httpx import HTTPXMock
 
 from orchestrator.constants import PlatformType, PluginProviderType
 from orchestrator.http import create_http_client
-from orchestrator.plugins.base import PluginSpec
+from orchestrator.plugins.base import PluginDependency, PluginSpec
 from orchestrator.plugins.github import GithubProvider
 from orchestrator.plugins.hangar import HangarProvider
 from orchestrator.plugins.spiget import SpigetProvider
@@ -63,6 +63,33 @@ class TestHangar:
 
         assert resolved.version == "1.9"
         assert resolved.sha256 == "ab"
+
+    async def test_required_dependencies(self, httpx_mock: HTTPXMock) -> None:
+        version = self._version("1.0", "Release", ["1.21.4"]) | {
+            "pluginDependencies": {
+                "PAPER": [
+                    {"name": "ProtocolLib", "projectId": 1, "required": True, "externalUrl": None, "platform": "PAPER"},
+                    {
+                        "name": "PlaceholderAPI",
+                        "projectId": 2,
+                        "required": False,
+                        "externalUrl": None,
+                        "platform": "PAPER",
+                    },
+                ],
+                "VELOCITY": [
+                    {"name": "Other", "projectId": 3, "required": True, "externalUrl": None, "platform": "VELOCITY"}
+                ],
+            }
+        }
+        self._mock(httpx_mock, [version])
+
+        async with create_http_client() as client:
+            resolved = await HangarProvider().resolve(
+                _spec(PluginProviderType.HANGAR, "Demo"), PlatformType.PAPER, "1.21.4", client
+            )
+
+        assert resolved.dependencies == (PluginDependency("ProtocolLib"),)
 
     async def test_pages_by_the_returned_page_size(self, httpx_mock: HTTPXMock) -> None:
         httpx_mock.add_response(

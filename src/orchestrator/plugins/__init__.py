@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import httpx
@@ -141,8 +142,8 @@ async def _resolve_and_install(
     lockfile: ServerLockfile,
     client: httpx.AsyncClient,
     strategy: PluginUpdateStrategy,
-) -> str | None:
-    """Returns an error message on failure."""
+) -> PluginResolution:
+    """The resolution has an error set if resolving or installing failed."""
     resolution = await _resolve_one_plugin(spec, platform_type, mc_version, lockfile, client)
     try:
         if resolution.resolved is None:
@@ -151,8 +152,37 @@ async def _resolve_and_install(
     except Exception as e:
         error = str(e) or type(e).__name__
         log_change("errored", resolution.lock_key, f"[error]{error}[/error]")
-        return f"{resolution.lock_key}: {error}"
-    return None
+        return replace(resolution, error=error)
+    return resolution
+
+
+def _normalize_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _warn_missing_dependencies(
+    resolutions: list[PluginResolution], plugin_specs: list[PluginSpec], lockfile: ServerLockfile
+) -> None:
+    """Warn about required dependencies that don't match any configured or installed plugin by name."""
+    available = {_normalize_name(e.display_name) for e in lockfile.plugins.values()}
+    for spec in plugin_specs:
+        # GitHub specs are owner/repo, the repository is usually named after the plugin
+        available.update(_normalize_name(name) for name in (spec.identifier, spec.identifier.rsplit("/", 1)[-1]))
+    available.update(_normalize_name(r.resolved.display_name) for r in resolutions if r.resolved)
+
+    for resolution in resolutions:
+        if resolution.resolved is None:
+            continue
+        missing = [
+            dep.name
+            for dep in resolution.resolved.dependencies
+            if not any(_normalize_name(name) in available for name in (dep.name, *dep.aliases))
+        ]
+        if missing:
+            console.print(
+                f"  [warning]⚠[/warning] [label]{resolution.lock_key}[/label] requires "
+                f"{', '.join(f'[label]{name}[/label]' for name in missing)}, which is not in PLUGINS"
+            )
 
 
 async def download_plugins(
@@ -211,13 +241,14 @@ async def download_plugins(
 
     if pending:
         async with create_http_client(tokens=tokens) as client:
-            errors = await asyncio.gather(
+            resolutions = await asyncio.gather(
                 *(
                     _resolve_and_install(spec, platform_type, mc_version, plugins_dir, lockfile, client, strategy)
                     for spec in pending
                 )
             )
-        failures.extend(e for e in errors if e is not None)
+        failures.extend(f"{r.lock_key}: {r.error}" for r in resolutions if r.error is not None)
+        _warn_missing_dependencies(resolutions, plugin_specs, lockfile)
 
     if not use_cache and not offline and target_plugin is None and not failures:
         lockfile.record_plugins_checked()

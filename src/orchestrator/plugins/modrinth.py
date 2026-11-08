@@ -6,7 +6,7 @@ from typing import TypedDict, cast
 import httpx
 
 from orchestrator.constants import MODRINTH_PLATFORM_TAGS, PROXY_PLATFORMS, PlatformType
-from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
+from orchestrator.plugins.base import AbstractPluginProvider, PluginDependency, PluginSpec, ResolvedPlugin
 
 API_BASE = "https://api.modrinth.com/v2"
 
@@ -33,6 +33,27 @@ class ModrinthProvider(AbstractPluginProvider):
         resp = await client.get(f"{API_BASE}/project/{spec.identifier}/version", params=params)
         resp.raise_for_status()
         return cast(list[ModrinthVersion], resp.json())
+
+    async def _get_required_dependencies(
+        self, version: ModrinthVersion, client: httpx.AsyncClient
+    ) -> tuple[PluginDependency, ...]:
+        project_ids = [
+            d["project_id"]
+            for d in version.get("dependencies", [])
+            if d["dependency_type"] == "required" and d["project_id"]
+        ]
+        if not project_ids:
+            return ()
+        try:
+            resp = await client.get(f"{API_BASE}/projects", params={"ids": json.dumps(project_ids)})
+            resp.raise_for_status()
+        except httpx.HTTPError:
+            # Only used for a warning, not worth failing the plugin over
+            return ()
+        return tuple(
+            PluginDependency(name=p["title"], aliases=(p["slug"], p["id"]))
+            for p in cast(list[ModrinthProject], resp.json())
+        )
 
     @staticmethod
     def _pick_by_platform_preference(candidates: list[ModrinthVersion], platforms: list[str]) -> ModrinthVersion | None:
@@ -90,6 +111,7 @@ class ModrinthProvider(AbstractPluginProvider):
             download_url=file["url"],
             filename=file["filename"],
             sha512=file["hashes"].get("sha512"),
+            dependencies=await self._get_required_dependencies(version, client),
         )
 
 

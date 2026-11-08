@@ -6,7 +6,7 @@ from typing import TypedDict, cast
 import httpx
 
 from orchestrator.constants import HANGAR_PLATFORM_TAGS, PlatformType
-from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
+from orchestrator.plugins.base import AbstractPluginProvider, PluginDependency, PluginSpec, ResolvedPlugin
 from orchestrator.semver import is_same_semver
 
 API_BASE = "https://hangar.papermc.io/api/v1"
@@ -115,6 +115,11 @@ class HangarProvider(AbstractPluginProvider):
             download_url=download["downloadUrl"],
             filename=file_info["name"],
             sha256=file_info["sha256Hash"],
+            dependencies=tuple(
+                PluginDependency(name=d["name"])
+                for d in version_data.get("pluginDependencies", {}).get(hangar_platform, [])
+                if d["required"]
+            ),
         )
 
 

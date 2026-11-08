@@ -12,8 +12,8 @@ from pytest_httpx import HTTPXMock
 from orchestrator.constants import PlatformType, PluginProviderType, PluginUpdateStrategy
 from orchestrator.http import download_file, safe_filename
 from orchestrator.lockfile import ServerLockfile
-from orchestrator.plugins import download_plugins
-from orchestrator.plugins.base import PluginSpec
+from orchestrator.plugins import PluginResolution, _warn_missing_dependencies, download_plugins
+from orchestrator.plugins.base import PluginDependency, PluginSpec, ResolvedPlugin
 from orchestrator.plugins.modrinth import ModrinthProvider
 
 API = "https://api.modrinth.com/v2/project/demo"
@@ -195,3 +195,48 @@ def test_safe_filename(name: str, expected: str) -> None:
 def test_safe_filename_rejects_empty() -> None:
     with pytest.raises(ValueError, match="unsafe"):
         safe_filename("..")
+
+
+class TestDependencies:
+    async def test_modrinth_required_dependencies(self, httpx_mock: HTTPXMock) -> None:
+        version = _version("2.0", ["1.21.4"]) | {
+            "dependencies": [
+                {"project_id": "AAAA", "version_id": None, "file_name": None, "dependency_type": "required"},
+                {"project_id": "BBBB", "version_id": None, "file_name": None, "dependency_type": "optional"},
+            ]
+        }
+        _mock_modrinth(httpx_mock, [version])
+        httpx_mock.add_response(
+            url="https://api.modrinth.com/v2/projects?ids=%5B%22AAAA%22%5D",
+            json=[{"id": "AAAA", "slug": "vault", "title": "Vault"}],
+        )
+
+        async with httpx.AsyncClient() as client:
+            resolved = await ModrinthProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
+
+        assert resolved.dependencies == (PluginDependency("Vault", ("vault", "AAAA")),)
+
+    @pytest.mark.parametrize(
+        ("configured", "warned"),
+        [
+            ([], True),
+            ([PluginSpec(PluginProviderType.SPIGET, "Vault", "latest", force=False)], False),
+            ([PluginSpec(PluginProviderType.GITHUB, "MilkBowl/Vault", "latest", force=False)], False),
+            ([PluginSpec(PluginProviderType.MODRINTH, "AAAA", "latest", force=False)], False),
+        ],
+    )
+    def test_warns_about_missing_dependencies(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], configured: list[PluginSpec], warned: bool
+    ) -> None:
+        resolved = ResolvedPlugin(
+            "Demo",
+            "2.0",
+            "https://cdn.example/demo.jar",
+            "demo.jar",
+            dependencies=(PluginDependency("Vault", ("vault", "AAAA")),),
+        )
+        resolution = PluginResolution(_spec(), "modrinth:demo", None, resolved, None)
+
+        _warn_missing_dependencies([resolution], [_spec(), *configured], ServerLockfile(tmp_path / "lock.json", {}))
+
+        assert ("which is not in PLUGINS" in capsys.readouterr().out) is warned

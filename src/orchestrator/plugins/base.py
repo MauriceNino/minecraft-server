@@ -25,6 +25,15 @@ class PluginSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class PluginDependency:
+    """A plugin that another plugin requires, as named by the provider."""
+
+    name: str
+    # Other names it may be configured as, e.g. its slug or project ID
+    aliases: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ResolvedPlugin:
     display_name: str
     version: str
@@ -35,6 +44,8 @@ class ResolvedPlugin:
     sha512: str | None = None
     etag: str | None = None
     last_modified: str | None = None
+    # Required dependencies, as far as the provider declares them
+    dependencies: tuple[PluginDependency, ...] = ()
 
 
 class AbstractPluginProvider(ABC):
