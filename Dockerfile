@@ -65,7 +65,7 @@ case "$JAVA_FLAVOR" in
         ;;
     "azul")
         API_URL="https://api.azul.com/zulu/download/community/v1.0/bundles/latest/?os=linux&arch=${ZULU_ARCH}&hw_bitness=64&ext=tar.gz&jdk_version=${JAVA_VERSION}&bundle_type=jdk"
-        URL=$(wget -qO- "$API_URL" | python3 -c "import sys, json; print(json.load(sys.stdin)['url'])")
+        URL=$(wget -qO- --tries=5 --waitretry=15 --retry-on-http-error=429,500,502,503,504 "$API_URL" | python3 -c "import sys, json; print(json.load(sys.stdin)['url'])")
         ;;
     "graalvm")
         URL="https://download.oracle.com/graalvm/${JAVA_VERSION}/latest/graalvm-jdk-${JAVA_VERSION}_linux-${JAVA_ARCH}_bin.tar.gz"
@@ -80,7 +80,11 @@ if [ -z "$URL" ]; then echo "Failed to resolve Java download URL"; exit 1; fi
 
 # Download and extract Java uniformly
 mkdir -p /opt/java
-wget -q -O /tmp/java.tar.gz "$URL"
+# Retry transient upstream failures (e.g. 5xx from GitHub release downloads)
+# and log errors (-nv) instead of failing silently with -q
+wget -nv --tries=5 --waitretry=15 --timeout=60 --retry-connrefused \
+    --retry-on-http-error=429,500,502,503,504 \
+    -O /tmp/java.tar.gz "$URL"
 tar -xzf /tmp/java.tar.gz -C /opt/java --strip-components=1
 
 # Symlink Java binaries to system PATH
