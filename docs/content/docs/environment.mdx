@@ -53,3 +53,8 @@ If RCON is enabled, the orchestrator automatically configures the server files t
 - **`RCON_PASSWORD`**
   - **Description:** The password for RCON.
   - **Default:** A random UUID, generated on every start. It is stored in `runtime/.rcon-password`, so `mc-rcon` works inside the container without you knowing the password.
+
+<Callout title="Security" type="warn">
+  RCON is not encrypted and gives full console access. Don't publish the RCON port (`25575`) to the internet;
+  use `mc-rcon` via `docker exec` instead, or only expose it on a private network.
+</Callout>

@@ -18,7 +18,11 @@ environment:
 - **`MEMORY`**: Defines the heap size (e.g., `1G`). Default is `1G`.
 - **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
 
-The orchestrator resolves legacy builds via the GetBukkit community API.
+<Callout title="Best effort" type="warn">
+  Spigot and CraftBukkit don't publish server JARs. The orchestrator downloads them from getbukkit.org, an
+  unofficial third-party mirror without checksums, so downloads can break when the site changes. Prefer
+  [Paper](../paper) if your plugins support it.
+</Callout>
 
 ## RCON Support
 

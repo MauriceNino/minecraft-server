@@ -3,7 +3,7 @@ title: Deep Merging
 description: How different file extensions are deeply merged together
 ---
 
-When the orchestrator successfully intercepts a file (either via [Templates](../templates) or [Config Injection](../config)), and that file already exists in the runtime container, it intelligently deep-merges them based on the extension!
+When the orchestrator successfully intercepts a file (either via [Templates](../templates) or [Config Injection](../config)), and that file already exists in the runtime directory, the two are deep-merged according to the file extension.
 
 Each payload also supports [Variable Interpolation](../interpolation) using the `$[VARIABLE_NAME]` syntax. This occurs before any merging logic hits the file!
 
@@ -67,7 +67,7 @@ server:
 
 ### JSON (`.json`)
 
-JSON supports the exact same nested behavior. Here we `!replace` the features dict completely and `!delete` a deprecated key, while seamlessly deep merging `new_system`.
+JSON supports the exact same nested behavior. Here we `!replace` the features dict completely and `!delete` a deprecated key, while `new_system` is deep-merged.
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
@@ -177,7 +177,7 @@ uri = "remote:5432" # [!code ++]
 
 ### Java Properties (`.properties`)
 
-Because Java Properties are essentially flat lists without objects or arrays, `!replace:` is completely unnecessary - overriding properties defaults to 1:1 replacement anyway! However, `!delete:` remains invaluable to remove stale flags perfectly.
+Because Java Properties are essentially flat lists without objects or arrays, `!replace:` behaves the same as a plain override. `!delete:` removes a key.
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>

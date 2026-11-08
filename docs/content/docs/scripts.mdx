@@ -21,12 +21,11 @@ $ docker exec CONTAINER_NAME mc-rcon "say Hello from auto RCON!"
 
 ## `mc-orchestrator`
 
-This is the main entry point to start the server processes, but it features powerful subcommands.
+Without a subcommand, this prepares and starts the server (it is the image entrypoint). The subcommands below are meant to be run in a running container.
 
 ### `mc-orchestrator reapply`
 
-Re-runs the template interpolation and `CONFIG_PATHS` overrides without rebooting the container lifecycle or downloading Jars. \
-This is incredibly powerful for injecting configuration updates remotely without a disruptive server restart.
+Re-applies the templates and `CONFIG_PATHS` overrides without restarting the container or downloading anything. Most plugins and the server only pick up config changes after a reload or restart.
 
 **Usage:**
 
@@ -36,7 +35,7 @@ $ docker exec CONTAINER_NAME mc-orchestrator reapply
 
 ### `mc-orchestrator check-updates`
 
-Pings `Modrinth`, `Hangar`, and `Spiget` APIs and compares the latest platform releases against your current `server-lock.json`, outputting an actionable report of behind-the-curve plugins.
+Checks every configured plugin against its provider and prints a table with the installed, the resolvable and the latest version, and what will happen on the next restart.
 
 **Usage:**
 
@@ -55,7 +54,7 @@ Updates all plugins configured in `PLUGINS`, regardless of `PLUGINS_UPDATE_STRAT
 $ docker exec CONTAINER_NAME mc-orchestrator update
 
 # Update a single plugin by its lockfile key
-$ docker exec CONTAINER_NAME mc-orchestrator update --plugin [modrinth:luckperms]
+$ docker exec CONTAINER_NAME mc-orchestrator update --plugin modrinth:luckperms
 ```
 
 ### `mc-orchestrator healthcheck`

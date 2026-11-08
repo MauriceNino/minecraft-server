@@ -7,7 +7,7 @@ description: Overview of MauriceNino/minecraft-server features and philosophy
 
 Welcome to **MauriceNino/minecraft-server**.
 
-This project provides a modular, production-grade Minecraft server orchestrator with dynamic plugin resolution, sigil-based config merging, and automated RCON injection.
+This Docker image sets up and runs Minecraft servers and proxies from environment variables: it downloads the server JAR, installs and updates plugins, applies config templates and enables RCON, then starts the server.
 
 ## Why MauriceNino/minecraft-server?
 
@@ -15,9 +15,9 @@ Running stateless Minecraft servers dynamically inside Docker typically requires
 
 `MauriceNino/minecraft-server` handles:
 
-- **Server Jars download**: Paper, Purpur, Folia, Velocity, Waterfall, Vanilla, Spigot, and Bukkit.
-- **Dynamic Plugin Retrieval**: Modrinth, Hangar, SpigotMC (Spiget), CurseForge, GitHub, and direct URLs.
-- **Template Orchestration & Config Merging**: Allows a replace-then-merge flow of directories with rich configuration overriding (`!force:`, `!replace:`, `!delete:`).
-- **Auto-RCON setup**: Seamlessly handles internal RCON configuration.
+- **Server JARs**: Paper, Purpur, Folia, Velocity, Waterfall, Vanilla, Spigot, Bukkit and Pumpkin (experimental).
+- **Plugins**: from Modrinth, Hangar, SpigotMC (Spiget), CurseForge, GitHub and direct URLs, checked against your server version.
+- **Templates & config merging**: template directories are merged into the server directory, controlled with `!force:`, `!replace:` and `!delete:`.
+- **RCON**: enabled automatically, with `mc-rcon` for a console inside the container.
 
 If an API is unreachable on startup, the server starts with the JAR and plugins that are already installed.

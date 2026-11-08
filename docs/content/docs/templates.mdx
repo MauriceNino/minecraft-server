@@ -5,7 +5,7 @@ description: Declarative File Generation and the Replace-then-Merge pipeline
 
 import { File, Folder, Files } from 'fumadocs-ui/components/files';
 
-The orchestrator executes a powerful file merging lifecycle before the Java process begins.
+Before the server starts, the orchestrator applies your template directories to the server directory.
 
 It recursively searches your `templates` folder and merges exactly what it finds to `/data/runtime` (which is where the server actually runs).
 
@@ -43,7 +43,7 @@ volumes:
   - ./templates:/data/templates
 ```
 
-The orchestrator will first copy and merge everything inside `shared-base`, and then layer everything from `survival-overrides` perfectly on top, while completely ignoring `creative-overrides`.
+The orchestrator will first copy and merge everything inside `shared-base`, and then apply `survival-overrides` on top. `creative-overrides` is ignored.
 
 <Callout title="Variable Interpolation" type="info">
   You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator
@@ -53,7 +53,7 @@ The orchestrator will first copy and merge everything inside `shared-base`, and 
 
 ## How Templates Apply
 
-When syncing your enabled templates over to the runtime container, the system natively supports powerful lifecycle overrides.
+Two mechanisms control what happens to each file:
 
-- **[Directory & File Sigils](sigils)**: By prefixing your folder or file names with sigils (e.g., `!replace:config.json` or `!delete:old-plugin.jar`), you can seamlessly command the orchestrator to abandon standard flow, allowing you to orchestrate programmatic programmatic deletions and resets directly from a file tree.
-- **[Deep Merging](merging)**: If a configurations file inside your template runs into the same file in the runtime layer, by default it doesn't just overwrite it. The orchestrator intelligently merges your template dicts natively into the runtime formats (supporting YAML, JSON, TOML, and Properties).
+- **[Directory & File Sigils](sigils)**: Prefix file or folder names with a sigil (e.g. `!replace:config.json` or `!delete:old-plugin.jar`) to replace, force-create or delete instead of merging.
+- **[Deep Merging](merging)**: If a config file exists in both the template and the runtime directory, the two are deep-merged (YAML, JSON, TOML, HOCON and Properties). Other files are overwritten.
