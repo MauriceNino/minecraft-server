@@ -3,10 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 
 from orchestrator.http import download_file
+
+if TYPE_CHECKING:
+    from orchestrator.lockfile import ServerLockfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,5 +44,10 @@ class AbstractPlatformProvider(ABC):
         await download_file(client, resolved.download_url, target, checksums)
         return target
 
-    async def install_extras(self, runtime_dir: Path, client: httpx.AsyncClient) -> None:  # noqa: B027
-        """Install additional files the platform needs, called after a new server executable was installed."""
+    async def install_extras(  # noqa: B027
+        self, runtime_dir: Path, client: httpx.AsyncClient, lockfile: ServerLockfile
+    ) -> None:
+        """Install or update additional files the platform needs, tracked in `lockfile.extras`.
+
+        Called on every start once the server executable is in place.
+        """

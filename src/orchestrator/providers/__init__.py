@@ -54,31 +54,35 @@ async def download_platform(
     jar_path = runtime_dir / resolved.filename
 
     up_to_date = not lockfile.needs_server_update(resolved.project, resolved.version, resolved.build)
-    if up_to_date and lockfile.server and file_matches(jar_path, lockfile.server.sha256):
-        console.print(
-            f"  [cached]✓[/cached] [label]{resolved.filename}[/label]  "
-            f"[dim]no changes[/dim] [cached]{resolved.version}[/cached]"
-        )
-        return jar_path
-
+    cached = up_to_date and lockfile.server is not None and file_matches(jar_path, lockfile.server.sha256)
     provider = PROVIDERS[platform_type]
+
     async with create_http_client(tokens=tokens) as client:
-        # Only touch the old executable once the new one has been downloaded and verified
-        with tempfile.TemporaryDirectory(dir=runtime_dir, prefix=".dl_") as tmp_dir:
-            downloaded = await provider.download(resolved, Path(tmp_dir), client)
-            os.replace(downloaded, jar_path)
-        await provider.install_extras(runtime_dir, client)
+        if cached:
+            console.print(
+                f"  [cached]✓[/cached] [label]{resolved.filename}[/label]  "
+                f"[dim]no changes[/dim] [cached]{resolved.version}[/cached]"
+            )
+        else:
+            # Only touch the old executable once the new one has been downloaded and verified
+            with tempfile.TemporaryDirectory(dir=runtime_dir, prefix=".dl_") as tmp_dir:
+                downloaded = await provider.download(resolved, Path(tmp_dir), client)
+                os.replace(downloaded, jar_path)
 
-    if lockfile.server and lockfile.server.filename != resolved.filename:
-        (runtime_dir / lockfile.server.filename).unlink(missing_ok=True)
+            if lockfile.server and lockfile.server.filename != resolved.filename:
+                (runtime_dir / lockfile.server.filename).unlink(missing_ok=True)
 
-    console.print(f"  [success]✓[/success] Downloaded [label]{resolved.filename}[/label]")
-    lockfile.update_server(
-        project=resolved.project,
-        version=resolved.version,
-        build=resolved.build,
-        file_path=jar_path,
-    )
+            console.print(f"  [success]✓[/success] Downloaded [label]{resolved.filename}[/label]")
+            lockfile.update_server(
+                project=resolved.project,
+                version=resolved.version,
+                build=resolved.build,
+                file_path=jar_path,
+            )
+            lockfile.save()
+
+        await provider.install_extras(runtime_dir, client, lockfile)
+
     lockfile.save()
     return jar_path
 

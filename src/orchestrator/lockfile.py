@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -45,12 +45,23 @@ class ServerJarEntry:
 
 
 @dataclass(slots=True)
+class ExtraFileEntry:
+    """A file a platform needs besides its executable, e.g. PatchBukkit for Pumpkin."""
+
+    path: str  # relative to the runtime directory
+    build: str
+    sha256: str | None
+    updated_at: str
+
+
+@dataclass(slots=True)
 class ServerLockfile:
     path: Path
     plugins: dict[str, PluginLockEntry]
     server: ServerJarEntry | None = None
     # ISO-8601 timestamp of the last complete, error-free plugin check
     plugins_checked_at: str | None = None
+    extras: dict[str, ExtraFileEntry] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: Path) -> ServerLockfile:
@@ -104,11 +115,22 @@ class ServerLockfile:
                 updated_at=server_raw.get("updated_at", ""),
             )
 
+        extras = {
+            key: ExtraFileEntry(
+                path=val.get("path", ""),
+                build=str(val.get("build", "")),
+                sha256=val.get("sha256"),
+                updated_at=val.get("updated_at", ""),
+            )
+            for key, val in raw.get("extras", {}).items()
+        }
+
         return cls(
             path=path,
             plugins=plugins,
             server=server,
             plugins_checked_at=raw.get("plugins_checked_at"),
+            extras=extras,
         )
 
     def save(self) -> None:
@@ -117,6 +139,8 @@ class ServerLockfile:
             data["server"] = asdict(self.server)
         if self.plugins_checked_at is not None:
             data["plugins_checked_at"] = self.plugins_checked_at
+        if self.extras:
+            data["extras"] = {k: asdict(v) for k, v in self.extras.items()}
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # Write to a temp file first so a crash mid-write can't leave a truncated lockfile behind
@@ -173,6 +197,14 @@ class ServerLockfile:
             build=build,
             sha256=_compute_sha256(file_path),
             filename=file_path.name,
+            updated_at=datetime.now(UTC).isoformat(),
+        )
+
+    def update_extra(self, key: str, runtime_dir: Path, file_path: Path, build: str) -> None:
+        self.extras[key] = ExtraFileEntry(
+            path=file_path.relative_to(runtime_dir).as_posix(),
+            build=build,
+            sha256=_compute_sha256(file_path),
             updated_at=datetime.now(UTC).isoformat(),
         )
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import cast
 import httpx
 
 from orchestrator.http import download_file
+from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console
 from orchestrator.plugins.github import GitHubAsset, GitHubRelease, raise_for_github_status
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
@@ -15,6 +17,7 @@ from orchestrator.providers.vanilla import fetch_version_manifest
 
 PUMPKIN_RELEASE_URL = "https://api.github.com/repos/Pumpkin-MC/Pumpkin/releases/tags/nightly"
 PATCHBUKKIT_RELEASE_URL = "https://api.github.com/repos/Pumpkin-MC/PatchBukkit/releases/tags/nightly"
+PATCHBUKKIT_LOCK_KEY = "patchbukkit"
 
 
 def _asset_names() -> tuple[str, str]:
@@ -81,19 +84,36 @@ class PumpkinProvider(AbstractPlatformProvider):
         target.chmod(0o755)
         return target
 
-    async def install_extras(self, runtime_dir: Path, client: httpx.AsyncClient) -> None:
+    async def install_extras(self, runtime_dir: Path, client: httpx.AsyncClient, lockfile: ServerLockfile) -> None:
         _, patchbukkit_asset = _asset_names()
-        asset = await _find_asset(client, PATCHBUKKIT_RELEASE_URL, patchbukkit_asset)
+        target = runtime_dir / "plugins" / patchbukkit_asset
+        entry = lockfile.extras.get(PATCHBUKKIT_LOCK_KEY)
+        installed = entry is not None and runtime_dir / entry.path == target and file_matches(target, entry.sha256)
+
+        try:
+            asset = await _find_asset(client, PATCHBUKKIT_RELEASE_URL, patchbukkit_asset)
+        except (httpx.HTTPError, RuntimeError) as e:
+            if not installed:
+                raise
+            console.print(f"  [warning]⚠[/warning] Could not check for PatchBukkit updates: {e or type(e).__name__}")
+            return
         if asset is None:
             console.print(f"  [warning]⚠[/warning] Could not find PatchBukkit asset {patchbukkit_asset}")
             return
 
-        plugins_dir = runtime_dir / "plugins"
-        plugins_dir.mkdir(parents=True, exist_ok=True)
-        await download_file(
-            client,
-            asset["browser_download_url"],
-            plugins_dir / patchbukkit_asset,
-            {"sha256": _sha256_from_digest(asset)},
-        )
+        sha256 = _sha256_from_digest(asset)
+        build = sha256[:12] if sha256 else asset["browser_download_url"]
+        if installed and entry is not None and entry.build == build:
+            console.print(f"  [cached]✓[/cached] [label]{patchbukkit_asset}[/label]  [dim]no changes[/dim]")
+            return
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Keep the installed file until the new one has been downloaded and verified
+        tmp_path = target.with_name(f".{patchbukkit_asset}.tmp")
+        await download_file(client, asset["browser_download_url"], tmp_path, {"sha256": sha256})
+        os.replace(tmp_path, target)
+        if entry is not None and runtime_dir / entry.path != target:
+            (runtime_dir / entry.path).unlink(missing_ok=True)
+
+        lockfile.update_extra(PATCHBUKKIT_LOCK_KEY, runtime_dir, target, build)
         console.print(f"  [success]✓[/success] Downloaded PatchBukkit: [label]{patchbukkit_asset}[/label]")

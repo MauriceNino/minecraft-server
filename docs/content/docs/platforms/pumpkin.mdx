@@ -34,5 +34,6 @@ See [RCON Variables](../../environment#rcon-variables) for configuration details
 When running Pumpkin, the orchestrator automatically:
 
 1. Downloads the latest **Pumpkin** native binary for your architecture.
-2. Injects the **PatchBukkit** compatibility layer.
+2. Injects the **PatchBukkit** compatibility layer into `plugins/`. It's tracked in `server-lock.json` and checked for a
+   new nightly build on every start, and downloaded again if the file is missing or was modified.
 3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory, where PatchBukkit loads them.
