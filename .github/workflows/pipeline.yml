@@ -65,9 +65,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # As a UID that isn't in the image, writing to the volume Docker creates from the image
       - name: Start a Paper server
         run: |
-          docker run -d --name smoke \
+          docker run -d --name smoke --user 1234:1234 \
             -e TYPE=PAPER -e VERSION=latest -e ACCEPT_EULA=true -e MEMORY=1G \
             -e PLUGINS="modrinth:luckperms@latest" \
             minecraft-server:smoke

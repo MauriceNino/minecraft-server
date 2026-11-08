@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 import tempfile
 from collections.abc import Coroutine
@@ -70,7 +71,7 @@ def _check_permissions(config: Config) -> None:
             "  This usually occurs when Docker bind mounts create directories owned by root.\n"
             "\n"
             "  [bold]To fix this, run the following command on your host:[/bold]\n"
-            "    sudo chown -R 1000:1000 /path/to/your/data"
+            f"    sudo chown -R {os.getuid()}:{os.getgid()} /path/to/your/data"
         )
         console.print()
         sys.exit(1)

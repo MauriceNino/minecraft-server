@@ -99,7 +99,11 @@ EOF
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /data
-RUN mkdir -p templates runtime && chown -R minecraft:minecraft /data
+# Writable for any UID, so the container also runs with `user:` and the volumes Docker creates from the image.
+# Users not in /etc/passwd have no home directory, Java falls back to $HOME.
+RUN mkdir -p templates runtime && chown -R minecraft:minecraft /data && \
+    chmod 0777 templates runtime && chmod 1777 /home/minecraft
+ENV HOME=/home/minecraft
 
 USER minecraft:minecraft
 

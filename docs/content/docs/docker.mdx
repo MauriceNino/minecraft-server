@@ -55,6 +55,31 @@ Inside the container, `/data` is the target directory via `DEFAULT_DATA_DIR`.
 - `/data/runtime`: Where the server execution happens (and where you should mount to persist data).
 - `/data/templates`: Where you should mount your config skeletons.
 
+## Running as a Different User
+
+The container runs as the `minecraft` user with UID `1000` and GID `1000`. To run it as another user, for example
+so the files in `./data` belong to your own account, set `user:` to the numeric UID and GID:
+
+```yaml
+services:
+  minecraft:
+    user: '1001:1001'
+    volumes:
+      - ./data:/data/runtime
+      - ./templates:/data/templates:ro
+```
+
+A directory you mount from the host must be writable by that UID and GID. Create it before the container starts,
+otherwise Docker creates it owned by `root`:
+
+```bash
+mkdir -p ./data
+sudo chown -R 1001:1001 ./data
+```
+
+Templates are only read, so they only need to be readable by that user. Volumes Docker creates from the image,
+including named volumes, are writable for any UID. The UID doesn't need to exist in the image.
+
 ## Example Environments
 
 The repository has examples for every server type and for a Velocity network with lobby, survival and creative servers.
