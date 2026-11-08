@@ -12,6 +12,7 @@ from rich.prompt import Prompt
 from rich.theme import Theme
 
 from orchestrator.constants import DEFAULT_DATA_DIR, RCON_PASSWORD_FILENAME, RUNTIME_SUBDIR
+from rcon.formatting import legacy_to_text
 
 _THEME = Theme(
     {
@@ -58,7 +59,7 @@ def _interactive(mcr: MCRcon, host: str, port: int) -> None:
 
         try:
             if response := mcr.command(line):
-                _console.print(response, markup=False)
+                _console.print(legacy_to_text(response))
         except MCRconException as exc:
             _print_error(f"RCON error: {exc}")
 
@@ -82,7 +83,7 @@ def main() -> None:
         with MCRcon(host, password, port=port) as mcr:
             if command:
                 if response := mcr.command(command):
-                    _console.print(response, markup=False)
+                    _console.print(legacy_to_text(response))
             else:
                 _interactive(mcr, host, port)
     except ConnectionRefusedError:
