@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import Generator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -10,6 +12,8 @@ import httpx
 
 from orchestrator.constants import USER_AGENT
 
+GITHUB_API_HOST = "api.github.com"
+CURSEFORGE_API_HOST = "api.curseforge.com"
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 MAX_ATTEMPTS = 4
 BACKOFF_BASE_SECONDS = 1.0
@@ -65,10 +69,36 @@ class RetryTransport(httpx.AsyncBaseTransport):
         await self._wrapped.aclose()
 
 
-def create_http_client(*, timeout: float = 60.0, connect_timeout: float = 15.0) -> httpx.AsyncClient:
+@dataclass(frozen=True, slots=True)
+class ApiTokens:
+    """Credentials for APIs that require or benefit from authentication."""
+
+    github: str | None = None
+    curseforge: str | None = None
+
+
+class ApiTokenAuth(httpx.Auth):
+    """Adds each token only to requests for its own API, so it never reaches download hosts."""
+
+    def __init__(self, tokens: ApiTokens) -> None:
+        self._tokens = tokens
+
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response]:
+        host = request.url.host
+        if host == GITHUB_API_HOST and self._tokens.github:
+            request.headers["Authorization"] = f"Bearer {self._tokens.github}"
+        elif host == CURSEFORGE_API_HOST and self._tokens.curseforge:
+            request.headers["x-api-key"] = self._tokens.curseforge
+        yield request
+
+
+def create_http_client(
+    *, tokens: ApiTokens | None = None, timeout: float = 60.0, connect_timeout: float = 15.0
+) -> httpx.AsyncClient:
     transport = httpx.AsyncHTTPTransport(limits=httpx.Limits(max_connections=MAX_CONNECTIONS))
     return httpx.AsyncClient(
         transport=RetryTransport(transport),
+        auth=ApiTokenAuth(tokens) if tokens else None,
         follow_redirects=True,
         # No pool timeout: with the connection limit, requests may wait for a long download to finish
         timeout=httpx.Timeout(timeout, connect=connect_timeout, pool=None),

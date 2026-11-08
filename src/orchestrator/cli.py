@@ -18,6 +18,7 @@ from orchestrator.constants import (
     PluginProviderType,
     PluginUpdateStrategy,
 )
+from orchestrator.http import ApiTokens
 from orchestrator.plugins.base import PluginSpec
 from orchestrator.sigils import DirSigil, parse_dir_sigil
 
@@ -83,6 +84,7 @@ class Config:
     accept_eula: bool
     plugins_update_strategy: PluginUpdateStrategy
     plugins_check_cache_seconds: int
+    api_tokens: ApiTokens
 
 
 def _parse_bool(value: str) -> bool:
@@ -283,6 +285,11 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     except ValueError as e:
         raise SystemExit(f"Invalid PLUGINS_CHECK_CACHE={plugins_check_cache_raw!r}: {e}") from None
 
+    api_tokens = ApiTokens(
+        github=env.get("GITHUB_TOKEN", "").strip() or None,
+        curseforge=env.get("CURSEFORGE_API_KEY", "").strip() or None,
+    )
+
     return Config(
         platform=platform,
         version=version,
@@ -303,4 +310,5 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         accept_eula=accept_eula,
         plugins_update_strategy=plugins_update_strategy,
         plugins_check_cache_seconds=plugins_check_cache_seconds,
+        api_tokens=api_tokens,
     )

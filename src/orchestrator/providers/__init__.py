@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 
 from orchestrator.constants import PlatformType
-from orchestrator.http import create_http_client
+from orchestrator.http import ApiTokens, create_http_client
 from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
@@ -32,8 +32,10 @@ PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
 }
 
 
-async def resolve_platform(platform_type: PlatformType, version: str, build: str) -> ResolvedVersion:
-    async with create_http_client() as client:
+async def resolve_platform(
+    platform_type: PlatformType, version: str, build: str, tokens: ApiTokens | None = None
+) -> ResolvedVersion:
+    async with create_http_client(tokens=tokens) as client:
         resolved = await PROVIDERS[platform_type].resolve_version(version, build, client)
 
     console.print(f"  [success]✓[/success] Resolved [label]{resolved.version}[/label] (build {resolved.build})")
@@ -45,6 +47,7 @@ async def download_platform(
     platform_type: PlatformType,
     resolved: ResolvedVersion,
     lockfile: ServerLockfile,
+    tokens: ApiTokens | None = None,
 ) -> Path:
     """Make sure the server executable for *resolved* is in *runtime_dir* and return its path."""
     runtime_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
@@ -59,7 +62,7 @@ async def download_platform(
         return jar_path
 
     provider = PROVIDERS[platform_type]
-    async with create_http_client() as client:
+    async with create_http_client(tokens=tokens) as client:
         # Only touch the old executable once the new one has been downloaded and verified
         with tempfile.TemporaryDirectory(dir=runtime_dir, prefix=".dl_") as tmp_dir:
             downloaded = await provider.download(resolved, Path(tmp_dir), client)
@@ -103,6 +106,7 @@ async def prepare_platform(
     version: str,
     build: str,
     lockfile: ServerLockfile,
+    tokens: ApiTokens | None = None,
 ) -> tuple[Path, str, bool]:
     """Resolve and download the server executable.
 
@@ -110,8 +114,8 @@ async def prepare_platform(
     Returns the executable, the Minecraft version and whether the fallback was used.
     """
     try:
-        resolved = await resolve_platform(platform_type, version, build)
-        executable = await download_platform(runtime_dir, platform_type, resolved, lockfile)
+        resolved = await resolve_platform(platform_type, version, build, tokens)
+        executable = await download_platform(runtime_dir, platform_type, resolved, lockfile, tokens)
     except (httpx.HTTPError, RuntimeError) as e:
         installed = _installed_server(runtime_dir, platform_type, version, build, lockfile)
         if installed is None:

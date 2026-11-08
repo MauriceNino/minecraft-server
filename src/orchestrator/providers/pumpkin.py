@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import platform
 import sys
 from pathlib import Path
@@ -38,8 +37,7 @@ def _asset_names() -> tuple[str, str]:
 
 
 async def _find_asset(client: httpx.AsyncClient, release_url: str, name: str) -> GitHubAsset | None:
-    headers = {"Authorization": f"Bearer {token}"} if (token := os.environ.get("GITHUB_TOKEN")) else {}
-    resp = await client.get(release_url, headers=headers)
+    resp = await client.get(release_url)
     raise_for_github_status(resp)
     release = cast(GitHubRelease, resp.json())
     return next((a for a in release["assets"] if a["name"] == name), None)

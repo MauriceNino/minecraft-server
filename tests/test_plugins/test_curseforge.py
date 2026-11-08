@@ -4,16 +4,12 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from orchestrator.constants import PlatformType, PluginProviderType
-from orchestrator.http import create_http_client
+from orchestrator.http import ApiTokens, create_http_client
 from orchestrator.plugins.base import PluginSpec
 from orchestrator.plugins.curseforge import CurseForgeProvider
 
 API = "https://api.curseforge.com/v1"
-
-
-@pytest.fixture(autouse=True)
-def _api_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CURSEFORGE_API_KEY", "key")
+TOKENS = ApiTokens(curseforge="key")
 
 
 def _file(name: str, date: str, release_type: int = 1, download_url: str | None = "https://cdn.example/x.jar") -> dict:
@@ -50,7 +46,7 @@ async def test_picks_newest_release_across_pages(httpx_mock: HTTPXMock) -> None:
     ]
     _mock_mod(httpx_mock, [first_page, second_page])
 
-    async with create_http_client() as client:
+    async with create_http_client(tokens=TOKENS) as client:
         resolved = await CurseForgeProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
 
     assert resolved.version == "newest-release"
@@ -59,7 +55,7 @@ async def test_picks_newest_release_across_pages(httpx_mock: HTTPXMock) -> None:
 async def test_experimental_includes_betas(httpx_mock: HTTPXMock) -> None:
     _mock_mod(httpx_mock, [[_file("release", "2026-02-01T00:00:00Z"), _file("beta", "2026-03-01T00:00:00Z", 2)]])
 
-    async with create_http_client() as client:
+    async with create_http_client(tokens=TOKENS) as client:
         resolved = await CurseForgeProvider().resolve(_spec("experimental"), PlatformType.PAPER, "1.21.4", client)
 
     assert resolved.version == "beta"
@@ -68,6 +64,23 @@ async def test_experimental_includes_betas(httpx_mock: HTTPXMock) -> None:
 async def test_third_party_downloads_disabled(httpx_mock: HTTPXMock) -> None:
     _mock_mod(httpx_mock, [[_file("release", "2026-02-01T00:00:00Z", download_url=None)]])
 
-    async with create_http_client() as client:
+    async with create_http_client(tokens=TOKENS) as client:
         with pytest.raises(RuntimeError, match="disabled third-party downloads"):
+            await CurseForgeProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
+
+
+async def test_sends_api_key(httpx_mock: HTTPXMock) -> None:
+    _mock_mod(httpx_mock, [[_file("release", "2026-02-01T00:00:00Z")]])
+
+    async with create_http_client(tokens=TOKENS) as client:
+        await CurseForgeProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
+
+    assert all(r.headers["x-api-key"] == "key" for r in httpx_mock.get_requests())
+
+
+async def test_missing_api_key(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{API}/mods/42", status_code=403)
+
+    async with create_http_client() as client:
+        with pytest.raises(RuntimeError, match="CURSEFORGE_API_KEY"):
             await CurseForgeProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)

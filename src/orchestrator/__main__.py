@@ -125,6 +125,7 @@ async def _async_main() -> None:
         version=config.version,
         build=config.build,
         lockfile=lockfile,
+        tokens=config.api_tokens,
     )
 
     if config.applied_templates or config.config_overrides:
@@ -142,6 +143,7 @@ async def _async_main() -> None:
             strategy=config.plugins_update_strategy,
             check_cache_seconds=config.plugins_check_cache_seconds,
             offline=offline,
+            tokens=config.api_tokens,
         )
 
     if config.rcon_enabled:
@@ -218,6 +220,7 @@ async def _async_update(target_plugin: str | None = None) -> None:
         platform_type=config.platform,
         version=config.version,
         build=config.build,
+        tokens=config.api_tokens,
     )
 
     log_phase("Plugins")
@@ -231,6 +234,7 @@ async def _async_update(target_plugin: str | None = None) -> None:
         strategy=PluginUpdateStrategy.AUTO,
         check_cache_seconds=0,
         target_plugin=target_plugin,
+        tokens=config.api_tokens,
     )
 
     console.print()

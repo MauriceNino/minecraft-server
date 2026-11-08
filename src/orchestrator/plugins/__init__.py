@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 
 from orchestrator.constants import PlatformType, PluginProviderType, PluginUpdateStrategy
-from orchestrator.http import create_http_client
+from orchestrator.http import ApiTokens, create_http_client
 from orchestrator.lockfile import PluginLockEntry, ServerLockfile, file_matches, make_lock_key
 from orchestrator.logging import console, log_change
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
@@ -165,6 +165,7 @@ async def download_plugins(
     check_cache_seconds: int,
     target_plugin: str | None = None,
     offline: bool = False,
+    tokens: ApiTokens | None = None,
 ) -> list[str]:
     """Install, update and remove plugins so the plugins directory matches *plugin_specs*.
 
@@ -209,7 +210,7 @@ async def download_plugins(
         pending.append(spec)
 
     if pending:
-        async with create_http_client() as client:
+        async with create_http_client(tokens=tokens) as client:
             errors = await asyncio.gather(
                 *(
                     _resolve_and_install(spec, platform_type, mc_version, plugins_dir, lockfile, client, strategy)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from typing import TypedDict, cast
 
@@ -21,11 +20,10 @@ def raise_for_github_status(resp: httpx.Response) -> None:
 
 
 class GithubProvider(AbstractPluginProvider):
-    def _headers(self) -> dict[str, str]:
-        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
-        if token := os.environ.get("GITHUB_TOKEN"):
-            headers["Authorization"] = f"Bearer {token}"
-        return headers
+    @staticmethod
+    def _headers() -> dict[str, str]:
+        # The client adds GITHUB_TOKEN, see orchestrator.http.ApiTokenAuth
+        return {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
     async def _get_release(self, spec: PluginSpec, client: httpx.AsyncClient) -> GitHubRelease:
         if spec.version == "experimental":

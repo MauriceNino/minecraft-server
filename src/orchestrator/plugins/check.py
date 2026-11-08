@@ -127,7 +127,7 @@ async def check_plugin_updates(config: Config) -> None:
 
     lockfile = ServerLockfile.load(config.runtime_dir / SERVER_LOCK_FILENAME)
 
-    async with create_http_client() as client:
+    async with create_http_client(tokens=config.api_tokens) as client:
         mc_version = await _resolve_mc_version(config, client)
         if mc_version is None:
             return

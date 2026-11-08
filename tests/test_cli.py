@@ -4,6 +4,7 @@ import pytest
 
 from orchestrator.cli import _collect_config_overrides, load_config
 from orchestrator.constants import PlatformType
+from orchestrator.http import ApiTokens
 from orchestrator.sigils import DirSigil
 
 
@@ -175,6 +176,11 @@ class TestLoadConfig:
     def test_invalid_plugins_update_strategy(self) -> None:
         with pytest.raises(SystemExit, match="Unknown PLUGINS_UPDATE_STRATEGY"):
             load_config(environ={"PLUGINS_UPDATE_STRATEGY": "INVALID"})
+
+    def test_api_tokens(self) -> None:
+        assert load_config(environ={}).api_tokens == ApiTokens()
+        config = load_config(environ={"GITHUB_TOKEN": " ghp_x ", "CURSEFORGE_API_KEY": "cf"})
+        assert config.api_tokens == ApiTokens(github="ghp_x", curseforge="cf")
 
 
 class TestCollectConfigOverrides:

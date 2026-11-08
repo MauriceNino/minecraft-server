@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Any, TypedDict, cast
 
 import httpx
@@ -17,19 +16,15 @@ MAX_PAGES = 20
 
 
 class CurseForgeProvider(AbstractPluginProvider):
-    @staticmethod
-    def _headers() -> dict[str, str]:
-        key = os.environ.get("CURSEFORGE_API_KEY")
-        if not key:
+    async def _get_json(self, client: httpx.AsyncClient, path: str, **params: str | int) -> dict:
+        # The client adds CURSEFORGE_API_KEY, see orchestrator.http.ApiTokenAuth
+        resp = await client.get(f"{API_BASE}{path}", params=params)
+        if resp.status_code in (401, 403) and "x-api-key" not in resp.request.headers:
             raise RuntimeError(
                 "CurseForge API key is missing. Plugins from CurseForge require a valid API key. "
                 "Please set the [info]CURSEFORGE_API_KEY[/info] environment variable. "
                 "You can obtain one at [url]https://console.curseforge.com/[/url]"
             )
-        return {"x-api-key": key}
-
-    async def _get_json(self, client: httpx.AsyncClient, path: str, **params: str | int) -> dict:
-        resp = await client.get(f"{API_BASE}{path}", params=params, headers=self._headers())
         resp.raise_for_status()
         return resp.json()
 

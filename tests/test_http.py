@@ -9,7 +9,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from orchestrator import http
-from orchestrator.http import create_http_client, download_file
+from orchestrator.http import ApiTokens, create_http_client, download_file
 from orchestrator.plugins.github import raise_for_github_status
 
 URL = "https://api.example/thing"
@@ -108,3 +108,20 @@ async def test_github_rate_limit_message(httpx_mock: HTTPXMock) -> None:
 
     with pytest.raises(RuntimeError, match=r"rate limit exceeded\. Set GITHUB_TOKEN"):
         raise_for_github_status(resp)
+
+
+async def test_tokens_only_sent_to_their_api(httpx_mock: HTTPXMock) -> None:
+    for url in ("https://api.github.com/x", "https://api.curseforge.com/x", "https://github.com/x"):
+        httpx_mock.add_response(url=url)
+
+    async with create_http_client(tokens=ApiTokens(github="gh", curseforge="cf")) as client:
+        for url in ("https://api.github.com/x", "https://api.curseforge.com/x", "https://github.com/x"):
+            await client.get(url)
+
+    github, curseforge, download = httpx_mock.get_requests()
+    assert github.headers["Authorization"] == "Bearer gh"
+    assert "x-api-key" not in github.headers
+    assert curseforge.headers["x-api-key"] == "cf"
+    assert "Authorization" not in curseforge.headers
+    assert "Authorization" not in download.headers
+    assert "x-api-key" not in download.headers

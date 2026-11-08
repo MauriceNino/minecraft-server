@@ -38,6 +38,18 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Format:** A number followed by a unit — `s` (seconds), `m` (minutes), `h` (hours), or `d` (days). Examples: `30s`, `5m`, `2h`.
   - **Default:** `5m`
 
+## API Tokens
+
+The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.
+
+- **`GITHUB_TOKEN`**
+  - **Description:** A GitHub Personal Access Token, used for `github:` plugins and the Pumpkin download. It raises the GitHub API rate limit from 60 to 5,000 requests per hour. See [GitHub plugins](../plugins/github#rate-limiting--authentication).
+  - **Default:** unset (unauthenticated requests)
+
+- **`CURSEFORGE_API_KEY`**
+  - **Description:** The API key for the CurseForge API. Required for `curseforge:` plugins. See [CurseForge plugins](../plugins/curseforge).
+  - **Default:** unset
+
 ## RCON Variables
 
 If RCON is enabled, the orchestrator automatically configures the server files to expose RCON.
