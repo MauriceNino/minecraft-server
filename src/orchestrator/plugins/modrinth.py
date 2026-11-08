@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TypedDict, cast
 
 import httpx
@@ -16,9 +17,20 @@ class ModrinthProvider(AbstractPluginProvider):
         resp.raise_for_status()
         return cast(ModrinthProject, resp.json())
 
-    async def _get_versions(self, spec: PluginSpec, client: httpx.AsyncClient) -> list[ModrinthVersion]:
-        # Newest first
-        resp = await client.get(f"{API_BASE}/project/{spec.identifier}/version")
+    async def _get_versions(
+        self,
+        spec: PluginSpec,
+        client: httpx.AsyncClient,
+        loaders: list[str],
+        mc_version: str | None = None,
+    ) -> list[ModrinthVersion]:
+        """Versions for any of *loaders* (and *mc_version*, if given), newest first."""
+        params = {"include_changelog": "false"}
+        if loaders:
+            params["loaders"] = json.dumps(loaders)
+        if mc_version:
+            params["game_versions"] = json.dumps([mc_version])
+        resp = await client.get(f"{API_BASE}/project/{spec.identifier}/version", params=params)
         resp.raise_for_status()
         return cast(list[ModrinthVersion], resp.json())
 
@@ -45,20 +57,25 @@ class ModrinthProvider(AbstractPluginProvider):
             raise self._platform_not_supported(spec, platforms)
 
         check_mc_version = not spec.force and platform_type not in PROXY_PLATFORMS
-        versions = await self._get_versions(spec, client)
 
         if spec.version in ("latest", "experimental"):
             channels = ["release"] if spec.version == "latest" else ["beta", "alpha"]
-            in_channel = [v for v in versions if v["version_type"] in channels]
-            if not self._pick_by_platform_preference(in_channel, platforms):
-                raise self._version_could_not_be_found_for_platform(spec, platforms)
-
-            if check_mc_version:
-                in_channel = [v for v in in_channel if mc_version in v["game_versions"]]
-            version = self._pick_by_platform_preference(in_channel, platforms)
+            versions = await self._get_versions(spec, client, platforms, mc_version if check_mc_version else None)
+            version = self._pick_by_platform_preference(
+                [v for v in versions if v["version_type"] in channels], platforms
+            )
             if version is None:
+                if not check_mc_version:
+                    raise self._version_could_not_be_found_for_platform(spec, platforms)
+                # Find out whether the plugin has no build for this platform or just none for this Minecraft version
+                any_mc_version = await self._get_versions(spec, client, platforms)
+                if not self._pick_by_platform_preference(
+                    [v for v in any_mc_version if v["version_type"] in channels], platforms
+                ):
+                    raise self._version_could_not_be_found_for_platform(spec, platforms)
                 raise self._version_not_supported(spec, mc_version)
         else:
+            versions = await self._get_versions(spec, client, platforms)
             matching = [v for v in versions if spec.version in (v["version_number"], v["id"])]
             version = self._pick_by_platform_preference(matching, platforms)
             if version is None:

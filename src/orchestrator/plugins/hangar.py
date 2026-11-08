@@ -10,7 +10,7 @@ from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, Resolv
 from orchestrator.semver import is_same_semver
 
 API_BASE = "https://hangar.papermc.io/api/v1"
-PAGE_SIZE = 50
+PAGE_SIZE = 25  # maximum allowed by the API, larger limits are lowered to it
 
 
 class HangarProvider(AbstractPluginProvider):
@@ -30,13 +30,16 @@ class HangarProvider(AbstractPluginProvider):
         self,
         spec: PluginSpec,
         client: httpx.AsyncClient,
+        hangar_platform: str,
+        channels: list[str],
         predicate: Callable[[HangarVersion], bool],
     ) -> HangarVersion | None:
+        """The newest version for *hangar_platform* in one of *channels* that matches *predicate*."""
         offset = 0
         while True:
             resp = await client.get(
                 f"{API_BASE}/projects/{spec.identifier}/versions",
-                params={"offset": offset, "limit": PAGE_SIZE},
+                params={"offset": offset, "limit": PAGE_SIZE, "platform": hangar_platform, "channel": channels},
             )
             resp.raise_for_status()
             page = cast(HangarVersionPage, resp.json())
@@ -45,8 +48,8 @@ class HangarProvider(AbstractPluginProvider):
                 if predicate(version):
                     return version
 
-            offset += PAGE_SIZE
-            if offset >= page["pagination"]["count"]:
+            offset += len(page["result"])
+            if not page["result"] or offset >= page["pagination"]["count"]:
                 return None
 
     async def resolve(
@@ -85,7 +88,7 @@ class HangarProvider(AbstractPluginProvider):
                     and supports_mc_version(version)
                 )
 
-            version_data = await self._find_newest_version(spec, client, matches)
+            version_data = await self._find_newest_version(spec, client, hangar_platform, channels, matches)
             if version_data is None:
                 if spec.force:
                     raise self._version_could_not_be_found_for_platform(spec, [hangar_platform])

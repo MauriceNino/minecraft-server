@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 
 import httpx
@@ -37,9 +39,24 @@ def _version(number: str, game_versions: list[str], version_id: str = "", channe
     }
 
 
-def _mock_modrinth(httpx_mock: HTTPXMock, versions: list[dict]) -> None:
-    httpx_mock.add_response(url=API, json={"title": "Demo", "loaders": ["paper"]}, is_reusable=True)
-    httpx_mock.add_response(url=f"{API}/version", json=versions, is_reusable=True)
+def _mock_modrinth(httpx_mock: HTTPXMock, versions: list[dict], *, is_reusable: bool = True) -> None:
+    """Mock the project and its versions, applying the `loaders` and `game_versions` filters like the API."""
+
+    def versions_response(request: httpx.Request) -> httpx.Response:
+        loaders = json.loads(request.url.params.get("loaders", "null"))
+        game_versions = json.loads(request.url.params.get("game_versions", "null"))
+        return httpx.Response(
+            200,
+            json=[
+                v
+                for v in versions
+                if (loaders is None or set(loaders) & set(v["loaders"]))
+                and (game_versions is None or set(game_versions) & set(v["game_versions"]))
+            ],
+        )
+
+    httpx_mock.add_response(url=API, json={"title": "Demo", "loaders": ["paper"]}, is_reusable=is_reusable)
+    httpx_mock.add_callback(versions_response, url=re.compile(rf"{API}/version\?.*"), is_reusable=is_reusable)
 
 
 def _spec(version: str = "latest") -> PluginSpec:
@@ -70,6 +87,24 @@ class TestModrinthResolve:
         async with httpx.AsyncClient() as client:
             with pytest.raises(RuntimeError, match="does not support platform version"):
                 await ModrinthProvider().resolve(_spec(), PlatformType.PAPER, "1.8.8", client)
+
+    async def test_no_version_for_platform(self, httpx_mock: HTTPXMock) -> None:
+        _mock_modrinth(httpx_mock, [_version("2.0", ["1.21.4"]) | {"loaders": ["fabric"]}])
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="compatible with platform"):
+                await ModrinthProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
+
+    async def test_filters_on_the_server(self, httpx_mock: HTTPXMock) -> None:
+        _mock_modrinth(httpx_mock, [_version("2.0", ["1.21.4"])])
+
+        async with httpx.AsyncClient() as client:
+            await ModrinthProvider().resolve(_spec(), PlatformType.PAPER, "1.21.4", client)
+
+        params = httpx_mock.get_requests(url=re.compile(rf"{API}/version\?.*"))[0].url.params
+        assert "paper" in json.loads(params["loaders"])
+        assert json.loads(params["game_versions"]) == ["1.21.4"]
+        assert params["include_changelog"] == "false"
 
 
 class TestDownloadPlugins:
@@ -113,8 +148,7 @@ class TestDownloadPlugins:
 
     async def test_modified_jar_is_removed_when_filename_changes(self, tmp_path: Path, httpx_mock: HTTPXMock) -> None:
         for number in ("2.0", "2.1"):
-            httpx_mock.add_response(url=API, json={"title": "Demo", "loaders": ["paper"]})
-            httpx_mock.add_response(url=f"{API}/version", json=[_version(number, ["1.21.4"])])
+            _mock_modrinth(httpx_mock, [_version(number, ["1.21.4"])], is_reusable=False)
             httpx_mock.add_response(url=f"https://cdn.example/demo-{number}.jar", content=JAR)
         plugins_dir = tmp_path / "plugins"
 

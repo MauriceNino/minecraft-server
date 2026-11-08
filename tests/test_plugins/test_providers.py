@@ -41,7 +41,7 @@ class TestHangar:
             json={"name": "Demo", "settings": {"tags": tags or []}, "supportedPlatforms": {"PAPER": ["1.21"]}},
         )
         httpx_mock.add_response(
-            url=f"{self.API}/versions?offset=0&limit=50",
+            url=f"{self.API}/versions?offset=0&limit=25&platform=PAPER&channel=Release",
             json={"pagination": {"count": len(versions)}, "result": versions},
         )
 
@@ -63,6 +63,25 @@ class TestHangar:
 
         assert resolved.version == "1.9"
         assert resolved.sha256 == "ab"
+
+    async def test_pages_by_the_returned_page_size(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url=self.API,
+            json={"name": "Demo", "settings": {"tags": []}, "supportedPlatforms": {"PAPER": ["1.21"]}},
+        )
+        first_page = [self._version(f"2.{i}", "Release", ["1.22"]) for i in range(25)]
+        for offset, page in ((0, first_page), (25, [self._version("1.0", "Release", ["1.21.4"])])):
+            httpx_mock.add_response(
+                url=f"{self.API}/versions?offset={offset}&limit=25&platform=PAPER&channel=Release",
+                json={"pagination": {"count": 26}, "result": page},
+            )
+
+        async with create_http_client() as client:
+            resolved = await HangarProvider().resolve(
+                _spec(PluginProviderType.HANGAR, "Demo"), PlatformType.PAPER, "1.21.4", client
+            )
+
+        assert resolved.version == "1.0"
 
     async def test_folia_requires_tag(self, httpx_mock: HTTPXMock) -> None:
         httpx_mock.add_response(
