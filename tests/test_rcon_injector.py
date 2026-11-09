@@ -46,8 +46,9 @@ class TestInjectRcon:
         assert config["networking"]["rcon"]["password"] == self.TRICKY_VALUE  # type: ignore[index]
         assert config["networking"]["rcon"]["enabled"] is True  # type: ignore[index]
 
-    def test_waterfall_yaml(self, tmp_path: Path) -> None:
-        inject_rcon(PlatformType.WATERFALL, tmp_path, tmp_path / "plugins", 25577, self.TRICKY_VALUE)
+    @pytest.mark.parametrize("platform", [PlatformType.WATERFALL, PlatformType.BUNGEECORD])
+    def test_bungee_yaml(self, tmp_path: Path, platform: PlatformType) -> None:
+        inject_rcon(platform, tmp_path, tmp_path / "plugins", 25577, self.TRICKY_VALUE)
 
         config = YAML().load((tmp_path / "plugins" / "bungee-rcon" / "config.yml").read_text())
         assert config == {"port": 25577, "password": self.TRICKY_VALUE, "colored": True}

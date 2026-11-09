@@ -77,7 +77,7 @@ class ModrinthProvider(AbstractPluginProvider):
         if not spec.force and not any(p in project["loaders"] for p in platforms):
             raise self._platform_not_supported(spec, platforms)
 
-        check_mc_version = not spec.force and platform_type not in PROXY_PLATFORMS
+        check_mc_version = self._checks_mc_version(spec, mc_version) and platform_type not in PROXY_PLATFORMS
 
         if spec.version in ("latest", "experimental"):
             channels = ["release"] if spec.version == "latest" else ["beta", "alpha"]

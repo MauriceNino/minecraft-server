@@ -76,7 +76,9 @@ class HangarProvider(AbstractPluginProvider):
 
         def supports_mc_version(version: HangarVersion) -> bool:
             supported = version.get("platformDependencies", {}).get(hangar_platform, [])
-            return spec.force or any(is_same_semver(mc_version, v) for v in supported)
+            return not self._checks_mc_version(spec, mc_version) or any(
+                is_same_semver(mc_version, v) for v in supported
+            )
 
         if spec.version in ("latest", "experimental"):
             channels = ["Release"] if spec.version == "latest" else ["Beta", "Alpha", "Snapshot"]

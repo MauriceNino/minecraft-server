@@ -91,7 +91,7 @@ def main() -> None:
             f"Connection refused ({host}:{port}).\n"
             "Is the server running and RCON enabled?\n"
             "  • Backend servers: check RCON_ENABLED=true in your environment\n"
-            "  • Velocity / Waterfall: make sure the RCON bridge plugin is loaded"
+            "  • Velocity / Waterfall / BungeeCord: make sure the RCON bridge plugin is loaded"
         )
         sys.exit(1)
     except (MCRconException, OSError) as exc:

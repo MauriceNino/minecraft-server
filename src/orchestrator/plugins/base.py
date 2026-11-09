@@ -6,7 +6,7 @@ from pathlib import Path
 
 import httpx
 
-from orchestrator.constants import PlatformType, PluginProviderType
+from orchestrator.constants import UNKNOWN_MC_VERSION, PlatformType, PluginProviderType
 from orchestrator.http import download_file, safe_filename
 
 
@@ -65,6 +65,11 @@ class AbstractPluginProvider(ABC):
         checksums = {"sha1": resolved.sha1, "sha256": resolved.sha256, "sha512": resolved.sha512}
         await download_file(client, resolved.download_url, target, checksums)
         return target
+
+    @staticmethod
+    def _checks_mc_version(spec: PluginSpec, mc_version: str) -> bool:
+        """Whether the plugin has to support *mc_version*: not when forced or when the version is unknown."""
+        return not spec.force and mc_version != UNKNOWN_MC_VERSION
 
     @staticmethod
     def _join_platforms(platform_types: list[str]) -> str:

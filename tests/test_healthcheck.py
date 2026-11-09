@@ -101,6 +101,7 @@ def test_check_health_without_status_only_connects(tmp_path: Path) -> None:
         ("VELOCITY", "velocity.toml", 'bind = "[::]:25588"\n', ServerAddress("127.0.0.1", 25588)),
         ("VELOCITY", None, None, ServerAddress("127.0.0.1", 25577)),
         ("WATERFALL", "config.yml", "listeners:\n- host: 0.0.0.0:25590\n", ServerAddress("127.0.0.1", 25590)),
+        ("BUNGEECORD", "config.yml", "listeners:\n- host: 0.0.0.0:25592\n", ServerAddress("127.0.0.1", 25592)),
         (
             "PUMPKIN",
             "config/configuration.toml",

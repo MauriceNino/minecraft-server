@@ -67,7 +67,9 @@ class SpigetProvider(AbstractPluginProvider):
         if not spec.force and platform_type not in BUKKIT_BASED_PLATFORMS:
             raise self._platform_not_supported(spec, [platform_type])
 
-        if not spec.force and not any(is_same_semver(mc_version, v) for v in resource["testedVersions"]):
+        if self._checks_mc_version(spec, mc_version) and not any(
+            is_same_semver(mc_version, v) for v in resource["testedVersions"]
+        ):
             raise self._version_not_supported(spec, mc_version)
 
         download_url = f"{API_BASE}/resources/{resource_id}/download?version={version}"

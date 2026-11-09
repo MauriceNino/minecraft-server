@@ -8,6 +8,7 @@ from pytest_httpx import HTTPXMock
 from orchestrator.http import create_http_client
 from orchestrator.providers import pumpkin
 from orchestrator.providers.base import ResolvedVersion
+from orchestrator.providers.bungeecord import BungeeCordProvider
 from orchestrator.providers.pumpkin import PumpkinProvider
 from orchestrator.providers.purpur import PurpurProvider
 from orchestrator.providers.spigotmc import GetBukkitProvider
@@ -108,3 +109,41 @@ async def test_pumpkin_requires_experimental() -> None:
     async with create_http_client() as client:
         with pytest.raises(ValueError, match="VERSION=experimental"):
             await PumpkinProvider().resolve_version("latest", "latest", client)
+
+
+BUNGEE_JOB = "https://hub.spigotmc.org/jenkins/job/BungeeCord"
+BUNGEE_TREE = "?tree=number%2Cresult%2Cartifacts%5BrelativePath%5D"
+
+
+async def test_bungeecord_latest(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url=f"{BUNGEE_JOB}/lastSuccessfulBuild/api/json{BUNGEE_TREE}",
+        json={"number": 2111, "result": "SUCCESS", "artifacts": [{"relativePath": "bootstrap/target/BungeeCord.jar"}]},
+    )
+
+    async with create_http_client() as client:
+        resolved = await BungeeCordProvider().resolve_version("latest", "latest", client)
+
+    assert resolved == ResolvedVersion(
+        project="bungeecord",
+        version="unknown",
+        build="2111",
+        download_url=f"{BUNGEE_JOB}/2111/artifact/bootstrap/target/BungeeCord.jar",
+        filename="bungeecord-2111.jar",
+    )
+
+
+async def test_bungeecord_pinned_build_not_found(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{BUNGEE_JOB}/99999/api/json{BUNGEE_TREE}", status_code=404)
+
+    async with create_http_client() as client:
+        with pytest.raises(RuntimeError, match="not found"):
+            await BungeeCordProvider().resolve_version("latest", "99999", client)
+
+
+async def test_bungeecord_failed_build(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{BUNGEE_JOB}/2000/api/json{BUNGEE_TREE}", json={"number": 2000, "result": "FAILURE"})
+
+    async with create_http_client() as client:
+        with pytest.raises(RuntimeError, match="did not succeed"):
+            await BungeeCordProvider().resolve_version("latest", "2000", client)

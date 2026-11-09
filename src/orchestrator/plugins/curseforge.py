@@ -77,12 +77,13 @@ class CurseForgeProvider(AbstractPluginProvider):
 
         mod = await self._get_mod(spec, client)
 
+        check_mc_version = self._checks_mc_version(spec, mc_version)
         if is_alias:
-            files = await self._get_files(client, mod["id"], None if spec.force else mc_version)
+            files = await self._get_files(client, mod["id"], mc_version if check_mc_version else None)
             candidates = [
                 f
                 for f in files
-                if (spec.force or mc_version in f["gameVersions"])
+                if (not check_mc_version or mc_version in f["gameVersions"])
                 and (spec.version == "experimental" or f["releaseType"] == RELEASE_TYPE_RELEASE)
             ]
             # The API doesn't guarantee an order, ISO-8601 dates sort chronologically
@@ -94,7 +95,7 @@ class CurseForgeProvider(AbstractPluginProvider):
                 )
         else:
             target_file = cast(CurseForgeFile, await self._get(client, f"/mods/{mod['id']}/files/{spec.version}"))
-            if not spec.force and mc_version not in target_file["gameVersions"]:
+            if check_mc_version and mc_version not in target_file["gameVersions"]:
                 raise self._version_not_supported(spec, mc_version)
 
         if not target_file["downloadUrl"]:

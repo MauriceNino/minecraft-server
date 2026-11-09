@@ -122,6 +122,22 @@ services:
       TYPE: WATERFALL
       VERSION: latest
       MEMORY: 512M
+
+  bungeecord:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    volumes:
+      - ./templates:/data/templates:ro
+      - ./data/bungeecord:/data/runtime
+    ports:
+      - "25582:25565"
+    # Give the server time to save worlds on shutdown (Docker's default is 10s)
+    stop_grace_period: 2m
+    env_file: .env
+    environment:
+      TYPE: BUNGEECORD
+      MEMORY: 512M
     
   pumpkin:
     build:

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator.constants import (
+    BUNGEE_PLATFORMS,
     BUNGEE_RCON_URL,
     DEFAULT_DATA_DIR,
     PROXY_PLATFORMS,
@@ -288,7 +289,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     if rcon_enabled:
         if platform == PlatformType.VELOCITY:
             plugin_specs.append(PluginSpec(PluginProviderType.URL, VELOCIRCON_URL, "latest", False, {}))
-        elif platform == PlatformType.WATERFALL:
+        elif platform in BUNGEE_PLATFORMS:
             plugin_specs.append(PluginSpec(PluginProviderType.URL, BUNGEE_RCON_URL, "latest", False, {}))
 
     memory = env.get("MEMORY", "1G").strip()

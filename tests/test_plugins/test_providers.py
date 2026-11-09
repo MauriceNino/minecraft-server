@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pytest_httpx import HTTPXMock
 
-from orchestrator.constants import PlatformType, PluginProviderType
+from orchestrator.constants import UNKNOWN_MC_VERSION, PlatformType, PluginProviderType
 from orchestrator.http import create_http_client
 from orchestrator.plugins.base import PluginDependency, PluginSpec
 from orchestrator.plugins.github import GithubProvider
@@ -63,6 +63,16 @@ class TestHangar:
 
         assert resolved.version == "1.9"
         assert resolved.sha256 == "ab"
+
+    async def test_unknown_mc_version_skips_the_version_check(self, httpx_mock: HTTPXMock) -> None:
+        self._mock(httpx_mock, [self._version("2.0", "Release", ["1.22"])])
+
+        async with create_http_client() as client:
+            resolved = await HangarProvider().resolve(
+                _spec(PluginProviderType.HANGAR, "Demo"), PlatformType.PAPER, UNKNOWN_MC_VERSION, client
+            )
+
+        assert resolved.version == "2.0"
 
     async def test_required_dependencies(self, httpx_mock: HTTPXMock) -> None:
         version = self._version("1.0", "Release", ["1.21.4"]) | {
@@ -208,6 +218,16 @@ class TestSpiget:
 
         assert resolved.version == "11"
         assert resolved.download_url == f"{self.API}/download?version=11"
+
+    async def test_unknown_mc_version_skips_the_version_check(self, httpx_mock: HTTPXMock) -> None:
+        self._mock(httpx_mock, testedVersions=["1.8"])
+
+        async with create_http_client() as client:
+            resolved = await SpigetProvider().resolve(
+                _spec(PluginProviderType.SPIGET, "1331"), PlatformType.BUKKIT, UNKNOWN_MC_VERSION, client
+            )
+
+        assert resolved.version == "11"
 
     async def test_premium(self, httpx_mock: HTTPXMock) -> None:
         self._mock(httpx_mock, premium=True)

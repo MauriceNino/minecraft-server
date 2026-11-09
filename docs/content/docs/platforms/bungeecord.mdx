@@ -1,0 +1,32 @@
+---
+title: BungeeCord
+description: The original Minecraft proxy by SpigotMC
+---
+
+**BungeeCord** is the original Minecraft proxy from SpigotMC. Waterfall and many plugins are built on its API. For new networks, [Velocity](../velocity) is recommended.
+
+## Configuration
+
+Set `TYPE=BUNGEECORD` to use this platform.
+
+```yaml
+environment:
+  TYPE: BUNGEECORD
+```
+
+- **`VERSION`**: Ignored. BungeeCord has no Minecraft versions, every build supports all current client versions.
+- **`BUILD`**: The Jenkins build number, e.g. `2111`. Default is `latest`, the last successful build.
+- **`MEMORY`**: Defines the heap size (e.g., `512M`). Default is `1G`.
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+
+The orchestrator downloads builds from [SpigotMC's Jenkins](https://hub.spigotmc.org/jenkins/job/BungeeCord/). Jenkins doesn't publish checksums, so the download isn't verified against one; the lockfile records its SHA-256 afterwards.
+
+## Plugins
+
+BungeeCord runs the same plugins as Waterfall. Modrinth plugins are matched against the `bungeecord` and `waterfall` loaders, Hangar plugins against `WATERFALL`.
+
+## RCON Support
+
+BungeeCord has no built-in RCON. The orchestrator installs the [bungee-rcon](https://github.com/orblazer/bungee-rcon) plugin and configures its port and password.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

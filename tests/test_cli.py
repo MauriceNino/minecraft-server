@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from orchestrator.cli import _collect_config_overrides, load_config
-from orchestrator.constants import PlatformType
+from orchestrator.constants import BUNGEE_RCON_URL, PlatformType
 from orchestrator.http import ApiTokens
 from orchestrator.sigils import DirSigil
 
@@ -64,6 +64,12 @@ class TestLoadConfig:
     def test_jvm_flags(self) -> None:
         config = load_config(environ={"JVM_FLAGS": "-XX:+UseG1GC -Dfoo=bar"})
         assert config.jvm_flags == ["-XX:+UseG1GC", "-Dfoo=bar"]
+
+    @pytest.mark.parametrize("platform", ["WATERFALL", "BUNGEECORD"])
+    def test_bungee_proxies_get_the_rcon_bridge(self, platform: str) -> None:
+        config = load_config(environ={"TYPE": platform})
+        assert [s.identifier for s in config.plugin_specs] == [BUNGEE_RCON_URL]
+        assert "-XX:MaxInlineLevel=15" in config.jvm_flags
 
     def test_jvm_extra_flags_are_appended_to_defaults(self) -> None:
         config = load_config(environ={"JVM_EXTRA_FLAGS": "-Dfoo=bar -Dbaz=1"})

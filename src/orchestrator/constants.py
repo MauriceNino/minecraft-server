@@ -11,6 +11,7 @@ class PlatformType(StrEnum):
     FOLIA = "FOLIA"
     VELOCITY = "VELOCITY"
     WATERFALL = "WATERFALL"
+    BUNGEECORD = "BUNGEECORD"
     VANILLA = "VANILLA"
     BUKKIT = "BUKKIT"
     SPIGOT = "SPIGOT"
@@ -49,8 +50,12 @@ PROXY_PLATFORMS = frozenset(
     {
         PlatformType.VELOCITY,
         PlatformType.WATERFALL,
+        PlatformType.BUNGEECORD,
     }
 )
+
+# Proxies that run BungeeCord plugins and read its config.yml
+BUNGEE_PLATFORMS = frozenset({PlatformType.WATERFALL, PlatformType.BUNGEECORD})
 
 BUKKIT_BASED_PLATFORMS = frozenset(
     {
@@ -71,6 +76,7 @@ MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.FOLIA: ["folia"],
     PlatformType.VELOCITY: ["velocity"],
     PlatformType.WATERFALL: ["waterfall", "bungeecord"],
+    PlatformType.BUNGEECORD: ["bungeecord", "waterfall"],
     PlatformType.SPIGOT: ["spigot", "bukkit"],
     PlatformType.BUKKIT: ["bukkit"],
     PlatformType.PUMPKIN: ["paper", "spigot", "bukkit"],
@@ -84,7 +90,11 @@ HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.PURPUR: "PAPER",
     PlatformType.VELOCITY: "VELOCITY",
     PlatformType.WATERFALL: "WATERFALL",
+    PlatformType.BUNGEECORD: "WATERFALL",
 }
+
+# The Minecraft version of platforms that don't have one (BungeeCord). Plugins skip their version checks for it.
+UNKNOWN_MC_VERSION = "unknown"
 
 DEFAULT_DATA_DIR = Path("/data")
 TEMPLATES_SUBDIR = "templates"

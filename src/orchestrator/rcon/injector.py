@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from orchestrator.constants import RCON_PASSWORD_FILENAME, SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import BUNGEE_PLATFORMS, RCON_PASSWORD_FILENAME, SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 from orchestrator.merger import merge_file_content
 
@@ -35,7 +35,7 @@ def inject_rcon(
             plugins_dir / "velocircon" / "rcon.yml",
             f"enable: true\nhost: 0.0.0.0\nport: {rcon_port}\npassword: {password}\ncolors: true\n",
         )
-    elif platform == PlatformType.WATERFALL:
+    elif platform in BUNGEE_PLATFORMS:
         merge_file_content(
             plugins_dir / "bungee-rcon" / "config.yml",
             f"port: {rcon_port}\npassword: {password}\ncolored: true\n",

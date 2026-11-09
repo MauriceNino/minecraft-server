@@ -3,6 +3,11 @@ title: Waterfall
 description: A high-performance BungeeCord fork
 ---
 
+<Callout type="warning">
+  PaperMC has ended development of Waterfall. It still works, but for new networks use [Velocity](../velocity), or
+  [BungeeCord](../bungeecord) if you need BungeeCord plugins.
+</Callout>
+
 **Waterfall** is a fork of BungeeCord, the popular Minecraft proxy. It is designed for performance and stability while maintaining full compatibility with BungeeCord plugins.
 
 ## Configuration
@@ -22,7 +27,6 @@ The orchestrator resolves builds via the [PaperMC API](https://api.papermc.io/v2
 
 ## RCON Support
 
-<Callout type="warning">
-  Waterfall (BungeeCord) does not natively support RCON. If you need remote command access, consider
-  using a third-party plugin.
-</Callout>
+Waterfall has no built-in RCON. The orchestrator installs the [bungee-rcon](https://github.com/orblazer/bungee-rcon) plugin and configures its port and password.
+
+See [RCON Variables](../../environment#rcon-variables) for configuration details.

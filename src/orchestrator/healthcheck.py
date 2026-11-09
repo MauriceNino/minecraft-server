@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from ruamel.yaml import YAML
 
 from orchestrator.cli import Config
-from orchestrator.constants import PROXY_PLATFORMS, PlatformType
+from orchestrator.constants import BUNGEE_PLATFORMS, PROXY_PLATFORMS, PlatformType
 from orchestrator.merger.properties_merger import read_properties
 
 DEFAULT_SERVER_PORT = 25565
@@ -51,7 +51,7 @@ def server_address(config: Config) -> ServerAddress:
         if config.platform == PlatformType.VELOCITY:
             data = tomllib.loads((runtime / "velocity.toml").read_text(encoding="utf-8"))
             return _parse_address(data.get("bind"), DEFAULT_PROXY_PORT)
-        if config.platform == PlatformType.WATERFALL:
+        if config.platform in BUNGEE_PLATFORMS:
             data = YAML(typ="safe").load(runtime / "config.yml") or {}
             listeners = data.get("listeners") or [{}]
             return _parse_address(listeners[0].get("host"), DEFAULT_PROXY_PORT)

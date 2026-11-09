@@ -6,11 +6,12 @@ from pathlib import Path
 
 import httpx
 
-from orchestrator.constants import PlatformType
+from orchestrator.constants import UNKNOWN_MC_VERSION, PlatformType
 from orchestrator.http import ApiTokens, create_http_client
 from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
+from orchestrator.providers.bungeecord import BungeeCordProvider
 from orchestrator.providers.paper import PaperProvider
 from orchestrator.providers.pumpkin import PumpkinProvider
 from orchestrator.providers.purpur import PurpurProvider
@@ -24,6 +25,7 @@ PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.FOLIA: PaperProvider(project="folia"),
     PlatformType.VELOCITY: PaperProvider(project="velocity"),
     PlatformType.WATERFALL: PaperProvider(project="waterfall"),
+    PlatformType.BUNGEECORD: BungeeCordProvider(),
     PlatformType.VANILLA: VanillaProvider(),
     PlatformType.BUKKIT: GetBukkitProvider(project="craftbukkit"),
     PlatformType.SPIGOT: GetBukkitProvider(project="spigot"),
@@ -38,7 +40,10 @@ async def resolve_platform(
     async with create_http_client(tokens=tokens) as client:
         resolved = await PROVIDERS[platform_type].resolve_version(version, build, client)
 
-    console.print(f"  [success]✓[/success] Resolved [label]{resolved.version}[/label] (build {resolved.build})")
+    if resolved.version == UNKNOWN_MC_VERSION:
+        console.print(f"  [success]✓[/success] Resolved build [label]{resolved.build}[/label]")
+    else:
+        console.print(f"  [success]✓[/success] Resolved [label]{resolved.version}[/label] (build {resolved.build})")
     return resolved
 
 
