@@ -20,6 +20,7 @@ from orchestrator.constants import (
 )
 from orchestrator.fs_orchestrator import orchestrate_templates
 from orchestrator.healthcheck import check_health
+from orchestrator.icon import ICON_LOCK_KEY, apply_icon
 from orchestrator.lockfile import ServerLockfile, make_lock_key
 from orchestrator.logging import (
     console,
@@ -153,6 +154,10 @@ async def _async_main() -> None:
             offline=offline,
             tokens=config.api_tokens,
         )
+
+    if config.icon is not None or ICON_LOCK_KEY in lockfile.extras:
+        log_phase("Server Icon")
+        await apply_icon(config.icon, config.runtime_dir, lockfile, config.api_tokens, config.platform)
 
     if config.rcon_enabled:
         log_phase("RCON")

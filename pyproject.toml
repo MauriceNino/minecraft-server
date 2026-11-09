@@ -20,6 +20,7 @@ dependencies = [
     "ruamel-yaml>=0.18",
     "mcrcon>=0.7",
     "pyhocon>=0.3.60",
+    "pillow>=13.0.0",
 ]
 
 [dependency-groups]

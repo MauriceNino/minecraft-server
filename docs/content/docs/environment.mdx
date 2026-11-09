@@ -85,6 +85,23 @@ before `CONFIG_PATHS`**, so a `CONFIG_PATHS` override of the same property wins.
 colour codes are escaped, so they show up correctly on every server version. Unset or empty variables leave the
 property alone.
 
+## Server Icon
+
+- **`ICON`**
+  - **Description:** The icon shown in the server list, as an `https://` URL or a path inside the container. Any common image format works (PNG, JPEG, WebP, GIF and others). It is converted to the 64×64 PNG Minecraft needs; non-square images are scaled to fit and padded with transparency, so they aren't distorted. Works on every platform; on Pumpkin, `favicon_path` in `config/configuration.toml` is also pointed at the icon.
+  - **Default:** unset
+
+A URL is only downloaded again when it changes or when `server-icon.png` was deleted or modified, a file is converted
+again when its content changes. A new image behind the same URL is not picked up: change the URL (for example add
+`?v=2`) or delete `server-icon.png` to fetch it again. If the image
+can't be read, a warning is logged and the server starts without changing the icon. When you remove `ICON`, the icon
+stays as it is; delete `server-icon.png` to remove it.
+
+```yaml
+environment:
+  ICON: https://example.com/logo.png
+```
+
 ## API Tokens
 
 The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.

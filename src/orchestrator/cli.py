@@ -86,6 +86,8 @@ class Config:
     applied_templates: list[str]
     # Set by the shortcut variables, e.g. MOTD -> motd
     server_properties: dict[str, str]
+    # URL or path of the server icon
+    icon: str | None
 
     rcon_enabled: bool
     rcon_password: str
@@ -344,6 +346,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         config_overrides=config_overrides,
         applied_templates=applied_templates,
         server_properties=server_properties,
+        icon=env.get("ICON", "").strip() or None,
         rcon_enabled=rcon_enabled,
         rcon_password=rcon_password,
         rcon_port=rcon_port,
