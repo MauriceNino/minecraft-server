@@ -60,6 +60,31 @@ environment:
   JVM_EXTRA_FLAGS: -Dpaper.playerconnection.keepalive=60 -XX:+UseStringDeduplication
 ```
 
+## Server Properties Shortcuts
+
+A few `server.properties` settings that almost every server changes have their own variable. They only apply to Java
+servers (not to proxies or Pumpkin). Everything else goes through [`CONFIG_PATHS`](../config) or
+[templates](../templates).
+
+| Variable              | Property              | Example         |
+| --------------------- | --------------------- | --------------- |
+| `MOTD`                | `motd`                | `§aMy Server`   |
+| `DIFFICULTY`          | `difficulty`          | `hard`          |
+| `GAMEMODE`            | `gamemode`            | `survival`      |
+| `MAX_PLAYERS`         | `max-players`         | `50`            |
+| `VIEW_DISTANCE`       | `view-distance`       | `10`            |
+| `SIMULATION_DISTANCE` | `simulation-distance` | `8`             |
+| `ONLINE_MODE`         | `online-mode`         | `true`          |
+| `PVP`                 | `pvp`                 | `false`         |
+| `LEVEL_NAME`          | `level-name`          | `world`         |
+| `SEED`                | `level-seed`          | `-4172144997902289642` |
+| `SERVER_PORT`         | `server-port`         | `25565`         |
+
+They are merged into `server.properties` on every start and on `mc-orchestrator reapply`, **after templates and
+before `CONFIG_PATHS`**, so a `CONFIG_PATHS` override of the same property wins. Non-ASCII characters like the `§`
+colour codes are escaped, so they show up correctly on every server version. Unset or empty variables leave the
+property alone.
+
 ## API Tokens
 
 The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.

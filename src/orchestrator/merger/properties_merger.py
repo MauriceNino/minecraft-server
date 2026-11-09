@@ -21,6 +21,23 @@ def _parse_line(line: str) -> tuple[str, str] | None:
     return key, value.strip()
 
 
+def escape_properties_value(value: str) -> str:
+    """Escape *value* so Java's `Properties.load` reads it back unchanged."""
+    escaped = value.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    # Leading whitespace would be skipped, non-ASCII is only safe as a \u escape (older servers read ISO-8859-1)
+    if escaped.startswith((" ", "\f")):
+        escaped = "\\" + escaped
+
+    result: list[str] = []
+    for char in escaped:
+        if ord(char) < 0x80:
+            result.append(char)
+            continue
+        utf16 = char.encode("utf-16-be")  # characters outside the BMP become a surrogate pair
+        result.extend(f"\\u{int.from_bytes(utf16[i : i + 2], 'big'):04x}" for i in range(0, len(utf16), 2))
+    return "".join(result)
+
+
 def read_properties(path: Path) -> dict[str, str]:
     """Read a `.properties` file into a dict, later duplicates win like in Java."""
     result: dict[str, str] = {}

@@ -15,6 +15,7 @@ from pytest_httpx import HTTPXMock
 from orchestrator import http
 from orchestrator.__main__ import cli
 from orchestrator.lockfile import PluginLockEntry, ServerLockfile
+from orchestrator.server_properties import SHORTCUTS
 
 PAPER_BUILD_URL = "https://fill.papermc.io/v3/projects/paper/versions/1.21.4/builds/100"
 MODRINTH = "https://api.modrinth.com/v2/project"
@@ -23,7 +24,8 @@ MODRINTH = "https://api.modrinth.com/v2/project"
 @pytest.fixture(autouse=True)
 def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(http, "BACKOFF_BASE_SECONDS", 0.0)
-    for name in ("TYPE", "PLUGINS", "APPLIED_TEMPLATES", "CONFIG_PATHS", "GITHUB_TOKEN", "CURSEFORGE_API_KEY"):
+    names = ("TYPE", "PLUGINS", "APPLIED_TEMPLATES", "CONFIG_PATHS", "GITHUB_TOKEN", "CURSEFORGE_API_KEY", *SHORTCUTS)
+    for name in names:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("VERSION", "1.21.4")
@@ -131,11 +133,32 @@ class TestReapply:
         assert "max-players=5" in props
         assert "level-name=world" in props
 
+    def test_shortcuts_go_between_templates_and_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        (tmp_path / "templates" / "base").mkdir(parents=True)
+        (tmp_path / "templates" / "base" / "server.properties").write_text("motd=From template\npvp=true\n")
+        (tmp_path / "runtime").mkdir()
+        (tmp_path / "runtime" / "server.properties").write_text("max-players=20\n")
+        monkeypatch.setenv("APPLIED_TEMPLATES", "base")
+        monkeypatch.setenv("MOTD", "§aHello")
+        monkeypatch.setenv("MAX_PLAYERS", "10")
+        monkeypatch.setenv("CONFIG_PATHS", "props -> server.properties")
+        monkeypatch.setenv("CONFIG_props", "max-players=5")
+
+        result = _invoke("reapply")
+
+        assert result.exit_code == 0, result.output
+        props = (tmp_path / "runtime" / "server.properties").read_text().splitlines()
+        assert "motd=\\u00a7aHello" in props
+        assert "pvp=true" in props
+        assert "max-players=5" in props
+
     def test_nothing_configured(self) -> None:
         result = _invoke("reapply")
 
         assert result.exit_code == 0
-        assert "No templates or config overrides configured" in result.plain
+        assert "No templates, server properties or config overrides configured" in result.plain
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root can write anywhere")
     def test_runtime_dir_not_writable(self, tmp_path: Path) -> None:

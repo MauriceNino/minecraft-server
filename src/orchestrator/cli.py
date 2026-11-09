@@ -21,6 +21,7 @@ from orchestrator.constants import (
 )
 from orchestrator.http import ApiTokens
 from orchestrator.plugins.base import PluginSpec
+from orchestrator.server_properties import collect_server_properties
 from orchestrator.sigils import DirSigil, parse_dir_sigil
 
 # Aikar's flags (https://docs.papermc.io/paper/aikars-flags)
@@ -83,6 +84,8 @@ class Config:
     # (sigil, path relative to the runtime dir, raw content)
     config_overrides: list[tuple[DirSigil, str, str]]
     applied_templates: list[str]
+    # Set by the shortcut variables, e.g. MOTD -> motd
+    server_properties: dict[str, str]
 
     rcon_enabled: bool
     rcon_password: str
@@ -282,6 +285,10 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         raise SystemExit(f"Invalid PLUGINS entry: {e}") from None
     applied_templates = _parse_multiline(env.get("APPLIED_TEMPLATES", ""))
     config_overrides = _collect_config_overrides(env)
+    try:
+        server_properties = collect_server_properties(env, platform)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
 
     rcon_enabled = _parse_bool(env.get("RCON_ENABLED", "true"))
     rcon_password = env.get("RCON_PASSWORD") or str(uuid.uuid4())
@@ -336,6 +343,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         plugin_specs=plugin_specs,
         config_overrides=config_overrides,
         applied_templates=applied_templates,
+        server_properties=server_properties,
         rcon_enabled=rcon_enabled,
         rcon_password=rcon_password,
         rcon_port=rcon_port,

@@ -7,6 +7,7 @@ from pathlib import Path
 from orchestrator.constants import BUNGEE_PLATFORMS, RCON_PASSWORD_FILENAME, SERVER_PLATFORMS, PlatformType
 from orchestrator.logging import console
 from orchestrator.merger import merge_file_content
+from orchestrator.merger.properties_merger import escape_properties_value
 
 
 def inject_rcon(
@@ -28,7 +29,7 @@ def inject_rcon(
     elif platform in SERVER_PLATFORMS:
         merge_file_content(
             runtime_dir / "server.properties",
-            f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={_escape_properties_value(rcon_password)}\n",
+            f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={escape_properties_value(rcon_password)}\n",
         )
     elif platform == PlatformType.VELOCITY:
         merge_file_content(
@@ -43,23 +44,6 @@ def inject_rcon(
 
     _write_password_file(runtime_dir / RCON_PASSWORD_FILENAME, rcon_password)
     console.print(f"  [success]✓[/success] Enabled on port [label]{rcon_port}[/label]")
-
-
-def _escape_properties_value(value: str) -> str:
-    """Escape *value* so Java's `Properties.load` reads it back unchanged."""
-    escaped = value.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-    # Leading whitespace would be skipped, non-ASCII is only safe as a \u escape (older servers read ISO-8859-1)
-    if escaped.startswith((" ", "\f")):
-        escaped = "\\" + escaped
-
-    result: list[str] = []
-    for char in escaped:
-        if ord(char) < 0x80:
-            result.append(char)
-            continue
-        utf16 = char.encode("utf-16-be")  # characters outside the BMP become a surrogate pair
-        result.extend(f"\\u{int.from_bytes(utf16[i : i + 2], 'big'):04x}" for i in range(0, len(utf16), 2))
-    return "".join(result)
 
 
 def _write_password_file(path: Path, password: str) -> None:

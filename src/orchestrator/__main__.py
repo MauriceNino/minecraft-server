@@ -35,6 +35,7 @@ from orchestrator.plugins.check import check_plugin_updates
 from orchestrator.providers import prepare_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
 from orchestrator.runner import exec_server
+from orchestrator.server_properties import apply_server_properties
 
 
 def _accept_eula(config: Config) -> None:
@@ -90,13 +91,20 @@ def _run_async(coro: Coroutine[Any, Any, None], error_context: str) -> None:
         sys.exit(1)
 
 
+def _has_config_changes(config: Config) -> bool:
+    return bool(config.applied_templates or config.server_properties or config.config_overrides)
+
+
 def _apply_templates_and_overrides(config: Config) -> None:
+    """Templates first, then the server.properties shortcuts, then CONFIG_PATHS: the more specific setting wins."""
     if config.applied_templates:
         orchestrate_templates(
             templates_dir=config.templates_dir,
             runtime_dir=config.runtime_dir,
             applied_templates=config.applied_templates,
         )
+    if config.server_properties:
+        apply_server_properties(config.server_properties, config.runtime_dir)
     if config.config_overrides:
         apply_config_overrides(config.config_overrides, config.runtime_dir)
 
@@ -128,7 +136,7 @@ async def _async_main() -> None:
         tokens=config.api_tokens,
     )
 
-    if config.applied_templates or config.config_overrides:
+    if _has_config_changes(config):
         log_phase("Templates & Configs")
         _apply_templates_and_overrides(config)
 
@@ -176,8 +184,8 @@ async def _async_reapply() -> None:
     setup_logging(verbose=config.verbose)
     _check_permissions(config)
 
-    if not config.applied_templates and not config.config_overrides:
-        console.print("[yellow]No templates or config overrides configured.[/yellow]")
+    if not _has_config_changes(config):
+        console.print("[yellow]No templates, server properties or config overrides configured.[/yellow]")
         return
 
     log_phase("Reapplying Templates & Configs")
