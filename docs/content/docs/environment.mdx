@@ -102,6 +102,28 @@ environment:
   ICON: https://example.com/logo.png
 ```
 
+## World Import
+
+- **`WORLD`**
+  - **Description:** A world to import on the first start, as an `https://` URL or a path inside the container. It can be a `.zip`, a tar archive (`.tar`, `.tar.gz`, `.tar.xz`) or a directory. Java servers only.
+  - **Default:** unset
+
+The world is only imported when the server has none yet, that is when `<level-name>/level.dat` doesn't exist
+(`level-name` from `server.properties`, `world` by default). An existing world is never overwritten.
+
+The world folder is the shallowest folder in the archive that contains a `level.dat`, so it doesn't matter how the
+archive is nested. It is renamed to the `level-name`. Bukkit-style dimension folders next to it (`<name>_nether` and
+`<name>_the_end`) are imported and renamed along with it.
+
+If the import fails, the server doesn't start: otherwise it would generate a new world, and the import would never
+happen. To import the world again, stop the server and delete the world folders.
+
+```yaml
+environment:
+  WORLD: https://example.com/maps/spawn.zip
+  LEVEL_NAME: spawn
+```
+
 ## API Tokens
 
 The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.

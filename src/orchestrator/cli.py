@@ -21,7 +21,7 @@ from orchestrator.constants import (
 )
 from orchestrator.http import ApiTokens
 from orchestrator.plugins.base import PluginSpec
-from orchestrator.server_properties import collect_server_properties
+from orchestrator.server_properties import collect_server_properties, supports_server_properties
 from orchestrator.sigils import DirSigil, parse_dir_sigil
 
 # Aikar's flags (https://docs.papermc.io/paper/aikars-flags)
@@ -88,6 +88,8 @@ class Config:
     server_properties: dict[str, str]
     # URL or path of the server icon
     icon: str | None
+    # URL or path of a world to import on the first start
+    world: str | None
 
     rcon_enabled: bool
     rcon_password: str
@@ -347,6 +349,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         applied_templates=applied_templates,
         server_properties=server_properties,
         icon=env.get("ICON", "").strip() or None,
+        world=(env.get("WORLD", "").strip() or None) if supports_server_properties(platform) else None,
         rcon_enabled=rcon_enabled,
         rcon_password=rcon_password,
         rcon_port=rcon_port,

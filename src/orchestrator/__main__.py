@@ -37,6 +37,7 @@ from orchestrator.providers import prepare_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
 from orchestrator.runner import exec_server
 from orchestrator.server_properties import apply_server_properties
+from orchestrator.world import import_world
 
 
 def _accept_eula(config: Config) -> None:
@@ -154,6 +155,10 @@ async def _async_main() -> None:
             offline=offline,
             tokens=config.api_tokens,
         )
+
+    if config.world is not None:
+        log_phase("World")
+        await import_world(config.world, config.runtime_dir, config.api_tokens)
 
     if config.icon is not None or ICON_LOCK_KEY in lockfile.extras:
         log_phase("Server Icon")
