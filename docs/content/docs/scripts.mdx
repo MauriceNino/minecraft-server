@@ -35,7 +35,7 @@ $ docker exec CONTAINER_NAME mc-orchestrator reapply
 
 ### `mc-orchestrator check-updates`
 
-Checks every configured plugin against its provider and prints a table with the installed, the resolvable and the latest version, and what will happen on the next restart.
+Checks every configured plugin against its provider and groups the results: available updates, pinned plugins with a newer version, new plugins that aren't installed yet, errors, and plugins that are up to date. The header shows the update strategy, and each group says what happens next. Under each plugin, a dimmed line shows its lockfile key, which is the value `update --plugin` takes. With `PLUGINS_UPDATE_STRATEGY=manual`, it also prints the `update` commands to run.
 
 **Usage:**
 

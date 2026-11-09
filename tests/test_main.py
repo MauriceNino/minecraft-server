@@ -242,11 +242,29 @@ class TestCheckUpdates:
         result = _invoke("check-updates")
 
         assert result.exit_code == 0, result.output
-        assert "Update available (2.0)" in result.plain
-        assert "Up to date" in result.plain
+        assert "Updates available - installed on next restart (1)" in result.plain
+        assert "1.0 → 2.0" in result.plain
+        assert "modrinth:alpha" in result.plain
+        assert "Up to date (1)" in result.plain
+        assert "Update one:" not in result.plain
         # Only checks, never downloads
         assert not httpx_mock.get_requests(url=re.compile(r"https://cdn\.example/.*"))
         assert sorted(p.name for p in (tmp_path / "runtime" / "plugins").iterdir()) == ["alpha-1.0.jar", "beta-2.0.jar"]
+
+    def test_manual_strategy_prints_update_hint(
+        self, tmp_path: Path, httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PLUGINS", "modrinth:alpha")
+        monkeypatch.setenv("PLUGINS_UPDATE_STRATEGY", "manual")
+        _install_plugin(tmp_path, "alpha", "1.0")
+        _mock_paper(httpx_mock)
+        _mock_modrinth(httpx_mock, "alpha", "2.0")
+
+        result = _invoke("check-updates")
+
+        assert result.exit_code == 0, result.output
+        assert "run mc-orchestrator update to install" in result.plain
+        assert "Update one: mc-orchestrator update -p <key shown above>" in result.plain
 
     def test_no_plugins(self) -> None:
         result = _invoke("check-updates")
@@ -262,6 +280,8 @@ class TestCheckUpdates:
         result = _invoke("check-updates")
 
         assert result.exit_code == 0
+        assert "Errors (1)" in result.plain
+        assert "modrinth:alpha" in result.plain
         assert "Encountered 1 error(s) during check" in result.plain
 
 
