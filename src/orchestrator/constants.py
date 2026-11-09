@@ -17,6 +17,7 @@ class PlatformType(StrEnum):
     SPIGOT = "SPIGOT"
     PUMPKIN = "PUMPKIN"
     PURPUR = "PURPUR"
+    CUSTOM = "CUSTOM"
 
 
 class PluginProviderType(StrEnum):
@@ -43,6 +44,7 @@ SERVER_PLATFORMS = frozenset(
         PlatformType.SPIGOT,
         PlatformType.PUMPKIN,
         PlatformType.PURPUR,
+        PlatformType.CUSTOM,
     }
 )
 
@@ -65,6 +67,7 @@ BUKKIT_BASED_PLATFORMS = frozenset(
         PlatformType.BUKKIT,
         PlatformType.PUMPKIN,
         PlatformType.PURPUR,
+        PlatformType.CUSTOM,
     }
 )
 
@@ -81,6 +84,7 @@ MODRINTH_PLATFORM_TAGS: dict[PlatformType, list[str]] = {
     PlatformType.BUKKIT: ["bukkit"],
     PlatformType.PUMPKIN: ["paper", "spigot", "bukkit"],
     PlatformType.PURPUR: ["purpur", "paper", "spigot", "bukkit"],
+    PlatformType.CUSTOM: ["paper", "spigot", "bukkit"],
 }
 
 # Hangar only knows PAPER, VELOCITY and WATERFALL
@@ -88,12 +92,14 @@ HANGAR_PLATFORM_TAGS: dict[PlatformType, str] = {
     PlatformType.PAPER: "PAPER",
     PlatformType.FOLIA: "PAPER",
     PlatformType.PURPUR: "PAPER",
+    PlatformType.CUSTOM: "PAPER",
     PlatformType.VELOCITY: "VELOCITY",
     PlatformType.WATERFALL: "WATERFALL",
     PlatformType.BUNGEECORD: "WATERFALL",
 }
 
-# The Minecraft version of platforms that don't have one (BungeeCord). Plugins skip their version checks for it.
+# The Minecraft version of platforms that don't have one (BungeeCord, CUSTOM without VERSION).
+# Plugins skip their version checks for it.
 UNKNOWN_MC_VERSION = "unknown"
 
 DEFAULT_DATA_DIR = Path("/data")

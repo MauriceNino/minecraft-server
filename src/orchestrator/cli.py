@@ -262,6 +262,11 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
 
     version = _normalize_version_spec(env.get("VERSION", "latest"))
     build = _normalize_version_spec(env.get("BUILD", "latest"))
+    if platform == PlatformType.CUSTOM:
+        # The custom JAR's source is its build: it is downloaded again when it changes
+        build = env.get("CUSTOM_JAR", "").strip()
+        if not build:
+            raise SystemExit("TYPE=CUSTOM needs CUSTOM_JAR: a URL or a path to the server JAR in the container")
     data_dir = Path(env.get("DATA_DIR", str(DEFAULT_DATA_DIR)))
 
     templates_dir = data_dir / TEMPLATES_SUBDIR

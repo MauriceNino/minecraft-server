@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import re
-from email.utils import parsedate_to_datetime
 from urllib.parse import unquote, urlsplit
 
 import httpx
 
 from orchestrator.constants import PlatformType
+from orchestrator.http import fetch_headers, remote_version
 from orchestrator.plugins.base import AbstractPluginProvider, PluginSpec, ResolvedPlugin
 
 
@@ -29,17 +29,6 @@ def _parse_content_disposition_filename(header: str) -> str | None:
     return None
 
 
-async def _fetch_headers(client: httpx.AsyncClient, url: str) -> httpx.Headers:
-    resp = await client.head(url)
-    if resp.status_code in (403, 405, 501):
-        # Some hosts don't allow HEAD; read the headers of a GET without downloading the body
-        async with client.stream("GET", url) as stream:
-            stream.raise_for_status()
-            return stream.headers
-    resp.raise_for_status()
-    return resp.headers
-
-
 class UrlProvider(AbstractPluginProvider):
     async def resolve(
         self,
@@ -49,21 +38,8 @@ class UrlProvider(AbstractPluginProvider):
         client: httpx.AsyncClient,
     ) -> ResolvedPlugin:
         url = spec.identifier
-        headers = await _fetch_headers(client, url)
-
-        etag = headers.get("ETag")
-        if etag:
-            etag = etag.removeprefix("W/").strip('"')
-
-        last_modified: str | None = None
-        version: str | None = None
-        if raw := headers.get("Last-Modified"):
-            try:
-                dt = parsedate_to_datetime(raw)
-                last_modified = dt.isoformat()
-                version = dt.strftime("%Y-%m-%d_%H-%M-%S")
-            except (ValueError, TypeError):
-                pass
+        headers = await fetch_headers(client, url)
+        remote = remote_version(headers)
 
         filename = _parse_content_disposition_filename(headers.get("Content-Disposition", ""))
         if not filename:
@@ -74,9 +50,9 @@ class UrlProvider(AbstractPluginProvider):
         return ResolvedPlugin(
             display_name=filename.removesuffix(".jar"),
             # Without Last-Modified or ETag there is no way to detect updates
-            version=version or etag or "url",
+            version=remote.version or "url",
             download_url=url,
             filename=filename,
-            etag=etag,
-            last_modified=last_modified,
+            etag=remote.etag,
+            last_modified=remote.last_modified,
         )

@@ -1,0 +1,36 @@
+---
+title: Custom JAR
+description: Run any server JAR that isn't supported directly
+---
+
+`TYPE=CUSTOM` runs a server JAR you provide, for example a fork that isn't supported directly or a build of your own.
+It is treated like a Bukkit-based server: RCON is configured in `server.properties`, the EULA is written, and
+`PLUGINS` installs plugins into `plugins/`.
+
+## Configuration
+
+```yaml
+environment:
+  TYPE: CUSTOM
+  CUSTOM_JAR: https://example.com/builds/myfork-1.21.4.jar
+  VERSION: 1.21.4
+```
+
+- **`CUSTOM_JAR`** (required): The server JAR, either an `https://` URL or a path inside the container.
+  - A **URL** is checked on every start with a `HEAD` request, like [`url:` plugins](../../plugins/url). It is downloaded again when the URL changes, or when the server reports a new `Last-Modified` or `ETag` for it, so a "latest" link picks up new builds. If the server sends neither header, a new JAR behind the same URL is not picked up: change the URL (for example add `?v=2`) or delete the JAR in the runtime directory to download it again. If the URL can't be reached, the installed JAR is started.
+  - A **path** is copied into the runtime directory, and copied again whenever the file's content changes. Mount the file into the container, e.g. `./server.jar:/jars/server.jar:ro`.
+- **`VERSION`**: The Minecraft version the JAR is for. It is only used to check plugins and the Java version against. With `latest` (the default), these checks are skipped.
+- **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+
+`BUILD` is not used with `TYPE=CUSTOM`.
+
+## Plugins
+
+Modrinth plugins are matched against the `paper`, `spigot` and `bukkit` loaders, Hangar plugins against `PAPER`.
+If your JAR isn't Bukkit-based, leave `PLUGINS` empty.
+
+## RCON Support
+
+RCON is enabled in `server.properties`, like for the other servers. If your JAR doesn't read `server.properties`,
+set `RCON_ENABLED=false`. See [RCON Variables](../../environment#rcon-variables) for configuration details.

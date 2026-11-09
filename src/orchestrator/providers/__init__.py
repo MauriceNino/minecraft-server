@@ -12,6 +12,7 @@ from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console
 from orchestrator.providers.base import AbstractPlatformProvider, ResolvedVersion
 from orchestrator.providers.bungeecord import BungeeCordProvider
+from orchestrator.providers.custom import CustomProvider
 from orchestrator.providers.paper import PaperProvider
 from orchestrator.providers.pumpkin import PumpkinProvider
 from orchestrator.providers.purpur import PurpurProvider
@@ -31,6 +32,7 @@ PROVIDERS: dict[PlatformType, AbstractPlatformProvider] = {
     PlatformType.SPIGOT: GetBukkitProvider(project="spigot"),
     PlatformType.PUMPKIN: PumpkinProvider(),
     PlatformType.PURPUR: PurpurProvider(),
+    PlatformType.CUSTOM: CustomProvider(),
 }
 
 
@@ -101,7 +103,8 @@ def _installed_server(
         return None
     if version not in ("latest", "experimental", server.version):
         return None
-    if build not in ("latest", "experimental", server.build):
+    # A CUSTOM_JAR build is `<source>#<version>`, the configured build only the source
+    if build not in ("latest", "experimental", server.build) and not server.build.startswith(f"{build}#"):
         return None
     jar_path = runtime_dir / server.filename
     if not file_matches(jar_path, server.sha256):

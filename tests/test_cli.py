@@ -65,6 +65,14 @@ class TestLoadConfig:
         config = load_config(environ={"JVM_FLAGS": "-XX:+UseG1GC -Dfoo=bar"})
         assert config.jvm_flags == ["-XX:+UseG1GC", "-Dfoo=bar"]
 
+    def test_custom_requires_custom_jar(self) -> None:
+        with pytest.raises(SystemExit, match="CUSTOM_JAR"):
+            load_config(environ={"TYPE": "CUSTOM"})
+
+    def test_custom_jar_is_the_build(self) -> None:
+        config = load_config(environ={"TYPE": "CUSTOM", "CUSTOM_JAR": " /jars/server.jar ", "BUILD": "5"})
+        assert config.build == "/jars/server.jar"
+
     @pytest.mark.parametrize("platform", ["WATERFALL", "BUNGEECORD"])
     def test_bungee_proxies_get_the_rcon_bridge(self, platform: str) -> None:
         config = load_config(environ={"TYPE": platform})

@@ -156,3 +156,47 @@ async def download_file(
     except BaseException:
         target.unlink(missing_ok=True)  # noqa: ASYNC240
         raise
+
+
+async def fetch_headers(client: httpx.AsyncClient, url: str) -> httpx.Headers:
+    """The response headers of *url*, without downloading the body."""
+    resp = await client.head(url)
+    if resp.status_code in (403, 405, 501):
+        # Some hosts don't allow HEAD; read the headers of a GET without downloading the body
+        async with client.stream("GET", url) as stream:
+            stream.raise_for_status()
+            return stream.headers
+    resp.raise_for_status()
+    return resp.headers
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteVersion:
+    """What identifies the current file behind a URL, from its `Last-Modified` and `ETag` headers."""
+
+    etag: str | None
+    last_modified: str | None  # ISO-8601
+    version: str | None  # Last-Modified as a sortable version, else the ETag; None if the server sends neither
+
+
+def remote_version(headers: httpx.Headers) -> RemoteVersion:
+    etag = headers.get("ETag")
+    if etag:
+        etag = etag.removeprefix("W/").strip('"')
+
+    last_modified: str | None = None
+    version: str | None = None
+    if raw := headers.get("Last-Modified"):
+        try:
+            dt = parsedate_to_datetime(raw)
+            last_modified = dt.isoformat()
+            version = dt.strftime("%Y-%m-%d_%H-%M-%S")
+        except (ValueError, TypeError):
+            pass
+    return RemoteVersion(etag=etag or None, last_modified=last_modified, version=version or etag or None)
+
+
+async def url_build(client: httpx.AsyncClient, url: str) -> str:
+    """A build key for *url* that changes when the file behind it changes: `<url>#<version>`, or just the URL."""
+    version = remote_version(await fetch_headers(client, url)).version
+    return f"{url}#{version}" if version else url

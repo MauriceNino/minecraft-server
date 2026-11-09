@@ -38,9 +38,12 @@ It might seem like extra work at first, but it is a lifesaver for long-term proj
 
 ## What can I do if my wanted platform is not supported?
 
-We are constantly working on adding more platforms! Support for custom JAR files is also on our roadmap to allow any server software to be orchestrated.
+If it runs from a single server JAR, use [`TYPE=CUSTOM`](../platforms/custom) with a URL or a file. Plugins, RCON and
+config templates work as for the other servers.
 
-If you need a platform that isn't currently supported by our orchestrator, we recommend using the excellent [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) image in the meantime. It supports a massive range of legacy and niche platforms.
+If your platform needs more than a single JAR, we recommend using the excellent
+[itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) image. It supports a massive range of legacy
+and niche platforms.
 
 ## Why do I have to set permissions for the runtime directory manually?
 
