@@ -38,6 +38,28 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Format:** A number followed by a unit — `s` (seconds), `m` (minutes), `h` (hours), or `d` (days). Examples: `30s`, `5m`, `2h`.
   - **Default:** `5m`
 
+## JVM Options
+
+These only apply to Java platforms. Pumpkin is a native binary and ignores them.
+
+- **`MEMORY`**
+  - **Description:** The heap size, used for both `-Xms` and `-Xmx`, e.g. `1536M` or `4G`. The same value for both is intended: Aikar's flags pre-touch the whole heap on startup.
+  - **Default:** `1G`
+
+- **`JVM_FLAGS`**
+  - **Description:** Replaces the default JVM flags, separated by spaces.
+  - **Default:** [Aikar's flags](https://docs.papermc.io/paper/aikars-flags) for servers, [Velocity's recommended flags](https://docs.papermc.io/velocity/tuning) for proxies. With a `MEMORY` of `12G` or more, servers get Aikar's values for large heaps (`G1NewSizePercent=40`, `G1MaxNewSizePercent=50`, `G1HeapRegionSize=16M`, `G1ReservePercent=15`, `InitiatingHeapOccupancyPercent=20`).
+
+- **`JVM_EXTRA_FLAGS`**
+  - **Description:** Flags added after the defaults (or after `JVM_FLAGS`), so you can add a system property or an agent without copying the whole default list.
+  - **Default:** unset
+
+```yaml
+environment:
+  MEMORY: 4G
+  JVM_EXTRA_FLAGS: -Dpaper.playerconnection.keepalive=60 -XX:+UseStringDeduplication
+```
+
 ## API Tokens
 
 The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.

@@ -65,6 +65,34 @@ class TestLoadConfig:
         config = load_config(environ={"JVM_FLAGS": "-XX:+UseG1GC -Dfoo=bar"})
         assert config.jvm_flags == ["-XX:+UseG1GC", "-Dfoo=bar"]
 
+    def test_jvm_extra_flags_are_appended_to_defaults(self) -> None:
+        config = load_config(environ={"JVM_EXTRA_FLAGS": "-Dfoo=bar -Dbaz=1"})
+        assert "-XX:+UseG1GC" in config.jvm_flags
+        assert config.jvm_flags[-2:] == ["-Dfoo=bar", "-Dbaz=1"]
+
+    def test_jvm_extra_flags_are_appended_to_jvm_flags(self) -> None:
+        config = load_config(environ={"JVM_FLAGS": "-XX:+UseZGC", "JVM_EXTRA_FLAGS": "-Dfoo=bar"})
+        assert config.jvm_flags == ["-XX:+UseZGC", "-Dfoo=bar"]
+
+    def test_small_heap_uses_default_aikar_flags(self) -> None:
+        flags = load_config(environ={"MEMORY": "8G"}).jvm_flags
+        assert "-XX:G1HeapRegionSize=8M" in flags
+        assert "-XX:G1NewSizePercent=30" in flags
+
+    @pytest.mark.parametrize("memory", ["12G", "16384M", "1T"])
+    def test_large_heap_uses_large_aikar_flags(self, memory: str) -> None:
+        flags = load_config(environ={"MEMORY": memory}).jvm_flags
+        assert "-XX:G1HeapRegionSize=16M" in flags
+        assert "-XX:G1NewSizePercent=40" in flags
+        assert "-XX:G1MaxNewSizePercent=50" in flags
+        assert "-XX:G1ReservePercent=15" in flags
+        assert "-XX:InitiatingHeapOccupancyPercent=20" in flags
+        assert "-XX:G1HeapRegionSize=8M" not in flags
+
+    def test_large_heap_does_not_change_proxy_flags(self) -> None:
+        flags = load_config(environ={"TYPE": "VELOCITY", "MEMORY": "16G"}).jvm_flags
+        assert "-XX:G1HeapRegionSize=4M" in flags
+
     # VERSION / BUILD normalisation
     def test_version_stable_alias(self) -> None:
         config = load_config(environ={"VERSION": "stable"})

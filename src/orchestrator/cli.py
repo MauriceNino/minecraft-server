@@ -47,6 +47,16 @@ _DEFAULT_SERVER_JVM_FLAGS = [
     "-XX:G1ReservePercent=20",
 ]
 
+# Aikar's values for heaps of 12G and more, replacing the flags with the same name above
+_LARGE_HEAP_BYTES = 12 * 1024**3
+_LARGE_HEAP_SERVER_JVM_FLAGS = {
+    "-XX:G1NewSizePercent": "40",
+    "-XX:G1MaxNewSizePercent": "50",
+    "-XX:G1HeapRegionSize": "16M",
+    "-XX:G1ReservePercent": "15",
+    "-XX:InitiatingHeapOccupancyPercent": "20",
+}
+
 # Recommended by Velocity (https://docs.papermc.io/velocity/tuning)
 _DEFAULT_PROXY_JVM_FLAGS = [
     "-XX:+UseG1GC",
@@ -85,6 +95,29 @@ class Config:
     plugins_update_strategy: PluginUpdateStrategy
     plugins_check_cache_seconds: int
     api_tokens: ApiTokens
+
+
+_MEMORY_UNITS = {"": 1, "k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
+
+
+def _memory_bytes(memory: str) -> int:
+    """Convert a validated `MEMORY` value like `2G` or `1536M` into bytes, as the JVM reads `-Xmx`."""
+    unit = memory[-1].lower() if memory[-1].isalpha() else ""
+    return int(memory.rstrip("KkMmGgTt")) * _MEMORY_UNITS[unit]
+
+
+def _default_jvm_flags(platform: PlatformType, memory: str) -> list[str]:
+    if platform in PROXY_PLATFORMS:
+        return list(_DEFAULT_PROXY_JVM_FLAGS)
+    if platform not in SERVER_PLATFORMS:
+        return []
+    if _memory_bytes(memory) < _LARGE_HEAP_BYTES:
+        return list(_DEFAULT_SERVER_JVM_FLAGS)
+    flags: list[str] = []
+    for flag in _DEFAULT_SERVER_JVM_FLAGS:
+        name = flag.partition("=")[0]
+        flags.append(f"{name}={_LARGE_HEAP_SERVER_JVM_FLAGS[name]}" if name in _LARGE_HEAP_SERVER_JVM_FLAGS else flag)
+    return flags
 
 
 def _parse_bool(value: str) -> bool:
@@ -261,12 +294,8 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     memory = env.get("MEMORY", "1G").strip()
     if not re.fullmatch(r"\d+[KkMmGgTt]?", memory):
         raise SystemExit(f"Invalid MEMORY={memory!r}: use a size like 1536M or 2G")
-    jvm_flags = env.get("JVM_FLAGS", "").split()
-    if not jvm_flags:
-        if platform in SERVER_PLATFORMS:
-            jvm_flags = list(_DEFAULT_SERVER_JVM_FLAGS)
-        elif platform in PROXY_PLATFORMS:
-            jvm_flags = list(_DEFAULT_PROXY_JVM_FLAGS)
+    jvm_flags = env.get("JVM_FLAGS", "").split() or _default_jvm_flags(platform, memory)
+    jvm_flags += env.get("JVM_EXTRA_FLAGS", "").split()
 
     verbose = _parse_bool(env.get("VERBOSE", "false"))
     accept_eula = _parse_bool(env.get("ACCEPT_EULA", "false"))

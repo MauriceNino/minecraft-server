@@ -19,7 +19,7 @@ environment:
 - **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`).
 - **`BUILD`**: Resolves the specific build number (e.g., `123`, `latest`).
 - **`MEMORY`**: Defines the heap size (e.g., `4G`). Default is `1G`.
-- **`JVM_FLAGS`**: Optional flags passed to the execution. If empty, the orchestrator automatically injects **Aikar's optimized G1GC flags**.
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
 
 The orchestrator automatically fetches the latest builds from the [PaperMC API](https://api.papermc.io/v2/projects/folia).
 
