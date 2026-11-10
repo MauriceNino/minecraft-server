@@ -3,7 +3,8 @@ title: Bukkit
 description: The classic Minecraft server software
 ---
 
-**Bukkit** (specifically CraftBukkit) is the classic plugin-capable Minecraft server software. While mostly superseded by Spigot and Paper, it is still supported for legacy purposes.
+**Bukkit** (specifically CraftBukkit) is the classic plugin-capable Minecraft server software. While mostly superseded
+by Spigot and Paper, it is still supported for legacy purposes.
 
 ## Configuration
 
@@ -14,18 +15,26 @@ environment:
   TYPE: BUKKIT
 ```
 
-- **`VERSION`**: Resolves the game version (e.g., `1.8.8`, `latest`).
+- **`VERSION`**: The game version (e.g., `1.8.8`), or `latest` (default) for the newest version listed on getbukkit.org.
+  `BUILD` is not used.
 - **`MEMORY`**: Defines the heap size (e.g., `1G`). Default is `1G`.
-- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See
+  [JVM Options](../../environment#jvm-options).
 
 <Callout title="Best effort" type="warn">
-  Spigot and CraftBukkit don't publish server JARs. The orchestrator downloads them from getbukkit.org, an
-  unofficial third-party mirror without checksums, so downloads can break when the site changes. Prefer
-  [Paper](../paper) if your plugins support it.
+  Spigot and CraftBukkit don't publish server JARs. The orchestrator downloads them from getbukkit.org, an unofficial
+  third-party mirror without checksums, so downloads can break when the site changes. Prefer [Paper](../paper) if your
+  plugins support it.
 </Callout>
+
+## Plugins
+
+Modrinth plugins are matched against the `bukkit` loaders. Hangar has no Spigot or Bukkit platform, so Hangar plugins
+need `[platform=paper]`, see [Hangar](../../plugins/hangar#platform-mapping).
 
 ## RCON Support
 
-The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties`
+file at startup.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.

@@ -3,11 +3,13 @@ title: SpigotMC
 description: Using the Spiget plugin provider
 ---
 
-SpigotMC is one of the oldest and largest plugin repositories. The orchestrator uses the [Spiget API](https://spiget.org/) to resolve and download these plugins.
+SpigotMC is one of the oldest and largest plugin repositories. The orchestrator uses the
+[Spiget API](https://spiget.org/) to resolve and download these plugins.
 
 ## Usage
 
-Because SpigotMC does not provide consistent project slugs via its API, you **must use the resource ID**. The resource ID is the number found at the end of a SpigotMC resource URL.
+Because SpigotMC does not provide consistent project slugs via its API, you **must use the resource ID**. The resource
+ID is the number found at the end of a SpigotMC resource URL.
 
 **Example URL:** `https://www.spigotmc.org/resources/essentialsx.9089/` -> ID is `9089`.
 
@@ -18,9 +20,9 @@ environment:
 ```
 
 <Callout title="Hint" type="info">
-  The **Resource ID** is the number at the end of the URL. While only the number is required, you
-  can include the slug (e.g., `essentialsx.9089`) to make your configuration more readable. This
-  will be ignored by the orchestrator and can be anything you want. ![SpigotMC Resource
+  The **Resource ID** is the number at the end of the URL. While only the number is required, you can include the slug
+  (e.g., `essentialsx.9089`) to make your configuration more readable. The slug isn't used to find the resource, but it
+  is part of the lock key and the file name, so changing it downloads the plugin again. ![SpigotMC Resource
   ID](/spiget_project_slug.png)
 </Callout>
 
@@ -35,14 +37,16 @@ SpigotMC resources typically only expose a single "primary" version through the 
 | specific version ID (e.g. `594423`) | Resolves to the exact internal version ID from SpigotMC.   |
 
 <Callout title="Hint" type="info">
-  You can find the specific version string in the **Version History** tab of the resource page. You
-  need to copy the download url and extract the version from the `version=...` query parameter.
-  ![SpigotMC Version Number](/spiget_version_number.png)
+  You can find the specific version string in the **Version History** tab of the resource page. You need to copy the
+  download url and extract the version from the `version=...` query parameter. ![SpigotMC Version
+  Number](/spiget_version_number.png)
 </Callout>
 
 ## The Force Flag (`!`)
 
-SpigotMC plugins often lack detailed metadata about platform compatibility. The orchestrator defaults to assuming compatibility with **PAPER**, **FOLIA**, **SPIGOT**, and **BUKKIT**.
+SpigotMC plugins often lack detailed metadata about platform compatibility. The orchestrator assumes compatibility with
+the Bukkit-based servers: **PAPER**, **PURPUR**, **FOLIA**, **SPIGOT**, **BUKKIT** and **CUSTOM**. The Minecraft version
+is checked against the resource's "Tested Versions".
 
 Use the `!` flag to bypass checks:
 
@@ -55,3 +59,9 @@ This will bypass:
 
 1. Platform compatibility checks (Spiget generally only supports Spigot and Forks, so anything else needs to be forced)
 2. "Tested Versions" metadata checks
+
+## Limitations
+
+- **Premium** resources can't be downloaded.
+- Resources hosted on an **external site** only work if the download link points straight to a JAR file. Otherwise,
+  download the JAR yourself and add it with a [template](../../templates) or a [direct URL](../url).

@@ -3,7 +3,9 @@ title: Server Platforms
 description: Overview of supported Minecraft server and proxy platforms
 ---
 
-`MauriceNino/minecraft-server` manages the downloading, linking, and execution of your core server binary. It handles the heavy lifting of managing processes, Java versions, and optimized garbage collection.
+`MauriceNino/minecraft-server` downloads, updates and starts your server software. It verifies downloads against the
+checksums the platform publishes, starts Java servers with tuned [JVM flags](../environment#jvm-options) and warns when
+the image's Java version doesn't fit your Minecraft version.
 
 ## Supported Platforms
 
@@ -23,15 +25,33 @@ You can control which software runs via the `TYPE` environment variable.
 ### Proxies
 
 - [**VELOCITY**](velocity): The next-generation proxy for maximum performance and stability.
-- [**WATERFALL**](waterfall): A high-performance fork of BungeeCord, compatible with Bungee plugins. End of life upstream.
+- [**WATERFALL**](waterfall): A high-performance fork of BungeeCord, compatible with Bungee plugins. End of life
+  upstream.
 - [**BUNGEECORD**](bungeecord): The original proxy from SpigotMC.
 
 ## Version Resolution
 
-The orchestrator dynamically fetches builds from various official and community APIs.
-See the individual platform pages for details on how each provider resolves versions and builds.
+`VERSION` and `BUILD` take a specific value or one of these aliases:
+
+- **`latest`** (or `stable`, the default): the newest stable version or build.
+- **`experimental`** (or `beta`): also allows snapshots, pre-releases and beta builds, where the platform has them.
+
+| Platform            | Source                  | `VERSION` example | `BUILD`                   |
+| ------------------- | ----------------------- | ----------------- | ------------------------- |
+| Paper, Folia        | PaperMC API             | `1.21.4`          | Build number, e.g. `232`  |
+| Velocity, Waterfall | PaperMC API             | `3.4.0`, `1.21`   | Build number              |
+| Purpur              | Purpur API              | `1.21.4`          | Build number, e.g. `2416` |
+| Vanilla             | Mojang version manifest | `1.21.4`          | Not used                  |
+| Spigot, Bukkit      | getbukkit.org           | `1.21.4`          | Not used                  |
+| BungeeCord          | SpigotMC Jenkins        | Ignored           | Jenkins build number      |
+| Pumpkin             | GitHub nightly release  | `experimental`    | Not used                  |
+| Custom              | `CUSTOM_JAR`            | `1.21.4`          | Not used                  |
+
+The resolved version and build are stored in `runtime/server-lock.json`. The server is only downloaded again when they
+change or when the installed file was deleted or modified. If the API is unreachable, the installed server starts as
+long as it matches your `VERSION` and `BUILD`.
 
 ## Configuration
 
-Each platform supports a tailored set of environment variables for versioning and execution.
-Read the documentation for your specific platform to see available versions and default execution behaviors.
+Each platform supports a tailored set of environment variables for versioning and execution. Read the documentation for
+your specific platform to see available versions and default execution behaviors.

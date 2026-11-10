@@ -1,29 +1,48 @@
 ---
 title: Environment Variables
-description: Globals and inline configuration via CONFIG_PATHS
+description: All environment variables the image reads
 ---
 
-## Core Variables
+Boolean variables accept `true`, `1` or `yes` (any case); everything else counts as `false`.
 
-- **`DATA_DIR`**
-  - **Description:** The root directory containing the `templates` and `runtime` folders inside the container.
-  - **Default:** `/data`
-
-- **`NO_COLOR`**
-  - **Description:** Set to any value to disable coloured log output, e.g. for log aggregators. See [no-color.org](https://no-color.org).
-  - **Default:** unset (colours are on, even when the output is not a terminal)
-
-- **`VERBOSE`**
-  - **Description:** Enables verbose debug log output from the Python orchestrator script.
-  - **Default:** `false`
-
-- **`ACCEPT_EULA`**
-  - **Description:** Most Minecraft backend servers require EULA acceptance. Set this to true to automatically write the `eula.txt`.
-  - **Default:** `false`
+## Server Software
 
 - **`TYPE`**
-  - **Description:** The platform software to run. This determines which variables (like `VERSION` or `MEMORY`) are available and how they behave. See [Server Platforms](../platforms) for details.
+  - **Description:** The platform software to run: `PAPER`, `PURPUR`, `FOLIA`, `VANILLA`, `SPIGOT`, `BUKKIT`, `PUMPKIN`,
+    `CUSTOM`, `VELOCITY`, `WATERFALL` or `BUNGEECORD`. This determines which variables (like `VERSION` or `MEMORY`) are
+    available and how they behave. See [Server Platforms](../platforms) for details.
   - **Default:** `PAPER`
+
+- **`VERSION`**
+  - **Description:** The Minecraft (or proxy) version, e.g. `1.21.4`. `latest` (alias `stable`) picks the newest stable
+    version, `experimental` (alias `beta`) also allows snapshots and pre-releases where the platform has them. See
+    [Version Resolution](../platforms#version-resolution).
+  - **Default:** `latest`
+
+- **`BUILD`**
+  - **Description:** The build of the chosen version, for platforms that have builds (Paper, Folia, Purpur, Velocity,
+    Waterfall, BungeeCord). `latest` picks the newest stable build, `experimental` also allows beta and alpha builds on
+    the PaperMC platforms.
+  - **Default:** `latest`
+
+- **`CUSTOM_JAR`**
+  - **Description:** The server JAR for `TYPE=CUSTOM`, as a URL or a path inside the container. Required with
+    `TYPE=CUSTOM`, ignored otherwise. See [Custom JAR](../platforms/custom).
+  - **Default:** unset
+
+- **`ACCEPT_EULA`**
+  - **Description:** Java servers only start once you accept the [Minecraft EULA](https://aka.ms/MinecraftEULA). Set
+    this to `true` to write `eula=true` to `eula.txt`. Proxies don't need it.
+  - **Default:** `false`
+
+## Plugins & Configuration
+
+These have their own pages:
+
+- **`PLUGINS`**: The plugins to install, one per line. See [Plugin Providers](../plugins).
+- **`APPLIED_TEMPLATES`**: The template folders to apply, one per line. See [Templates](../templates).
+- **`CONFIG_PATHS`** and **`CONFIG_<key>`**: Config files written from environment variables. See
+  [Configuration Injection](../config).
 
 - **`PLUGINS_UPDATE_STRATEGY`**
   - **Description:** Controls how the orchestrator handles plugin updates on startup.
@@ -34,24 +53,49 @@ description: Globals and inline configuration via CONFIG_PATHS
   - **Default:** `auto`
 
 - **`PLUGINS_CHECK_CACHE`**
-  - **Description:** Defines how long plugin update-checks are considered fresh. When set, the orchestrator will skip re-checking (and re-downloading) **already-installed plugins** if the last full check happened within this window. New plugins are always downloaded and obsolete plugins are always removed, regardless of this setting. This is useful during development to avoid hammering provider APIs when restarting the server frequently.
-  - **Format:** A number followed by a unit — `s` (seconds), `m` (minutes), `h` (hours), or `d` (days). Examples: `30s`, `5m`, `2h`.
+  - **Description:** Defines how long plugin update-checks are considered fresh. When set, the orchestrator will skip
+    re-checking (and re-downloading) **already-installed plugins** if the last full check happened within this window.
+    New plugins are always downloaded and obsolete plugins are always removed, regardless of this setting. This is
+    useful during development to avoid hammering provider APIs when restarting the server frequently.
+  - **Format:** A number followed by a unit — `s` (seconds), `m` (minutes), `h` (hours), or `d` (days). Examples: `30s`,
+    `5m`, `2h`.
   - **Default:** `5m`
+
+## Logging & Paths
+
+- **`VERBOSE`**
+  - **Description:** Enables verbose debug log output from the orchestrator.
+  - **Default:** `false`
+
+- **`NO_COLOR`**
+  - **Description:** Set to any value to disable colored log output, e.g. for log aggregators. See
+    [no-color.org](https://no-color.org).
+  - **Default:** unset (colors are on, even when the output is not a terminal)
+
+- **`DATA_DIR`**
+  - **Description:** The directory containing the `templates` and `runtime` folders inside the container. You rarely
+    need to change it.
+  - **Default:** `/data`
 
 ## JVM Options
 
-These only apply to Java platforms. Pumpkin is a native binary and ignores them.
+These only apply to Java platforms.
 
 - **`MEMORY`**
-  - **Description:** The heap size, used for both `-Xms` and `-Xmx`, e.g. `1536M` or `4G`. The same value for both is intended: Aikar's flags pre-touch the whole heap on startup.
+  - **Description:** The heap size, used for both `-Xms` and `-Xmx`, e.g. `1536M` or `4G`. The same value for both is
+    intended: Aikar's flags pre-touch the whole heap on startup.
   - **Default:** `1G`
 
 - **`JVM_FLAGS`**
   - **Description:** Replaces the default JVM flags, separated by spaces.
-  - **Default:** [Aikar's flags](https://docs.papermc.io/paper/aikars-flags) for servers, [Velocity's recommended flags](https://docs.papermc.io/velocity/tuning) for proxies. With a `MEMORY` of `12G` or more, servers get Aikar's values for large heaps (`G1NewSizePercent=40`, `G1MaxNewSizePercent=50`, `G1HeapRegionSize=16M`, `G1ReservePercent=15`, `InitiatingHeapOccupancyPercent=20`).
+  - **Default:** [Aikar's flags](https://docs.papermc.io/paper/aikars-flags) for servers,
+    [Velocity's recommended flags](https://docs.papermc.io/velocity/tuning) for proxies. With a `MEMORY` of `12G` or
+    more, servers get Aikar's values for large heaps (`G1NewSizePercent=40`, `G1MaxNewSizePercent=50`,
+    `G1HeapRegionSize=16M`, `G1ReservePercent=15`, `InitiatingHeapOccupancyPercent=20`).
 
 - **`JVM_EXTRA_FLAGS`**
-  - **Description:** Flags added after the defaults (or after `JVM_FLAGS`), so you can add a system property or an agent without copying the whole default list.
+  - **Description:** Flags added after the defaults (or after `JVM_FLAGS`), so you can add a system property or an agent
+    without copying the whole default list.
   - **Default:** unset
 
 ```yaml
@@ -63,39 +107,49 @@ environment:
 ## Server Properties Shortcuts
 
 A few `server.properties` settings that almost every server changes have their own variable. They only apply to Java
-servers (not to proxies or Pumpkin). Everything else goes through [`CONFIG_PATHS`](../config) or
-[templates](../templates).
+servers (not to proxies). Everything else goes through [`CONFIG_PATHS`](../config) or [templates](../templates).
 
-| Variable              | Property              | Example         |
-| --------------------- | --------------------- | --------------- |
-| `MOTD`                | `motd`                | `§aMy Server`   |
-| `DIFFICULTY`          | `difficulty`          | `hard`          |
-| `GAMEMODE`            | `gamemode`            | `survival`      |
-| `MAX_PLAYERS`         | `max-players`         | `50`            |
-| `VIEW_DISTANCE`       | `view-distance`       | `10`            |
-| `SIMULATION_DISTANCE` | `simulation-distance` | `8`             |
-| `ONLINE_MODE`         | `online-mode`         | `true`          |
-| `PVP`                 | `pvp`                 | `false`         |
-| `LEVEL_NAME`          | `level-name`          | `world`         |
+| Variable              | Property              | Example                |
+| --------------------- | --------------------- | ---------------------- |
+| `MOTD`                | `motd`                | `§aMy Server`          |
+| `DIFFICULTY`          | `difficulty`          | `hard`                 |
+| `GAMEMODE`            | `gamemode`            | `survival`             |
+| `MAX_PLAYERS`         | `max-players`         | `50`                   |
+| `VIEW_DISTANCE`       | `view-distance`       | `10`                   |
+| `SIMULATION_DISTANCE` | `simulation-distance` | `8`                    |
+| `ONLINE_MODE`         | `online-mode`         | `true`                 |
+| `PVP`                 | `pvp`                 | `false`                |
+| `LEVEL_NAME`          | `level-name`          | `world`                |
 | `SEED`                | `level-seed`          | `-4172144997902289642` |
-| `SERVER_PORT`         | `server-port`         | `25565`         |
+| `SERVER_PORT`         | `server-port`         | `25565`                |
 
-They are merged into `server.properties` on every start and on `mc-orchestrator reapply`, **after templates and
-before `CONFIG_PATHS`**, so a `CONFIG_PATHS` override of the same property wins. Non-ASCII characters like the `§`
-colour codes are escaped, so they show up correctly on every server version. Unset or empty variables leave the
-property alone.
+<Callout title="Order" type="info">
+  Shortcuts are merged into `server.properties` on every start and on `mc-orchestrator reapply`, **after templates and
+  before `CONFIG_PATHS`**, so a `CONFIG_PATHS` override of the same property wins.
+</Callout>
+
+Non-ASCII characters like the `§` color codes are escaped, so they show up correctly on every server version. Unset or
+empty variables leave the property alone. `ONLINE_MODE` and `PVP` take `true` or `false`, `MAX_PLAYERS`,
+`VIEW_DISTANCE`, `SIMULATION_DISTANCE` and `SERVER_PORT` a whole number; other values stop the start with an error.
 
 ## Server Icon
 
 - **`ICON`**
-  - **Description:** The icon shown in the server list, as an `https://` URL or a path inside the container. Any common image format works (PNG, JPEG, WebP, GIF and others). It is converted to the 64×64 PNG Minecraft needs; non-square images are scaled to fit and padded with transparency, so they aren't distorted. Works on every platform; on Pumpkin, `favicon_path` in `config/configuration.toml` is also pointed at the icon.
+  - **Description:** The icon shown in the server list, as an `https://` URL or a path inside the container. Any common
+    image format works (PNG, JPEG, WebP, GIF and others). It is converted to the 64×64 PNG Minecraft needs; non-square
+    images are scaled to fit and padded with transparency, so they aren't distorted. Works on every platform.
   - **Default:** unset
 
 A URL is only downloaded again when it changes or when `server-icon.png` was deleted or modified, a file is converted
-again when its content changes. A new image behind the same URL is not picked up: change the URL (for example add
-`?v=2`) or delete `server-icon.png` to fetch it again. If the image
-can't be read, a warning is logged and the server starts without changing the icon. When you remove `ICON`, the icon
-stays as it is; delete `server-icon.png` to remove it.
+again when its content changes.
+
+<Callout title="Hint" type="info">
+  A new image behind the same URL is not picked up: change the URL (for example add `?v=2`) or delete `server-icon.png`
+  to fetch it again.
+</Callout>
+
+If the image can't be read, a warning is logged and the server starts without changing the icon. When you remove `ICON`,
+the icon stays as it is; delete `server-icon.png` to remove it.
 
 ```yaml
 environment:
@@ -105,7 +159,8 @@ environment:
 ## World Import
 
 - **`WORLD`**
-  - **Description:** A world to import on the first start, as an `https://` URL or a path inside the container. It can be a `.zip`, a tar archive (`.tar`, `.tar.gz`, `.tar.xz`) or a directory. Java servers only.
+  - **Description:** A world to import on the first start, as an `https://` URL or a path inside the container. It can
+    be a `.zip`, a tar archive (`.tar`, `.tar.gz`, `.tar.xz`) or a directory. Java servers only.
   - **Default:** unset
 
 The world is only imported when the server has none yet, that is when `<level-name>/level.dat` doesn't exist
@@ -115,8 +170,10 @@ The world folder is the shallowest folder in the archive that contains a `level.
 archive is nested. It is renamed to the `level-name`. Bukkit-style dimension folders next to it (`<name>_nether` and
 `<name>_the_end`) are imported and renamed along with it.
 
-If the import fails, the server doesn't start: otherwise it would generate a new world, and the import would never
-happen. To import the world again, stop the server and delete the world folders.
+<Callout title="Note" type="warn">
+  If the import fails, the server doesn't start: otherwise it would generate a new world, and the import would never
+  happen. To import the world again, stop the server and delete the world folders.
+</Callout>
 
 ```yaml
 environment:
@@ -129,11 +186,13 @@ environment:
 The tokens are only sent to the API they belong to, not to the hosts the files are downloaded from.
 
 - **`GITHUB_TOKEN`**
-  - **Description:** A GitHub Personal Access Token, used for `github:` plugins and the Pumpkin download. It raises the GitHub API rate limit from 60 to 5,000 requests per hour. See [GitHub plugins](../plugins/github#rate-limiting--authentication).
+  - **Description:** A GitHub Personal Access Token, used for `github:` plugins. It raises the GitHub API rate limit
+    from 60 to 5,000 requests per hour. See [GitHub plugins](../plugins/github#rate-limiting--authentication).
   - **Default:** unset (unauthenticated requests)
 
 - **`CURSEFORGE_API_KEY`**
-  - **Description:** The API key for the CurseForge API. Required for `curseforge:` plugins. See [CurseForge plugins](../plugins/curseforge).
+  - **Description:** The API key for the CurseForge API. Required for `curseforge:` plugins. See
+    [CurseForge plugins](../plugins/curseforge).
   - **Default:** unset
 
 ## RCON Variables
@@ -145,14 +204,19 @@ If RCON is enabled, the orchestrator automatically configures the server files t
   - **Default:** `true`
 
 - **`RCON_PORT`**
-  - **Description:** The local port mapped for RCON inside the container.
+  - **Description:** The port RCON listens on inside the container. `mc-rcon` connects to it as well.
   - **Default:** `25575`
 
 - **`RCON_PASSWORD`**
   - **Description:** The password for RCON.
-  - **Default:** A random UUID, generated on every start. It is stored in `runtime/.rcon-password`, so `mc-rcon` works inside the container without you knowing the password.
+  - **Default:** A random UUID, generated on every start. It is stored in `runtime/.rcon-password`, so `mc-rcon` works
+    inside the container without you knowing the password.
+
+- **`RCON_HOST`**
+  - **Description:** Only read by [`mc-rcon`](../scripts#mc-rcon): the host it connects to.
+  - **Default:** `127.0.0.1`
 
 <Callout title="Security" type="warn">
-  RCON is not encrypted and gives full console access. Don't publish the RCON port (`25575`) to the internet;
-  use `mc-rcon` via `docker exec` instead, or only expose it on a private network.
+  RCON is not encrypted and gives full console access. Don't publish the RCON port (`25575`) to the internet; use
+  `mc-rcon` via `docker exec` instead, or only expose it on a private network.
 </Callout>

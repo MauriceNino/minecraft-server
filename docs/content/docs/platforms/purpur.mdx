@@ -1,9 +1,10 @@
 ---
 title: Purpur
-description: High-performance Spigot fork that aims for configurability
+description: High-performance Paper fork that aims for configurability
 ---
 
-**Purpur** is a drop-in replacement for Paper that aims for configurability, new fun and exciting gameplay features, and high performance. It includes all the features and performance optimizations of Paper and Spigot.
+**Purpur** is a drop-in replacement for Paper that aims for configurability, new fun and exciting gameplay features, and
+high performance. It includes all the features and performance optimizations of Paper and Spigot.
 
 ## Configuration
 
@@ -14,15 +15,18 @@ environment:
   TYPE: PURPUR
 ```
 
-- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`, `stable`).
-- **`BUILD`**: Resolves the specific build number (e.g., `123`, `latest`).
+- **`VERSION`**: The game version (e.g., `1.21.4`), or `latest` (default) for the version Purpur marks as current.
+- **`BUILD`**: The build number (e.g., `2416`), or `latest` (default). Purpur has no release channels, so `experimental`
+  is the same as `latest`.
 - **`MEMORY`**: Defines the heap size (e.g., `2G`, `512M`). Default is `1G`.
-- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See
+  [JVM Options](../../environment#jvm-options).
 
 The orchestrator automatically fetches the latest builds from the [Purpur API](https://api.purpurmc.org/v2/purpur).
 
 ## RCON Support
 
-The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties`
+file at startup.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.

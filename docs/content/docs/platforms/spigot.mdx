@@ -3,7 +3,8 @@ title: Spigot
 description: The popular plugin-compatible CraftBukkit fork
 ---
 
-**Spigot** is a popular fork of CraftBukkit that introduces various performance improvements and configuration options. It is compatibility-oriented and supports the vast library of Bukkit plugins.
+**Spigot** is a popular fork of CraftBukkit that introduces various performance improvements and configuration options.
+It is compatibility-oriented and supports the vast library of Bukkit plugins.
 
 ## Configuration
 
@@ -14,18 +15,26 @@ environment:
   TYPE: SPIGOT
 ```
 
-- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`).
+- **`VERSION`**: The game version (e.g., `1.21.4`), or `latest` (default) for the newest version listed on
+  getbukkit.org. `BUILD` is not used.
 - **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
-- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See
+  [JVM Options](../../environment#jvm-options).
 
 <Callout title="Best effort" type="warn">
-  Spigot and CraftBukkit don't publish server JARs. The orchestrator downloads them from getbukkit.org, an
-  unofficial third-party mirror without checksums, so downloads can break when the site changes. Prefer
-  [Paper](../paper) if your plugins support it.
+  Spigot and CraftBukkit don't publish server JARs. The orchestrator downloads them from getbukkit.org, an unofficial
+  third-party mirror without checksums, so downloads can break when the site changes. Prefer [Paper](../paper) if your
+  plugins support it.
 </Callout>
+
+## Plugins
+
+Modrinth plugins are matched against the `spigot` and `bukkit` loaders. Hangar has no Spigot or Bukkit platform, so
+Hangar plugins need `[platform=paper]`, see [Hangar](../../plugins/hangar#platform-mapping).
 
 ## RCON Support
 
-The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties`
+file at startup.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.

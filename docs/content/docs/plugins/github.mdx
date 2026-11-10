@@ -3,7 +3,8 @@ title: GitHub
 description: Using the GitHub Releases plugin provider
 ---
 
-The GitHub provider resolves plugins directly from **GitHub Releases**. It is ideal for projects that publish their plugin JARs as release assets on GitHub but are not listed on any of the other supported repositories.
+The GitHub provider resolves plugins directly from **GitHub Releases**. It is ideal for projects that publish their
+plugin JARs as release assets on GitHub but are not listed on any of the other supported repositories.
 
 ## Usage
 
@@ -13,8 +14,11 @@ Use the `github:` prefix followed by the repository's `owner/repo` slug.
 environment:
   PLUGINS: |
     github:MilkBowl/Vault@latest
-    github:EssentialsX/Essentials@experimental
+    github:EssentialsX/Essentials[regex=^EssentialsX-[0-9.]+\.jar$]@latest
 ```
+
+GitHub releases carry no compatibility metadata, so there are no platform or Minecraft version checks, and the `!` flag
+has no effect.
 
 <Callout title="Hint" type="info">
   The `owner/repo` slug is the last two path segments of any GitHub repository URL.
@@ -25,16 +29,16 @@ environment:
 
 The GitHub provider supports the same version aliases used by every other provider.
 
-| Alias                       | Resolution                                                                               |
-| :-------------------------- | :--------------------------------------------------------------------------------------- |
-| `@latest` or `@stable`      | Resolves to the most recent **non-pre-release** release.                                 |
-| `@experimental` or `@beta`  | Resolves to the most recent **pre-release**. Falls back to latest stable if none exists. |
-| specific tag (e.g. `1.7.3`) | Resolves to the release whose Git tag **exactly matches** the given string.              |
+| Alias                       | Resolution                                                                                                                       |
+| :-------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| `@latest` or `@stable`      | Resolves to the most recent **non-pre-release** release.                                                                         |
+| `@experimental` or `@beta`  | Resolves to the most recent **pre-release** among the last 100 releases. Falls back to the most recent release if there is none. |
+| specific tag (e.g. `1.7.3`) | Resolves to the release whose Git tag **exactly matches** the given string.                                                      |
 
 <Callout title="Hint" type="info">
-  Release tag names can be found on the **Releases** page of the repository. The tag label is shown
-  on the left side of each release entry. Use the exact string shown there as your version
-  specifier. ![GitHub Release Tag](/github_release_tag.png)
+  Release tag names can be found on the **Releases** page of the repository. The tag label is shown on the left side of
+  each release entry. Use the exact string shown there as your version specifier. ![GitHub Release
+  Tag](/github_release_tag.png)
 </Callout>
 
 ## JAR Asset Selection
@@ -43,20 +47,23 @@ GitHub releases can contain multiple file assets. The orchestrator picks the cor
 
 1. **Filter to `.jar` files** — all other assets (source archives, zip files, etc.) are ignored.
 2. **Exactly one JAR** -> that file is used directly.
-3. **Multiple JARs** -> the file whose name contains a loader keyword for your platform is selected (e.g. for Paper: looks for `paper`, `spigot`, or `bukkit` in the filename).
+3. **Multiple JARs** -> the file whose name contains a loader keyword for your platform is selected (the same keywords
+   as the [Modrinth loaders](../modrinth#smart-filtering), e.g. for Paper: `paper`, `spigot` or `bukkit`).
 4. **Zero JARs, or the selection is still ambiguous** -> an error is raised, with a hint to use the `regex=` parameter.
 
 ## The `regex` Parameter
 
-When a release publishes multiple JARs that cannot be automatically disambiguated, you can pin the exact file using a regular expression:
+When a release publishes multiple JARs that cannot be automatically disambiguated, you can pin the exact file using a
+regular expression:
 
 ```yaml
 PLUGINS: |
-  github:plasmoapp/plasmo-voice[regex=plasmovoice-neoforge-1.21.7-.*.jar]@latest
+  github:EssentialsX/Essentials[regex=^EssentialsX-[0-9.]+\.jar$]@latest
 ```
 
 <Callout title="Note" type="info">
-  The pattern is matched against each asset name. Exactly **one** file must match — the orchestrator
+  The pattern is a Python regular expression that is searched for in each asset name (all assets, not only JARs), so it
+  matches anywhere in the name unless you anchor it with `^` and `$`. Exactly **one** file must match — the orchestrator
   will error if zero or multiple files match, so you can refine the pattern accordingly.
 </Callout>
 
@@ -67,12 +74,12 @@ The GitHub API allows only **60 unauthenticated requests per hour** per IP addre
 orchestrator checks releases on every container boot, you may hit this limit if you have many
 GitHub-sourced plugins or restart frequently.
 
-The orchestrator makes exactly **one request per plugin per boot**. For example, if you have 10
-GitHub-sourced plugins, the orchestrator will make 10 requests per boot. If you have 100 plugins,
-the orchestrator will make 100 requests per boot.
+The orchestrator makes **one request per GitHub plugin** whenever plugins are checked for updates. For example, with 10
+GitHub-sourced plugins, every check makes 10 requests. Restarts within
+[`PLUGINS_CHECK_CACHE`](../#development-check-cache-plugins_check_cache) don't check again.
 
-To increase the limit to **5 000 requests per hour**, set the `GITHUB_TOKEN` environment variable
-to a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+To increase the limit to **5,000 requests per hour**, set the `GITHUB_TOKEN` environment variable to a
+[Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 (a fine-grained token with read-only access to public repositories is sufficient):
 
 ```yaml

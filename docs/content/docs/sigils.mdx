@@ -7,37 +7,64 @@ import { File, Folder, Files } from 'fumadocs-ui/components/files';
 
 A **sigil** is a prefix that changes how the orchestrator handles a file, directory or config key instead of merging it.
 
-They can be applied to physical filenames inside a [Templates folder](../templates), or bound to injection keys mapped inside Docker `CONFIG_PATHS` ([Configuration Injection](../config)).
+They can be applied to physical filenames inside a [Templates folder](../templates), or bound to injection keys mapped
+inside Docker `CONFIG_PATHS` ([Configuration Injection](../config)).
 
 ## Breakdown of Action Sigils
 
 - **`!force:<name>`**
   - **Behavior:** Creates the file if it doesn't exist, and deep-merges it if it does.
+
 - **`!replace:<name>`**
-  - **Behavior:** Skips merging and overwrites the target completely. Use this when the result should be an exact copy of your file.
+  - **Behavior:** Skips merging and overwrites the target completely. Use this when the result should be an exact copy
+    of your file.
 
 - **`!delete:<name>`**
   - **Behavior:** Deletes the target file or directory in `/data/runtime`, e.g. to remove old configs or data folders.
+    In a template, the file's content doesn't matter; an empty file is enough. In `CONFIG_PATHS`, only files can be
+    deleted.
 
 - **`<name>`**
-  - **Behavior:** This is the default behavior when no sigil is present. It instructs the orchestrator to merge the target file if it exists, and do nothing if it doesn't.
+  - **Behavior:** This is the default behavior when no sigil is present. It instructs the orchestrator to merge the
+    target file if it exists, and do nothing if it doesn't.
+
+Files in formats that can't be [merged](../merging) are overwritten instead of merged.
+
+### Sigils on Folders
+
+A sigil on a folder applies to everything inside it:
+
+- **`!force:<folder>`** creates all files in it that don't exist yet and merges the others.
+- **`!replace:<folder>`** deletes the folder in the runtime directory and replaces it with an exact copy, so files that
+  aren't in the template are removed.
+- **`!delete:<folder>`** deletes the folder with everything in it.
+
+<Callout title="Careful" type="warn">
+  `!replace:` and `!delete:` on a folder remove everything in it on every start, including worlds, player data or files
+  a plugin wrote. Only use them on folders the template fully owns.
+</Callout>
+
+Within each template, everything marked `!delete:` or `!replace:` is removed first, then the files are written and
+merged. Templates are applied one after another in the order of `APPLIED_TEMPLATES`.
 
 ### File Trees Example
 
-If used inside a `templates` directory physically mapping to `runtime`:
+If used inside a template folder (here `my-template`, listed in `APPLIED_TEMPLATES`):
 
 **Template Source**
 
 <Files className="mb-6">
   <Folder name="data" defaultOpen>
     <Folder name="templates" defaultOpen>
-      <Folder name="some-folder" defaultOpen>
-        <File name="config.yml" />
+      <Folder name="my-template" defaultOpen>
+        <Folder name="some-folder" defaultOpen>
+          <File name="config.yml" />
+        </Folder>
+        <File name="!replace:replace-this.yml" />
+        <File name="!delete:delete-this.json" />
+        <File name="!force:force-this.yml" />
+        <File name="merge-this.json" />
       </Folder>
-      <File name="!replace:replace-this.yml" />
-      <File name="!delete:delete-this.json" />
-      <File name="!force:force-this.yml" />
-      <File name="merge-this.json" />
     </Folder>
   </Folder>
 </Files>
@@ -80,13 +107,15 @@ If used inside a `templates` directory physically mapping to `runtime`:
 </div>
 
 <Callout title="Note" type="info">
-  `some-folder/config.yml` has no sigil and doesn't exist in the runtime yet, so it is skipped.
-  `replace-this.yml` is overwritten, `delete-this.json` is deleted and `force-this.yml` is created.
-  `merge-this.json` doesn't exist in the runtime either, so it is skipped as well.
+  `some-folder/config.yml` has no sigil and doesn't exist in the runtime yet, so it is skipped. `replace-this.yml` is
+  overwritten, `delete-this.json` is deleted and `force-this.yml` is created. `merge-this.json` doesn't exist in the
+  runtime either, so it is skipped as well.
 </Callout>
 
 ## Deep Merging Behavior
 
-Keep in mind that unless you bypass it with `!replace:`, files that exist on both sides are merged according to their format.
+Keep in mind that unless you bypass it with `!replace:`, files that exist on both sides are merged according to their
+format.
 
-To read explicitly how JSON, YAML, TOML, and Properties behave during this procedure, read the [Deep Merging](../merging) guide.
+Inside YAML, JSON, TOML, HOCON and Properties files, `!replace:` and `!delete:` also work on single keys. Read the
+[Deep Merging](../merging) guide for how each format behaves.

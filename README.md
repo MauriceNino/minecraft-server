@@ -39,6 +39,8 @@ services:
       ACCEPT_EULA: "true"
       PLUGINS: |
         modrinth:luckperms@latest
+    volumes:
+      - ./data:/data/runtime
     ports:
       - "25565:25565"
 ```

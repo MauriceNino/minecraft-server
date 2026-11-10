@@ -3,7 +3,7 @@ title: Hangar
 description: Using the Hangar plugin provider
 ---
 
-Hangar is the official plugin repository for the PaperMC ecosystem. It is the primary source for Paper, Velocity, and Waterfall plugins.
+Hangar is the official plugin repository for the PaperMC ecosystem. It hosts Paper, Velocity and Waterfall plugins.
 
 ## Usage
 
@@ -17,36 +17,39 @@ environment:
 ```
 
 <Callout title="Hint" type="info">
-  Hangar uses a **Namespace** (slug) to identify projects. You can find it in the URL of the project
-  page. ![Hangar Project Slug](/hangar_project_slug.png)
+  Hangar uses a **Namespace** (slug) to identify projects. You can find it in the URL of the project page. ![Hangar
+  Project Slug](/hangar_project_slug.png)
 </Callout>
 
 ## Platform Mapping
 
 The orchestrator automatically maps your server `TYPE` to Hangar's platform identifiers:
 
-- `PAPER`, `FOLIA`, `PURPUR` -> `PAPER`
+- `PAPER`, `FOLIA`, `PURPUR`, `CUSTOM` -> `PAPER`
 - `VELOCITY` -> `VELOCITY`
 - `WATERFALL`, `BUNGEECORD` -> `WATERFALL`
 
+`SPIGOT` and `BUKKIT` have no Hangar platform. Use [`[platform=paper]`](#override-platform) for plugins that also run
+there, otherwise the plugin fails with an unsupported platform error.
+
 <Callout title="Hint" type="info">
-  The `FOLIA` type is mapped to `PAPER` because Hangar does not have a separate platform for Folia.
-  Internally it is checked if the plugin supports folia using the `SUPPORTS_FOLIA` tag.
+  The `FOLIA` type is mapped to `PAPER` because Hangar does not have a separate platform for Folia. Instead, the project
+  needs the `SUPPORTS_FOLIA` tag.
 </Callout>
 
 ## Version Resolution
 
 Hangar supports two main version aliases:
 
-| Alias                           | Resolution                                                                |
-| :------------------------------ | :------------------------------------------------------------------------ |
-| `@latest` or `@stable`          | Resolves to the newest **Release** version that supports your Minecraft version. |
+| Alias                           | Resolution                                                                                               |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------- |
+| `@latest` or `@stable`          | Resolves to the newest **Release** version that supports your Minecraft version.                         |
 | `@experimental` or `@beta`      | Resolves to the newest **Beta**, **Alpha** or **Snapshot** version that supports your Minecraft version. |
-| specific version (e.g. `5.2.1`) | Resolves to the exact version name listed in the Versions tab.            |
+| specific version (e.g. `5.2.1`) | Resolves to the exact version name listed in the Versions tab.                                           |
 
 <Callout title="Hint" type="info">
-  The version number can be found in the **Versions** tab or the sidebar of the project page.
-  ![Hangar Version Number](/hangar_version_number.png)
+  The version number can be found in the **Versions** tab or the sidebar of the project page. ![Hangar Version
+  Number](/hangar_version_number.png)
 </Callout>
 
 ## The Force Flag (`!`)
@@ -66,13 +69,14 @@ This will bypass:
 
 ## Override Platform
 
-You can manually specify a platform using the `platform` parameter in square brackets.
-This is useful if you want to download a version for a specific platform, bypassing the automatic mapping.
+You can manually specify a platform using the `platform` parameter in square brackets. This is useful if you want to
+download a version for a specific platform, bypassing the automatic mapping.
 
 ```yaml
 PLUGINS: |
   hangar:ViaVersion[platform=paper]@latest
 ```
 
-While Hangar categorizes plugins into **Paper**, **Velocity**, and **Waterfall**, many plugins designed for Paper also work on other platforms like Spigot.
-This parameter allows you to force the download of a specific platform's file regardless of your server `TYPE`.
+While Hangar categorizes plugins into **Paper**, **Velocity**, and **Waterfall**, many plugins designed for Paper also
+work on other platforms like Spigot. This parameter allows you to force the download of a specific platform's file
+regardless of your server `TYPE`.

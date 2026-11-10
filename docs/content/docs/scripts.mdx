@@ -3,11 +3,15 @@ title: Helper Scripts
 description: Utilities provided inside your containers
 ---
 
-Beyond the orchestrator execution pipeline, your container comes bundled with custom scripts that leverage the `orchestrator` module for day-to-day operations.
+Beyond the orchestrator execution pipeline, your container comes bundled with custom scripts that leverage the
+`orchestrator` module for day-to-day operations.
 
 ## `mc-rcon`
 
-An RCON client for sending commands to the running server. It reads the port and password from the container's environment, or from `runtime/.rcon-password` when the password was generated automatically, so no setup is needed.
+An RCON client for sending commands to the running server. It reads the port and password from the container's
+environment (`RCON_PORT`, `RCON_PASSWORD`), or from `runtime/.rcon-password` when the password was generated
+automatically, so no setup is needed. It connects to `127.0.0.1` unless `RCON_HOST` is set. Type `exit`, `quit` or press
+Ctrl-D to leave the interactive session.
 
 **Usage:**
 
@@ -21,11 +25,19 @@ $ docker exec CONTAINER_NAME mc-rcon "say Hello from auto RCON!"
 
 ## `mc-orchestrator`
 
-Without a subcommand, this prepares and starts the server (it is the image entrypoint). The subcommands below are meant to be run in a running container.
+Without a subcommand, this prepares and starts the server (it is the image entrypoint). The subcommands below are meant
+to be run in a running container. `mc-orchestrator --version` prints the orchestrator version.
 
 ### `mc-orchestrator reapply`
 
-Re-applies the templates and `CONFIG_PATHS` overrides without restarting the container or downloading anything. Most plugins and the server only pick up config changes after a reload or restart.
+Re-applies the templates, the [`server.properties` shortcuts](../environment#server-properties-shortcuts) and
+`CONFIG_PATHS` overrides without restarting the container or downloading anything. Most plugins and the server only pick
+up config changes after a reload or restart.
+
+<Callout title="Note" type="info">
+  It uses the environment the container was started with, so it picks up changes to your template files, but not changed
+  environment variables: those need the container to be recreated (`docker compose up -d`).
+</Callout>
 
 **Usage:**
 
@@ -35,7 +47,11 @@ $ docker exec CONTAINER_NAME mc-orchestrator reapply
 
 ### `mc-orchestrator check-updates`
 
-Checks every configured plugin against its provider and groups the results: available updates, pinned plugins with a newer version, new plugins that aren't installed yet, errors, and plugins that are up to date. The header shows the update strategy, and each group says what happens next. Under each plugin, a dimmed line shows its lockfile key, which is the value `update --plugin` takes. With `PLUGINS_UPDATE_STRATEGY=manual`, it also prints the `update` commands to run.
+Checks every configured plugin against its provider and groups the results: available updates, pinned plugins with a
+newer version, new plugins that aren't installed yet, errors, and plugins that are up to date. The header shows the
+update strategy, and each group says what happens next. Under each plugin, a dimmed line shows its lockfile key, which
+is the value `update --plugin` takes. With `PLUGINS_UPDATE_STRATEGY=manual`, it also prints the `update` commands to
+run.
 
 **Usage:**
 
@@ -45,7 +61,9 @@ $ docker exec CONTAINER_NAME mc-orchestrator check-updates
 
 ### `mc-orchestrator update`
 
-Updates all plugins configured in `PLUGINS`, regardless of `PLUGINS_UPDATE_STRATEGY` and `PLUGINS_CHECK_CACHE`. The new JARs are loaded on the next server restart. Use `--plugin` (or `-p`) to update a single plugin by its lockfile key. The command exits with code 1 if any plugin could not be updated.
+Updates all plugins configured in `PLUGINS`, regardless of `PLUGINS_UPDATE_STRATEGY` and `PLUGINS_CHECK_CACHE`. The new
+JARs are loaded on the next server restart. Use `--plugin` (or `-p`) to update a single plugin by its lockfile key. The
+command exits with code 1 if any plugin could not be updated.
 
 **Usage:**
 
@@ -59,7 +77,8 @@ $ docker exec CONTAINER_NAME mc-orchestrator update --plugin modrinth:luckperms
 
 ### `mc-orchestrator healthcheck`
 
-Sends a Minecraft status ping to the server and exits with code 0 if it answers. The image uses it as its Docker `HEALTHCHECK`.
+Sends a Minecraft status ping to the server and exits with code 0 if it answers. The image uses it as its Docker
+`HEALTHCHECK`.
 
 **Usage:**
 

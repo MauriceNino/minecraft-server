@@ -7,10 +7,16 @@ Plugins are resolved and downloaded before your server starts, using the same sy
 
 ## Defining Plugins
 
-You declare plugins via the `PLUGINS` environment variable. It accepts a multiline string where each line represents one plugin.
+You declare plugins via the `PLUGINS` environment variable. It accepts a multiline string where each line represents one
+plugin.
 
-- **Format:** `provider:identifier[params]@version` (params are optional)
+- **Format:** `provider:identifier[params]@version`. `[params]` is optional, and without `@version` the plugin uses
+  `@latest`.
 - **Default:** (Empty, no plugins downloaded)
+
+Plugins are installed into `plugins/`, on every platform except Vanilla. The `provider:identifier` part is the plugin's
+**lock key**, which identifies it in `server-lock.json` and in
+[`mc-orchestrator update --plugin`](../scripts#mc-orchestrator-update).
 
 ```yaml
 environment:
@@ -27,10 +33,12 @@ environment:
 
 ## Providers
 
-The orchestrator supports several plugin repositories. Each provider handles version resolution and platform compatibility differently.
+The orchestrator supports several plugin repositories. Each provider handles version resolution and platform
+compatibility differently.
 
-- [**Modrinth**](modrinth): The modern, fast, open plugin repository. Supports smart filtering for loaders and game versions.
-- [**Hangar**](hangar): The official PaperMC repository. Excellent support for Paper, Velocity, and Folia.
+- [**Modrinth**](modrinth): The modern, fast, open plugin repository. Supports smart filtering for loaders and game
+  versions.
+- [**Hangar**](hangar): The official PaperMC repository, for Paper (and its forks), Velocity and Waterfall plugins.
 - [**SpigotMC (Spiget)**](spiget): Proxies to SpigotMC via Resource IDs.
 - [**CurseForge**](curseforge): The classic home of Minecraft plugins. Requires an API key.
 - [**Direct URLs**](url): Download from any direct link.
@@ -40,76 +48,91 @@ The orchestrator supports several plugin repositories. Each provider handles ver
 
 Across most providers, you can use special aliases and flags in the `@version` part of the spec:
 
-- **`@latest`**: Resolves to the newest stable release that supports your server's Minecraft version.
-- **`@experimental`**: Resolves to the newest beta, alpha or snapshot that supports your server's Minecraft version.
-- **`!` flag**: Appending `!` (e.g., `@latest!`) forces the orchestrator to ignore compatibility filters. Use this if a plugin is known to work but its metadata is incorrect.
+- **`@latest`** (or `@stable`): Resolves to the newest stable release that supports your server's Minecraft version.
+- **`@experimental`** (or `@beta`): Resolves to a newer pre-release (beta, alpha or snapshot) that supports your
+  server's Minecraft version. What exactly counts differs per provider, see their pages.
+- **Specific version**: Pins the plugin to that version. The format depends on the provider.
+- **`!` flag**: Appending `!` (e.g., `@latest!`) forces the orchestrator to ignore compatibility filters. Use this if a
+  plugin is known to work but its metadata is incorrect.
 
 ## Optional Parameters
 
-Some providers accept additional arguments via the optional `[key=value]` block placed between the identifier and the version:
+Some providers accept additional arguments via the optional `[key=value]` block placed between the identifier and the
+version. Separate multiple parameters with commas:
 
 ```yaml
 PLUGINS: |
-  github:plasmoapp/plasmo-voice[regex=plasmovoice-neoforge-1.21.7-.*.jar]@latest
+  github:EssentialsX/Essentials[regex=^EssentialsX-[0-9.]+\.jar$]@latest
 ```
 
-<Callout title="Note" type="info">
-  Not all providers support extra parameters. Check each provider's documentation page for the list
-  of available arguments.
-</Callout>
+| Parameter  | Providers                                                                  | Purpose                                       |
+| ---------- | -------------------------------------------------------------------------- | --------------------------------------------- |
+| `platform` | [Modrinth](modrinth#override-platform), [Hangar](hangar#override-platform) | Use another platform than your `TYPE` maps to |
+| `regex`    | [GitHub](github#the-regex-parameter)                                       | Pick the release asset to download            |
 
 ## Caching & Removal
 
-During the download phase, `MauriceNino/minecraft-server` builds and manages a `server-lock.json` file inside its runtime directory.
+During the download phase, `MauriceNino/minecraft-server` builds and manages a `server-lock.json` file inside its
+runtime directory.
 
-- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download is skipped. JARs that were deleted or modified on disk (checked by checksum) are downloaded again.
-- **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from the lockfile diff, and **deletes the `.jar` from the plugins folder**.
+- **Caching:** If `luckperms@latest` resolves to version `v5.4.133`, this is saved to the lockfile. On the next
+  container boot, it compares the current remote `latest` version to the lockfile's version. If it matches, the download
+  is skipped. JARs that were deleted or modified on disk (checked by checksum) are downloaded again.
+- **Orphan Removal:** If you delete a line from your `PLUGINS` env variable, the orchestrator detects its absence from
+  the lockfile diff, and **deletes the `.jar` from the plugins folder**.
 
 ### Development Check Cache (`PLUGINS_CHECK_CACHE`)
 
-When iterating quickly — e.g. restarting your development server many times — the orchestrator would otherwise hit provider APIs on every boot. `PLUGINS_CHECK_CACHE` defaults to `5m`, meaning existing plugins are only re-checked at most once every 5 minutes. You can override it:
+When iterating quickly — e.g. restarting your development server many times — the orchestrator would otherwise hit
+provider APIs on every boot. `PLUGINS_CHECK_CACHE` defaults to `5m`, meaning existing plugins are only re-checked at
+most once every 5 minutes. You can override it:
 
 ```yaml
 environment:
-  PLUGINS_CHECK_CACHE: 30m  # only re-check existing plugins every 30 minutes
+  PLUGINS_CHECK_CACHE: 30m # only re-check existing plugins every 30 minutes
   # PLUGINS_CHECK_CACHE: 0s  # disable the cache and always check on startup
 ```
 
 The timestamp of the last full check is stored in `server-lock.json`. While the cache is valid:
+
 - **Existing plugins are skipped** — no API calls, no version comparisons.
-- **New plugins are still installed** — any plugin added to `PLUGINS` that isn't already in the lockfile will be downloaded.
+- **New plugins are still installed** — any plugin added to `PLUGINS` that isn't already in the lockfile will be
+  downloaded.
 - **Removed plugins are still cleaned up** — orphan `.jar` files are deleted as usual.
 
 The `mc-orchestrator update` command always bypasses this cache and performs a full update.
 
 ## Dependencies
 
-Dependencies are not installed automatically. Modrinth and Hangar list the plugins a version requires, and the
-orchestrator prints a warning when one of them is missing from `PLUGINS`:
+<Callout title="Note" type="info">
+  Dependencies are not installed automatically.
+</Callout>
+
+Modrinth and Hangar list the plugins a version requires, and the orchestrator prints a warning when one of them is
+missing from `PLUGINS`:
 
 ```
 ⚠ hangar:Multiverse-Inventories requires Multiverse-Core, which is not in PLUGINS
 ```
 
-A dependency counts as present when the name or ID of any configured plugin matches it, ignoring case and
-punctuation. It can come from any provider, so `spiget:34315` for Vault counts once Vault is installed. Because
-names are only compared, you may see a warning for a plugin you have installed under a different name. You can
-ignore it then. The check runs whenever plugins are checked for updates, so it is skipped while
-`PLUGINS_CHECK_CACHE` is still fresh.
+A dependency counts as present when the name or ID of any configured plugin matches it, ignoring case and punctuation.
+It can come from any provider, so `spiget:34315` for Vault counts once Vault is installed. Because names are only
+compared, you may see a warning for a plugin you have installed under a different name. You can ignore it then. The
+check runs whenever plugins are checked for updates, so it is skipped while `PLUGINS_CHECK_CACHE` is still fresh.
 
 ## Offline Startup
 
-API requests are retried a few times on network errors and rate limits. If the server JAR can still not be
-resolved, for example because there is no network or an API is down, the server starts with the JAR and plugins
-that are already installed, as long as they match your `VERSION` and `BUILD`. Plugins that aren't installed yet are
-reported as errors.
+API requests are retried a few times on network errors and rate limits. If the server JAR can still not be resolved, for
+example because there is no network or an API is down, the server starts with the JAR and plugins that are already
+installed, as long as they match your `VERSION` and `BUILD`. Plugins that aren't installed yet are reported as errors.
 
 ## Update Strategies
 
-You can control how the orchestrator handles plugin downloads and updates via the `PLUGINS_UPDATE_STRATEGY` environment variable.
+You can control how the orchestrator handles plugin downloads and updates via the `PLUGINS_UPDATE_STRATEGY` environment
+variable.
 
-| Strategy | Behavior |
-| :--- | :--- |
-| `manual` | Checks for updates and **removes orphans**, **downloads newly added plugins**, but **never updates to new versions**. Use this if you want to see what's available without changing your jars. |
-| `auto` | **(Default)** Checks for updates, downloads them, and removes orphans. If a download fails, it logs an error but **continues starting the server** with the old version. |
-| `force` | Same as `auto`, but the orchestrator will **abort the startup** and fail if any plugin fails to download or resolve. |
+| Strategy | Behavior                                                                                                                                                                                                                                                                       |
+| :------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manual` | Checks for updates and **removes orphans**, **downloads newly added plugins**, but **never updates to new versions**. Use this if you want to see what's available without changing your jars, then update with [`mc-orchestrator update`](../scripts#mc-orchestrator-update). |
+| `auto`   | **(Default)** Checks for updates, downloads them, and removes orphans. If a download fails, it logs an error but **continues starting the server** with the old version.                                                                                                       |
+| `force`  | Same as `auto`, but the orchestrator will **abort the startup** and fail if any plugin fails to download or resolve.                                                                                                                                                           |

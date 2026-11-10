@@ -3,7 +3,8 @@ title: Modrinth
 description: Using the Modrinth plugin provider
 ---
 
-Modrinth is a modern, fast, and open-source platform for Minecraft plugins and mods. It is the recommended provider for most users due to its clean API and rich metadata.
+Modrinth is a modern, fast, and open-source platform for Minecraft plugins and mods. It is the recommended provider for
+most users due to its clean API and rich metadata.
 
 ## Usage
 
@@ -17,37 +18,52 @@ environment:
 ```
 
 <Callout title="Hint" type="info">
-  You can find the **Project Slug** in the URL of the plugin page, or the **Project ID** in the
-  options dropdown. Both work interchangeably. We recommend using the **Project Slug** as it is more
-  readable. ![Modrinth Project Slug](/modrinth_project_slug.png) OR (not recommended) ![Modrinth
-  Project ID](/modrinth_project_id.png)
+  You can find the **Project Slug** in the URL of the plugin page, or the **Project ID** in the options dropdown. Both
+  work interchangeably. We recommend using the **Project Slug** as it is more readable. ![Modrinth Project
+  Slug](/modrinth_project_slug.png) OR (not recommended) ![Modrinth Project ID](/modrinth_project_id.png)
 </Callout>
 
 ## Smart Filtering
 
 The orchestrator automatically filters Modrinth versions based on your server's configuration:
 
-- **Platform Loaders:** It only requests files matching your `TYPE` (e.g., if you run Paper, it filters for "paper" or "spigot" loader tags).
-- **Game Version:** It ensures the plugin version supports your `VERSION` (e.g., `1.21`).
+- **Platform Loaders:** It only requests versions for the loaders your `TYPE` supports, preferring the first one that
+  has a match:
+
+  | `TYPE`            | Loaders                               |
+  | ----------------- | ------------------------------------- |
+  | `PAPER`, `CUSTOM` | `paper`, `spigot`, `bukkit`           |
+  | `PURPUR`          | `purpur`, `paper`, `spigot`, `bukkit` |
+  | `FOLIA`           | `folia`                               |
+  | `SPIGOT`          | `spigot`, `bukkit`                    |
+  | `BUKKIT`          | `bukkit`                              |
+  | `VELOCITY`        | `velocity`                            |
+  | `WATERFALL`       | `waterfall`, `bungeecord`             |
+  | `BUNGEECORD`      | `bungeecord`, `waterfall`             |
+
+- **Game Version:** It ensures the plugin version supports your exact Minecraft version (e.g., `1.21.4`). Proxies skip
+  this check, their plugins aren't tied to a Minecraft version.
 
 ## Version Resolution
 
 Modrinth supports two main version aliases:
 
-| Alias                                         | Resolution                                                                             |
-| :-------------------------------------------- | :------------------------------------------------------------------------------------- |
-| `@latest` or `@stable`                        | Resolves to the newest **Release** version that supports your Minecraft version.       |
+| Alias                                         | Resolution                                                                                 |
+| :-------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| `@latest` or `@stable`                        | Resolves to the newest **Release** version that supports your Minecraft version.           |
 | `@experimental` or `@beta`                    | Resolves to the newest **Beta** or **Alpha** version that supports your Minecraft version. |
-| specific version (e.g. `5.4.133`, `P3y2MXnd`) | Resolves to the exact **Version Number** or **Version ID** listed in the Versions tab. |
+| specific version (e.g. `5.4.133`, `P3y2MXnd`) | Resolves to the exact **Version Number** or **Version ID** of a version.                   |
 
 <Callout title="Hint" type="info">
-  To lock to a specific build, use the **Version Number**, which can both be found by clicking on a
-  specific version in the **Versions** tab. ![Modrinth Version Number](/modrinth_version_number.png)
+  To lock to a specific build, open the version on Modrinth: the **Version ID** is the last part of the URL
+  (`modrinth.com/plugin/<slug>/version/<id>`). The **Version Number** (e.g. `5.4.133`) works as well.
+  ![Modrinth Version ID](/modrinth_version_id.png)
 </Callout>
 
 ## The Force Flag (`!`)
 
-If you want to bypass the smart filtering (e.g., if a plugin isn't correctly tagged but you know it works), append a `!` to the version:
+If you want to bypass the smart filtering (e.g., if a plugin isn't correctly tagged but you know it works), append a `!`
+to the version:
 
 ```yaml
 PLUGINS: |
@@ -56,17 +72,21 @@ PLUGINS: |
 
 This will bypass:
 
-1. Platform loader compatibility checks
+1. The check that the project lists one of your platform's loaders
 2. Game version compatibility checks
+
+The version itself still needs one of the loaders. To download a version for another loader, use the
+[`platform` parameter](#override-platform).
 
 ## Override Platform
 
-You can manually specify a platform using the `platform` parameter in square brackets.
-This is useful if a plugin is compatible with your platform but its Modrinth metadata is missing the correct tag (e.g., a plugin that works on Folia but only has the Paper tag).
+You can manually specify a platform using the `platform` parameter in square brackets. This is useful if a plugin is
+compatible with your platform but its Modrinth metadata is missing the correct tag (e.g., a plugin that works on Folia
+but only has the Paper tag).
 
 ```yaml
 PLUGINS: |
-  modrinth:chunky[platform=spigot]@latest
+  modrinth:chunky[platform=paper]@latest
 ```
 
 When this parameter is used, it overrides the automatic platform detection based on your server `TYPE`.

@@ -16,18 +16,18 @@ const features = [
     icon: Server,
     title: 'Multi-Platform',
     description:
-      'Paper, Purpur, Folia, Velocity, Waterfall, Vanilla, Spigot, and Bukkit — all centrally managed from one core image.',
+      'Paper, Purpur, Folia, Vanilla, Spigot, Bukkit, Pumpkin, Velocity, Waterfall and BungeeCord, or any server JAR — all from one image.',
   },
   {
     icon: Plug,
     title: 'Plugin Resolution',
     description:
-      'Modrinth, Hangar, Spiget, Github releases, CurseForge and direct URLs with lockfile-based caching.',
+      'Modrinth, Hangar, Spiget, GitHub releases, CurseForge and direct URLs with lockfile-based caching.',
   },
   {
     icon: GitMerge,
     title: 'Config Merging',
-    description: 'Deep-merge YAML, JSON, TOML, and .properties with sigil-based control.',
+    description: 'Deep-merge YAML, JSON, TOML, HOCON and .properties with sigil-based control.',
   },
   {
     icon: FileCode2,
@@ -54,15 +54,18 @@ const platforms = [
   { name: 'Vanilla', color: '#EF4444' },
   { name: 'Spigot', color: '#F97316' },
   { name: 'Bukkit', color: '#FB923C' },
+  { name: 'Pumpkin', color: '#F59E0B' },
+  { name: 'Custom JAR', color: '#71717A' },
   { name: 'Velocity', color: '#1B9CEA' },
   { name: 'Waterfall', color: '#06B6D4' },
+  { name: 'BungeeCord', color: '#EAB308' },
 ];
 
 const pluginLoaders = [
   { name: 'Modrinth', color: '#1bd96a' },
   { name: 'Hangar', color: '#1a5feb' },
   { name: 'Spiget', color: '#de8825' },
-  { name: 'Github', color: '#2DBA4E' },
+  { name: 'GitHub', color: '#2DBA4E' },
   { name: 'CurseForge', color: '#eb622b' },
   { name: 'URL', color: '#5f5f66' },
 ];
@@ -74,7 +77,7 @@ const codeSnippet = `services:
       TYPE: PAPER
       VERSION: 1.21.4
       MEMORY: 2G
-      ACCEPT_EULA: true
+      ACCEPT_EULA: 'true'
       PLUGINS: |
         modrinth:luckperms@latest
         hangar:viaversion@latest

@@ -3,46 +3,62 @@ title: Configuration Injection
 description: Inline configuration via environment variables
 ---
 
-Often, you don't want to mount an entire directory of templates just to change a single line in a server configuration file. `MauriceNino/minecraft-server` lets you dynamically inject configuration files via Docker Environment Variables using `CONFIG_PATHS`.
+Often, you don't want to mount an entire directory of templates just to change a single line in a server configuration
+file. `MauriceNino/minecraft-server` lets you dynamically inject configuration files via Docker Environment Variables
+using `CONFIG_PATHS`.
 
 ## Enabling Config Injections (`CONFIG_PATHS`)
 
-`CONFIG_PATHS` maps an environment variable key to a target file path in your runtime directory.
-
-**Format:** `[sigil:]<ENV_KEY> -> <Target_Path>`
+`CONFIG_PATHS` maps a key to a target file path, relative to the runtime directory (`/data/runtime`). Each line has the
+format `[<sigil>]<key> -> <path>`, where the optional sigil is `!force:`, `!replace:` or `!delete:`. The content for the
+file is read from the variable `CONFIG_<key>`.
 
 For example:
 
 ```yaml
 environment:
   CONFIG_PATHS: |
-    server_props -> server.properties
-    luckperms -> plugins/luckperms/config.yml
-    !force:my_custom_override -> custom.json
+    !force:server_props -> server.properties
+    luckperms -> plugins/LuckPerms/config.yml
+    !replace:my_custom_override -> custom.json
+    !delete:old -> plugins/OldPlugin/config.yml
 
   CONFIG_server_props: |
     view-distance=10
     motd=Welcome
 
   CONFIG_luckperms: |
-    server-name: survival
-    password: $[PASSWORD]
+    server: survival
+    data:
+      password: $[DB_PASSWORD]
 
   CONFIG_my_custom_override: |
     { "advanced": true }
 ```
 
+- Lines whose `CONFIG_<key>` is unset or empty are skipped. `!delete:` lines don't need a `CONFIG_<key>`; they delete a
+  single file, not a directory.
+- Paths are case-sensitive: Bukkit plugins usually use their name as folder (`plugins/LuckPerms`).
+- `CONFIG_PATHS` is applied after [templates](../templates) and the
+  [`server.properties` shortcuts](../environment#server-properties-shortcuts), so it wins over both.
+
+<Callout title="Important" type="warn">
+  Without a sigil, the content is merged into the file if it exists, and **skipped** if it doesn't. `server.properties`
+  and most plugin configs only exist after the first start, so use `!force:` to create them right away.
+</Callout>
+
 <Callout title="Variable Interpolation" type="info">
-  You can use `$[VARIABLE_NAME]` placeholders inside your injected config values. The orchestrator
-  automatically intercepts and replaces these with actual runtime environment variable values before
-  any merge logic applies. Read more in the [Variable Interpolation](../interpolation) guide.
+  You can use `$[VARIABLE_NAME]` placeholders inside your injected config values. The orchestrator automatically
+  intercepts and replaces these with actual runtime environment variable values before any merge logic applies. Read
+  more in the [Variable Interpolation](../interpolation) guide.
 </Callout>
 
 ### Complex Injections
 
-When these environment injections evaluate, they run through the exact same engine pipeline as standard [templates](../templates).
+Injections are applied the same way as files in [templates](../templates):
 
-Because of this, they are extremely capable:
-
-- **[Lifecycle Sigils](../sigils)**: You can prefix injection keys in your map with sigils like `!replace:`, `!force:`, and `!delete:` to completely rewrite files across container boots.
-- **[Deep Merging](../merging)**: Rather than replacing an entire `.yml` or `.json` file, injected payload contents dynamically deep-merge into existing files on disk. You can additionally use inner data sigils like `!replace:key` or `!delete:key` to specifically manipulate objects right through Docker Compose!
+- **[Lifecycle Sigils](../sigils)**: Prefix keys with `!force:`, `!replace:` or `!delete:` to create, overwrite or
+  delete the target file.
+- **[Deep Merging](../merging)**: Rather than replacing an entire `.yml` or `.json` file, the content is deep-merged
+  into the existing file. Key sigils like `!replace:key` or `!delete:key` work inside the content as well. Files in
+  other formats are overwritten.

@@ -7,11 +7,14 @@ import { File, Folder, Files } from 'fumadocs-ui/components/files';
 
 Before the server starts, the orchestrator applies your template directories to the server directory.
 
-It recursively searches your `templates` folder and merges exactly what it finds to `/data/runtime` (which is where the server actually runs).
+Each template is a folder inside `/data/templates`. Its files are applied recursively to `/data/runtime` (where the
+server actually runs), keeping their relative paths: `templates/shared-base/plugins/LuckPerms/config.yml` ends up in
+`runtime/plugins/LuckPerms/config.yml`.
 
 ## Enabling Templates (`APPLIED_TEMPLATES`)
 
-By default, the orchestrator **will not apply any templates**. To tell the system which folders inside `/data/templates` to process, you must explicitly declare them using the `APPLIED_TEMPLATES` environment variable.
+By default, the orchestrator **will not apply any templates**. To tell the system which folders inside `/data/templates`
+to process, you must explicitly declare them using the `APPLIED_TEMPLATES` environment variable.
 
 The execution order heavily matters here—templates are merged top-to-bottom!
 
@@ -40,20 +43,33 @@ environment:
     survival-overrides
 
 volumes:
-  - ./templates:/data/templates
+  - ./templates:/data/templates:ro
 ```
 
-The orchestrator will first copy and merge everything inside `shared-base`, and then apply `survival-overrides` on top. `creative-overrides` is ignored.
+The orchestrator will first copy and merge everything inside `shared-base`, and then apply `survival-overrides` on top.
+`creative-overrides` is ignored. A template that doesn't exist is skipped with a warning.
+
+Templates are applied on every start, before plugins are installed, and again with
+[`mc-orchestrator reapply`](../scripts#mc-orchestrator-reapply).
 
 <Callout title="Variable Interpolation" type="info">
-  You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator
-  automatically intercepts and replaces these with actual runtime environment variable values before
-  any merge logic applies. Read more in the [Variable Interpolation](../interpolation) guide.
+  You can use `$[VARIABLE_NAME]` placeholders in any of your template files. The orchestrator automatically intercepts
+  and replaces these with actual runtime environment variable values before any merge logic applies. Read more in the
+  [Variable Interpolation](../interpolation) guide.
 </Callout>
 
 ## How Templates Apply
 
 Two mechanisms control what happens to each file:
 
-- **[Directory & File Sigils](sigils)**: Prefix file or folder names with a sigil (e.g. `!replace:config.json` or `!delete:old-plugin.jar`) to replace, force-create or delete instead of merging.
-- **[Deep Merging](merging)**: If a config file exists in both the template and the runtime directory, the two are deep-merged (YAML, JSON, TOML, HOCON and Properties). Other files are overwritten.
+- **[Directory & File Sigils](../sigils)**: Prefix file or folder names with a sigil (e.g. `!replace:config.json` or
+  `!delete:old-plugin.jar`) to replace, force-create or delete instead of merging.
+- **[Deep Merging](../merging)**: If a config file exists in both the template and the runtime directory, the two are
+  deep-merged (YAML, JSON, TOML, HOCON and Properties). Other files are overwritten.
+
+<Callout title="Important" type="warn">
+  Without a sigil, a file that doesn't exist in the runtime directory yet is **skipped**, so a template only changes
+  files the server or a plugin has already created. Use `!force:` to create it.
+</Callout>
+
+Binary files (e.g. JARs or images) are copied as they are, without [variable interpolation](../interpolation).

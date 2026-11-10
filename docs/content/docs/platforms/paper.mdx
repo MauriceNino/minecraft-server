@@ -3,7 +3,8 @@ title: Paper
 description: The most popular high-performance Spigot fork
 ---
 
-**Paper** is a high-performance fork of the Spigot Minecraft server that aims to fix performance and gameplay inconsistencies. It is the recommended platform for most plugin-based servers.
+**Paper** is a high-performance fork of the Spigot Minecraft server that aims to fix performance and gameplay
+inconsistencies. It is the recommended platform for most plugin-based servers.
 
 ## Configuration
 
@@ -14,15 +15,20 @@ environment:
   TYPE: PAPER
 ```
 
-- **`VERSION`**: Resolves the game version (e.g., `1.21.4`, `latest`, `stable`).
-- **`BUILD`**: Resolves the specific build number (e.g., `123`, `latest`).
+- **`VERSION`**: The game version (e.g., `1.21.4`), or `latest` (default). `experimental` also allows `-SNAPSHOT`
+  versions.
+- **`BUILD`**: The build number (e.g., `123`), or `latest` (default) for the newest stable build. `experimental` also
+  allows beta and alpha builds.
 - **`MEMORY`**: Defines the heap size (e.g., `2G`, `512M`). Default is `1G`.
-- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See
+  [JVM Options](../../environment#jvm-options).
 
-The orchestrator automatically fetches the latest builds from the [PaperMC API](https://api.papermc.io/v2/projects/paper).
+The orchestrator automatically fetches the latest builds from the
+[PaperMC API](https://fill.papermc.io/v3/projects/paper).
 
 ## RCON Support
 
-The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties` file at startup.
+The orchestrator automatically injects the necessary RCON settings (port and password) into your `server.properties`
+file at startup.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.

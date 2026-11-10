@@ -8,7 +8,8 @@ description: A high-performance BungeeCord fork
   [BungeeCord](../bungeecord) if you need BungeeCord plugins.
 </Callout>
 
-**Waterfall** is a fork of BungeeCord, the popular Minecraft proxy. It is designed for performance and stability while maintaining full compatibility with BungeeCord plugins.
+**Waterfall** is a fork of BungeeCord, the popular Minecraft proxy. It is designed for performance and stability while
+maintaining full compatibility with BungeeCord plugins.
 
 ## Configuration
 
@@ -19,14 +20,18 @@ environment:
   TYPE: WATERFALL
 ```
 
-- **`VERSION`**: Resolves the proxy version (e.g., `1.21`, `latest`).
+- **`VERSION`**: The Minecraft version line of the proxy (e.g., `1.21`), or `latest` (default).
+- **`BUILD`**: The build number, or `latest` (default) for the newest stable build. `experimental` also allows beta and
+  alpha builds.
 - **`MEMORY`**: Defines the heap size (e.g., `2G`). Default is `1G`.
-- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See [JVM Options](../../environment#jvm-options).
+- **`JVM_FLAGS`** / **`JVM_EXTRA_FLAGS`**: Replace or extend the default JVM flags. See
+  [JVM Options](../../environment#jvm-options).
 
-The orchestrator resolves builds via the [PaperMC API](https://api.papermc.io/v2/projects/waterfall).
+The orchestrator resolves builds via the [PaperMC API](https://fill.papermc.io/v3/projects/waterfall).
 
 ## RCON Support
 
-Waterfall has no built-in RCON. The orchestrator installs the [bungee-rcon](https://github.com/orblazer/bungee-rcon) plugin and configures its port and password.
+Waterfall has no built-in RCON. The orchestrator installs the [bungee-rcon](https://github.com/orblazer/bungee-rcon)
+plugin and configures its port and password.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.

@@ -3,7 +3,8 @@ title: Direct URL
 description: Using the direct URL plugin provider
 ---
 
-Sometimes plugins aren't hosted on a supported repository, or you want to use a specific build from a CI server. You can specify a direct download link.
+Sometimes plugins aren't hosted on a supported repository, or you want to use a specific build from a CI server. You can
+specify a direct download link.
 
 ## Usage
 
@@ -19,7 +20,8 @@ environment:
 
 The orchestrator determines the local filename in the following order:
 
-1.  **Content-Disposition Header:** If the server responds with a `Content-Disposition: attachment; filename="plugin.jar"` header, this name is used.
+1.  **Content-Disposition Header:** If the server responds with a
+    `Content-Disposition: attachment; filename="plugin.jar"` header, this name is used.
 2.  **URL Path:** If no header is present, the last segment of the URL path is used.
 
 ## Caching
@@ -29,5 +31,10 @@ To detect updates, the orchestrator sends a `HEAD` request (or a `GET` if the ho
 - **Last-Modified:** the modification date becomes the plugin's version.
 - **ETag:** used as the version if there is no modification date.
 
-If the server sends neither, updates can't be detected and the file is only downloaded once. Remove and re-add the
-line in `PLUGINS` (or run `mc-orchestrator update`) to force a new download.
+<Callout title="Hint" type="info">
+  If the server sends neither, updates can't be detected and the file is only downloaded once. To force a new download,
+  change the URL (for example add `?v=2`) or delete the JAR from the plugins folder.
+</Callout>
+
+There are no platform or Minecraft version checks for direct URLs. The URL can't contain `@` or `[`, as these separate
+the version and the parameters.

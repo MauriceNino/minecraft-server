@@ -7,17 +7,25 @@ description: Overview of MauriceNino/minecraft-server features and philosophy
 
 Welcome to **MauriceNino/minecraft-server**.
 
-This Docker image sets up and runs Minecraft servers and proxies from environment variables: it downloads the server JAR, installs and updates plugins, applies config templates and enables RCON, then starts the server.
+This Docker image sets up and runs Minecraft servers and proxies from environment variables: it downloads the server
+JAR, installs and updates plugins, applies config templates and enables RCON, then starts the server.
 
 ## Why MauriceNino/minecraft-server?
 
-Running stateless Minecraft servers dynamically inside Docker typically requires tedious bash scripts, messy volume mounts and complex deployment pipelines.
+Running stateless Minecraft servers dynamically inside Docker typically requires tedious bash scripts, messy volume
+mounts and complex deployment pipelines.
 
 `MauriceNino/minecraft-server` handles:
 
-- **Server JARs**: Paper, Purpur, Folia, Velocity, Waterfall, BungeeCord, Vanilla, Spigot, Bukkit and Pumpkin (experimental), or any server JAR with `TYPE=CUSTOM`.
-- **Plugins**: from Modrinth, Hangar, SpigotMC (Spiget), CurseForge, GitHub and direct URLs, checked against your server version.
-- **Templates & config merging**: template directories are merged into the server directory, controlled with `!force:`, `!replace:` and `!delete:`.
-- **RCON**: enabled automatically, with `mc-rcon` for a console inside the container.
+- **[Server software](platforms)**: Paper, Purpur, Folia, Velocity, Waterfall, BungeeCord, Vanilla, Spigot, Bukkit and
+  Pumpkin (experimental), or any server JAR with `TYPE=CUSTOM`.
+- **[Plugins](plugins)**: from Modrinth, Hangar, SpigotMC (Spiget), CurseForge, GitHub and direct URLs, checked against
+  your server version.
+- **[Templates](templates) & [config merging](merging)**: template directories are merged into the server directory,
+  controlled with `!force:`, `!replace:` and `!delete:`.
+- **[Server settings](environment)**: shortcuts for common `server.properties` settings, the server icon and a world to
+  import on the first start.
+- **RCON**: enabled automatically, with [`mc-rcon`](scripts#mc-rcon) for a console inside the container.
+- **[Health check](docker#health-check)**: Docker shows the container as healthy once players can connect.
 
 If an API is unreachable on startup, the server starts with the JAR and plugins that are already installed.

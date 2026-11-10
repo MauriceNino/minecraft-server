@@ -3,7 +3,8 @@ title: Pumpkin
 description: Rust-based high-performance Minecraft server
 ---
 
-**Pumpkin** is a modern, high-performance Minecraft server (Protocol 775) written from the ground up in Rust. It aims to provide extreme performance and stability, particularly for large-scale operations.
+**Pumpkin** is a modern, high-performance Minecraft server written from the ground up in Rust. It aims to provide
+extreme performance and stability, particularly for large-scale operations.
 
 <Callout title="Experimental" type="warning">
   Pumpkin is under heavy development. Nightly builds are fetched directly from the [PumpkinMC
@@ -20,20 +21,40 @@ environment:
   VERSION: experimental
 ```
 
-- **`VERSION`**: Currently **must** be set to `experimental` to pull the latest nightly builds from GitHub.
-- **`MEMORY` / `JVM_FLAGS`**: As Pumpkin runs as a native Rust binary, these Java-specific variables are currently **ignored** by the orchestrator.
+- **`VERSION`**: Currently **must** be set to `experimental` (or `beta`) to pull the latest nightly build from GitHub.
+  Pumpkin targets the latest Minecraft release, so plugins are checked against that version.
+- **`MEMORY` / `JVM_FLAGS` / `JVM_EXTRA_FLAGS`**: As Pumpkin runs as a native Rust binary, these Java-specific variables
+  are **ignored**.
+- **`GITHUB_TOKEN`**: Optional. The nightly builds are looked up with the GitHub API, see
+  [API Tokens](../../environment#api-tokens).
+
+The nightly release is published again under the same tag, so a new build is detected by its checksum. The binary is
+available for `amd64` and `arm64`.
+
+Pumpkin doesn't read `server.properties`, so the [shortcuts](../../environment#server-properties-shortcuts), `WORLD` and
+`ACCEPT_EULA` don't apply. Configure Pumpkin with [templates](../../templates) or [`CONFIG_PATHS`](../../config) in
+`config/configuration.toml` and `config/features.toml`.
+
+[`ICON`](../../environment#server-icon) works: besides writing `server-icon.png`, the orchestrator points `favicon_path`
+in `config/configuration.toml` at it.
 
 ## RCON Support
 
-Pumpkin uses a specialized configuration file located at `config/features.toml`. The orchestrator automatically configures the `[networking.rcon]` section to match your environment variables.
+Pumpkin is configured in `config/features.toml`. The orchestrator automatically configures the `[networking.rcon]`
+section to match your environment variables.
 
 See [RCON Variables](../../environment#rcon-variables) for configuration details.
 
-### Plugin Support
+## Plugin Support
 
 When running Pumpkin, the orchestrator automatically:
 
 1. Downloads the latest **Pumpkin** native binary for your architecture.
 2. Injects the **PatchBukkit** compatibility layer into `plugins/`. It's tracked in `server-lock.json` and checked for a
    new nightly build on every start, and downloaded again if the file is missing or was modified.
-3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory, where PatchBukkit loads them.
+3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory, where PatchBukkit
+   loads them.
+
+Modrinth plugins are matched against the `paper`, `spigot` and `bukkit` loaders. Spiget and CurseForge plugins are
+allowed like on Bukkit-based servers. Hangar has no mapping for Pumpkin, so Hangar plugins need `[platform=paper]`, see
+[Hangar](../../plugins/hangar#platform-mapping).

@@ -17,7 +17,7 @@ services:
       TYPE: PAPER
       VERSION: latest
       MEMORY: 2G
-      ACCEPT_EULA: true
+      ACCEPT_EULA: 'true'
       PLUGINS: |
         modrinth:luckperms@latest
         hangar:viaversion@latest
@@ -29,8 +29,12 @@ services:
 
 ## Shutdown
 
-On `docker stop`, the server gets a `SIGTERM` and saves its worlds before exiting. Docker kills the container
-after 10 seconds by default, which is often not enough for larger worlds. Raise the limit per service:
+On `docker stop`, the server gets a `SIGTERM` and saves its worlds before exiting.
+
+<Callout title="Important" type="warn">
+  Docker kills the container after 10 seconds by default, which is often not enough for larger worlds. A server that is
+  killed while saving can lose chunks or player data. Raise the limit per service:
+</Callout>
 
 ```yaml
 services:
@@ -40,25 +44,26 @@ services:
 
 ## Health Check
 
-The image has a `HEALTHCHECK` that sends a Minecraft status ping to the server, so `docker ps` shows the
-container as `healthy` once players can connect. You can run it manually with
-`docker exec <container> mc-orchestrator healthcheck`.
+The image has a `HEALTHCHECK` that sends a Minecraft status ping to the server, so `docker ps` shows the container as
+`healthy` once players can connect. You can run it manually with `docker exec <container> mc-orchestrator healthcheck`.
 
-The address and port are read from the server's config (`server-ip` and `server-port`, or the proxy's bind
-address). With `enable-status=false` the server doesn't answer status pings, so the check only tests that the
-port accepts connections.
+The address and port are read from the server's config (`server-ip` and `server-port`, or the proxy's bind address).
+With `enable-status=false` the server doesn't answer status pings, so the check only tests that the port accepts
+connections.
 
 ## Volumes & State
 
-Inside the container, `/data` is the target directory via `DEFAULT_DATA_DIR`.
+Inside the container, everything lives in `/data` (set by [`DATA_DIR`](../environment#logging--paths)).
 
-- `/data/runtime`: Where the server execution happens (and where you should mount to persist data).
-- `/data/templates`: Where you should mount your config skeletons.
+- `/data/runtime`: Where the server runs: worlds, configs, plugins and `server-lock.json`. Mount it to persist data.
+- `/data/templates`: Where you mount your [templates](../templates). It can be read-only (`:ro`).
+
+Both are declared as volumes, so without a mount Docker creates an anonymous volume for them.
 
 ## Running as a Different User
 
-The container runs as the `minecraft` user with UID `1000` and GID `1000`. To run it as another user, for example
-so the files in `./data` belong to your own account, set `user:` to the numeric UID and GID:
+The container runs as the `minecraft` user with UID `1000` and GID `1000`. To run it as another user, for example so the
+files in `./data` belong to your own account, set `user:` to the numeric UID and GID:
 
 ```yaml
 services:
@@ -69,20 +74,23 @@ services:
       - ./templates:/data/templates:ro
 ```
 
-A directory you mount from the host must be writable by that UID and GID. Create it before the container starts,
-otherwise Docker creates it owned by `root`:
+<Callout title="Important" type="warn">
+  A directory you mount from the host must be writable by that UID and GID. Create it before the container starts,
+  otherwise Docker creates it owned by `root`:
+</Callout>
 
 ```bash
 mkdir -p ./data
 sudo chown -R 1001:1001 ./data
 ```
 
-Templates are only read, so they only need to be readable by that user. Volumes Docker creates from the image,
-including named volumes, are writable for any UID. The UID doesn't need to exist in the image.
+Templates are only read, so they only need to be readable by that user. Volumes Docker creates from the image, including
+named volumes, are writable for any UID. The UID doesn't need to exist in the image.
 
 ## Example Environments
 
-The repository has examples for every server type and for a Velocity network with lobby, survival and creative servers.
+The repository has an example that runs most server types side by side, and one for a Velocity network with lobby,
+survival and creative servers.
 
 Check the `examples/` directory in our repository:
 
@@ -95,13 +103,13 @@ We provide a variety of Docker image flavors to suit your needs, varying by Java
 ### Java Versions
 
 - **Java 25** (Default)
-- **Java 23**
+- **Java 23** (not for Microsoft)
 - **Java 21**
-- **Java 17**, **Java 11** and **Java 8** (Temurin only), for Minecraft versions before 1.17
+- **Java 17**, **Java 11** and **Java 8** (Temurin only), for older Minecraft versions
 
-Minecraft 26.1 and newer need Java 25, 1.20.5 - 1.21.11 need Java 21, 1.18 - 1.20.4 need Java 17. Versions
-before 1.17 often don't run on anything newer than Java 17, and 1.12 and older need Java 8. The orchestrator
-prints a warning on startup when the image's Java doesn't fit your `VERSION`.
+Minecraft 26.1 and newer need Java 25, 1.20.5 - 1.21.11 need Java 21, 1.18 - 1.20.4 need Java 17. Versions before 1.17
+often don't run on anything newer than Java 17, and 1.12 and older need Java 8. The orchestrator prints a warning on
+startup when the image's Java doesn't fit your `VERSION`.
 
 ### Java Distributions
 
@@ -115,7 +123,8 @@ You can choose from several popular Java distributions:
 
 ### Tagging Scheme
 
-Tags follow the pattern `java<version>-<distribution>`.
+Tags follow the pattern `java<version>-<distribution>`, with the distribution in lowercase (`temurin`, `corretto`,
+`microsoft`, `azul`, `graalvm`).
 
 | Feature          | Tag Example                 |
 | ---------------- | --------------------------- |
@@ -123,5 +132,9 @@ Tags follow the pattern `java<version>-<distribution>`.
 | Specific Version | `java21-temurin`            |
 | Different Flavor | `java25-graalvm`            |
 
-> [!TIP]
-> If you are unsure which one to use, `latest` (Java 25 Temurin) is recommended for most users.
+The image is published to the GitHub Container Registry (`ghcr.io/mauricenino/minecraft-server`) and to Docker Hub
+(`mauricenino/minecraft-server`) with the same tags, for `linux/amd64` and `linux/arm64`.
+
+<Callout title="Hint" type="info">
+  If you are unsure which one to use, `latest` (Java 25 Temurin) is recommended for most users.
+</Callout>
