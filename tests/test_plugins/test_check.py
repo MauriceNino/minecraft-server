@@ -55,3 +55,14 @@ def test_sorts_by_name_case_insensitively() -> None:
     groups = classify_updates(resolutions, {})
 
     assert [e.name for e in groups.updates] == ["Alpha", "beta"]
+
+
+def test_keeps_error_markup_and_escapes_versions() -> None:
+    error = _resolution("Broken", None, None)
+    error = PluginResolution(error.spec, error.lock_key, None, None, "use [info]@latest![/info] to force")
+    resolutions = [error, _resolution("Odd", "1.0-[beta]", "2.0-[beta]")]
+
+    groups = classify_updates(resolutions, {})
+
+    assert groups.errors[0].detail == "Error: use [info]@latest![/info] to force"
+    assert groups.updates[0].detail == "1.0-\\[beta] → 2.0-\\[beta]"

@@ -25,7 +25,7 @@ _PENDING_NOTE_BY_STRATEGY = {
 class PluginStatus:
     name: str
     lock_key: str
-    detail: str
+    detail: str  # Rich markup: plugin errors carry their own markup, so plain values are escaped when building it
 
 
 @dataclasses.dataclass
@@ -79,14 +79,15 @@ def classify_updates(
     groups = UpdateGroups()
 
     for res in sorted(resolutions, key=lambda r: r.display_name.lower()):
-        installed = res.lock_entry.version if res.lock_entry else None
+        installed = escape(res.lock_entry.version) if res.lock_entry else None
         latest = latest_versions.get(res.lock_key)
+        latest = escape(latest) if latest else None
 
         if res.resolved is None:
             groups.errors.append(PluginStatus(res.display_name, res.lock_key, f"Error: {res.error}"))
             continue
 
-        resolving = res.resolved.version
+        resolving = escape(res.resolved.version)
         if installed is None:
             groups.new.append(PluginStatus(res.display_name, res.lock_key, f"→ {resolving}"))
         elif resolving != installed:
@@ -105,7 +106,7 @@ def _print_group(title: str, entries: list[PluginStatus], width: int, style: str
     console.print()
     console.print(f"[bold]{title}[/bold] [dim]({len(entries)})[/dim]")
     for entry in entries:
-        console.print(f"  [{style}]{escape(entry.name.ljust(width))}[/{style}]  {escape(entry.detail)}")
+        console.print(f"  [{style}]{escape(entry.name.ljust(width))}[/{style}]  {entry.detail}")
         console.print(f"    [dim]{escape(entry.lock_key)}[/dim]", soft_wrap=True)
 
 
