@@ -154,6 +154,10 @@ services:
     environment:
       TYPE: PUMPKIN
       VERSION: latest
+      ICON: https://mauricenino.github.io/minecraft-server/icon.png
+      # WebAssembly plugins from the Pumpkin Market need their permissions granted with `allow`
+      PLUGINS: |
+        pumpkin:ID0WVaaw-perfmon[allow=sys.info,fs.read.data,fs.write.data,http.outbound]
       CONFIG_PATHS: |
         pumpkin -> pumpkin.toml
       CONFIG_pumpkin: |

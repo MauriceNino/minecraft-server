@@ -27,6 +27,7 @@ class PluginProviderType(StrEnum):
     CURSEFORGE = "curseforge"
     GITHUB = "github"
     URL = "url"
+    PUMPKIN = "pumpkin"
 
 
 class PluginUpdateStrategy(StrEnum):

@@ -1,0 +1,92 @@
+---
+title: Pumpkin Market
+description: WebAssembly plugins for Pumpkin
+---
+
+The [Pumpkin Market](https://market.pumpkinmc.org) hosts WebAssembly plugins for [Pumpkin](../../platforms/pumpkin).
+They are installed into `plugins/`, where Pumpkin loads them. Bukkit plugins from the other providers go to
+PatchBukkit's directory instead.
+
+## Usage
+
+Use the last part of the plugin's market URL, its ID followed by its name:
+
+**Example URL:** `https://market.pumpkinmc.org/plugin/ID0WVaaw-perfmon` -> `ID0WVaaw-perfmon`.
+
+```yaml
+environment:
+  TYPE: PUMPKIN
+  PLUGINS: |
+    pumpkin:ID0WVaaw-perfmon[allow=sys.info,fs.read.data,fs.write.data,http.outbound]
+    pumpkin:s7e5Nz2f-multiversion[allow=network.tcp,http.outbound,fs.read.data,fs.write.data]
+```
+
+<Callout title="Hint" type="info">
+  Only the ID before the first `-` is used to find the plugin, so `ID0WVaaw` alone works too. The name just keeps your
+  configuration readable. It is part of the lock key and the default permission name though, so changing it downloads
+  the plugin again.
+</Callout>
+
+## Permissions
+
+A WebAssembly plugin declares the permissions it needs, such as `fs.write.data` or `http.outbound`. Pumpkin asks for
+them on the console, and a container has none to answer on, so **Pumpkin skips a plugin whose permissions aren't granted
+in advance**. Grant them with the `allow` parameter, separated by commas:
+
+```yaml
+PLUGINS: |
+  pumpkin:ID0WVaaw-perfmon[allow=sys.info,fs.read.data,fs.write.data,http.outbound]
+```
+
+The orchestrator writes them to `allowed_permissions` in `[plugins.overrides.<name>]` of `pumpkin.toml`. Pumpkin keys
+the override by the name the plugin declares itself, which is only known once Pumpkin runs it. The orchestrator uses the
+market name in lowercase (`Perfmon` -> `perfmon`), or the name in your configuration before the first download. If the
+plugin calls itself something else, set it with `name`:
+
+```yaml
+PLUGINS: |
+  pumpkin:CAUifsaq-mobs-night-spawn[allow=fs.read.data,name=mob_night_spawn]
+```
+
+To find out what a plugin needs, start it once without `allow`. Pumpkin logs the permissions it requests and its name:
+
+```text
+Plugin "perfmon" (0.3.2) requests the following permissions:
+  - sys.info: Allows the plugin to read system information (CPU, Memory, OS).
+  ...
+WARN Permission denied for plugin "perfmon", skipping loading.
+```
+
+Removing `allow` doesn't revoke a grant that was written before. Use `allow=` (empty) to clear it, or edit
+`pumpkin.toml`. You can also grant permissions to all plugins with `allowed_permissions` in `[plugins]`, or turn off the
+confirmation with `ask_permission_confirmation = false`, via [templates](../../templates) or
+[`CONFIG_PATHS`](../../config).
+
+## Version Resolution
+
+The market only serves the current version of a plugin, so there is no version history to pick from.
+
+| Alias                      | Resolution                                                                        |
+| :------------------------- | :-------------------------------------------------------------------------------- |
+| `@latest` or `@stable`     | The current version.                                                              |
+| `@experimental` or `@beta` | (Same as `@latest`)                                                               |
+| specific version (`0.3.2`) | Only works while it is the current version, and fails once the plugin is updated. |
+
+The market signs every download anew, so the file differs on every download. A plugin is only downloaded again when its
+version changes, or when the installed file was deleted or modified. A plugin without a version is identified by the
+time of its last update.
+
+## Paid Plugins
+
+Paid plugins are downloaded with a market API key (`pmk_...`) of the account that owns them. Create one in the market
+settings with the "Download Plugins" scope and set it as `PUMPKIN_MARKET_TOKEN`. Free plugins don't need it. Like the
+other [API tokens](../../environment#api-tokens), it's only sent to the market.
+
+```yaml
+environment:
+  PUMPKIN_MARKET_TOKEN: pmk_...
+```
+
+## The Force Flag (`!`)
+
+Market plugins only run on Pumpkin. `!` lets you configure them on another `TYPE`, which only downloads the file.

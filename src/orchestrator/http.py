@@ -14,8 +14,10 @@ from orchestrator.constants import USER_AGENT
 
 GITHUB_API_HOST = "api.github.com"
 CURSEFORGE_API_HOST = "api.curseforge.com"
+PUMPKIN_MARKET_HOST = "market.pumpkinmc.org"
 RETRY_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
-MAX_ATTEMPTS = 4
+# Waits 1 + 2 + 4 + 8 = 15s in total, enough for outages like the Pumpkin Market's recurring 502s of up to ~10s
+MAX_ATTEMPTS = 5
 BACKOFF_BASE_SECONDS = 1.0
 # Don't stall startup for longer than this on a single Retry-After
 MAX_RETRY_AFTER_SECONDS = 30.0
@@ -56,10 +58,12 @@ class RetryTransport(httpx.AsyncBaseTransport):
                 if response.status_code not in RETRY_STATUS_CODES or attempt == self._max_attempts:
                     return response
                 retry_after = _retry_after_seconds(response)
-                if retry_after is not None:
-                    if retry_after > MAX_RETRY_AFTER_SECONDS:
-                        return response
+                if retry_after is not None and retry_after <= MAX_RETRY_AFTER_SECONDS:
                     delay = retry_after
+                elif retry_after is not None and response.status_code == 429:
+                    # A rate limit that long won't be over in time
+                    return response
+                # A server error with a long Retry-After (the Pumpkin Market sends 60s) is often over sooner
                 await response.aclose()
             await asyncio.sleep(delay)
 
@@ -75,6 +79,7 @@ class ApiTokens:
 
     github: str | None = None
     curseforge: str | None = None
+    pumpkin_market: str | None = None
 
 
 class ApiTokenAuth(httpx.Auth):
@@ -89,6 +94,8 @@ class ApiTokenAuth(httpx.Auth):
             request.headers["Authorization"] = f"Bearer {self._tokens.github}"
         elif host == CURSEFORGE_API_HOST and self._tokens.curseforge:
             request.headers["x-api-key"] = self._tokens.curseforge
+        elif host == PUMPKIN_MARKET_HOST and self._tokens.pumpkin_market:
+            request.headers["Authorization"] = f"Bearer {self._tokens.pumpkin_market}"
         yield request
 
 

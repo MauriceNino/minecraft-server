@@ -18,6 +18,7 @@ from orchestrator.plugins.curseforge import CurseForgeProvider
 from orchestrator.plugins.github import GithubProvider
 from orchestrator.plugins.hangar import HangarProvider
 from orchestrator.plugins.modrinth import ModrinthProvider
+from orchestrator.plugins.pumpkin_market import PumpkinMarketProvider
 from orchestrator.plugins.spiget import SpigetProvider
 from orchestrator.plugins.url import UrlProvider
 
@@ -31,7 +32,23 @@ PROVIDERS: dict[PluginProviderType, AbstractPluginProvider] = {
     PluginProviderType.URL: UrlProvider(),
     PluginProviderType.GITHUB: GithubProvider(),
     PluginProviderType.CURSEFORGE: CurseForgeProvider(),
+    PluginProviderType.PUMPKIN: PumpkinMarketProvider(),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class PluginDirs:
+    """Where plugins are installed: Pumpkin loads its WebAssembly plugins from another directory than PatchBukkit."""
+
+    default: Path
+    wasm: Path
+
+    def for_provider(self, provider: PluginProviderType) -> Path:
+        return self.wasm if provider == PluginProviderType.PUMPKIN else self.default
+
+    def for_key(self, lock_key: str) -> Path:
+        provider = lock_key.partition(":")[0]
+        return self.wasm if provider == PluginProviderType.PUMPKIN else self.default
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,12 +90,12 @@ async def resolve_all_plugins(
     )
 
 
-def _cleanup_removed_plugins(specs: list[PluginSpec], plugins_dir: Path, lockfile: ServerLockfile) -> None:
+def _cleanup_removed_plugins(specs: list[PluginSpec], dirs: PluginDirs, lockfile: ServerLockfile) -> None:
     requested_keys = {make_lock_key(s.provider, s.identifier) for s in specs}
     for key, entry in list(lockfile.plugins.items()):
         if key in requested_keys:
             continue
-        (plugins_dir / entry.filename).unlink(missing_ok=True)
+        (dirs.for_key(key) / entry.filename).unlink(missing_ok=True)
         del lockfile.plugins[key]
         log_change("deleted", key, f"[version.old][not dim]{entry.version}[/not dim][/version.old]")
 
@@ -196,14 +213,18 @@ async def download_plugins(
     target_plugin: str | None = None,
     offline: bool = False,
     tokens: ApiTokens | None = None,
+    wasm_plugins_dir: Path | None = None,
 ) -> list[str]:
     """Install, update and remove plugins so the plugins directory matches *plugin_specs*.
 
     In *offline* mode no APIs are contacted and installed plugins are kept as they are.
+    Pumpkin Market plugins go to *wasm_plugins_dir*, all others to *plugins_dir*.
     Returns the failures. With the FORCE strategy any failure raises a RuntimeError instead.
     """
-    plugins_dir.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
-    _cleanup_removed_plugins(plugin_specs, plugins_dir, lockfile)
+    dirs = PluginDirs(plugins_dir, wasm_plugins_dir or plugins_dir)
+    for directory in {dirs.for_provider(spec.provider) for spec in plugin_specs} | {plugins_dir}:
+        directory.mkdir(parents=True, exist_ok=True)
+    _cleanup_removed_plugins(plugin_specs, dirs, lockfile)
 
     if not plugin_specs:
         console.print("  [info]🛈[/info] [label]No plugins to download[/label]")
@@ -220,20 +241,16 @@ async def download_plugins(
             continue
 
         entry = lockfile.get_plugin(lock_key)
+        spec_dir = dirs.for_provider(spec.provider)
         if offline:
-            if _is_installed(entry, plugins_dir) and entry is not None:
+            if _is_installed(entry, spec_dir) and entry is not None:
                 log_change("skipped", lock_key, f"[version.new]{entry.version}[/version.new] - offline")
             else:
                 log_change("errored", lock_key, "[error]not installed and the APIs are unreachable[/error]")
                 failures.append(f"{lock_key}: not installed and the APIs are unreachable")
             continue
 
-        if (
-            use_cache
-            and entry is not None
-            and entry.target_version == spec.version
-            and _is_installed(entry, plugins_dir)
-        ):
+        if use_cache and entry is not None and entry.target_version == spec.version and _is_installed(entry, spec_dir):
             log_change("skipped", lock_key, f"[version.new]{entry.version}[/version.new] - cached")
             continue
 
@@ -243,7 +260,9 @@ async def download_plugins(
         async with create_http_client(tokens=tokens) as client:
             resolutions = await asyncio.gather(
                 *(
-                    _resolve_and_install(spec, platform_type, mc_version, plugins_dir, lockfile, client, strategy)
+                    _resolve_and_install(
+                        spec, platform_type, mc_version, dirs.for_provider(spec.provider), lockfile, client, strategy
+                    )
                     for spec in pending
                 )
             )

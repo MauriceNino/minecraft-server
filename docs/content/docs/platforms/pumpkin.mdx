@@ -59,7 +59,8 @@ When running Pumpkin, the orchestrator automatically:
    `plugins/libpatchbukkit-<arch>-Linux.so.disabled` and logs a warning, and Bukkit plugins don't load. Once the
    versions match again, through a new build of either, it's enabled on the next start.
 3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory, where PatchBukkit
-   loads them.
+   loads them. WebAssembly plugins from the [Pumpkin Market](../../plugins/pumpkin) (`pumpkin:`) go to `plugins/`, where
+   Pumpkin loads them itself. They need their permissions granted, see [Permissions](../../plugins/pumpkin#permissions).
 
 Modrinth plugins are matched against the `paper`, `spigot` and `bukkit` loaders. Spiget and CurseForge plugins are
 allowed like on Bukkit-based servers. Hangar has no mapping for Pumpkin, so Hangar plugins need `[platform=paper]`, see

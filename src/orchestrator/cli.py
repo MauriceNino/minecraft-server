@@ -79,6 +79,8 @@ class Config:
     templates_dir: Path
     runtime_dir: Path
     plugins_dir: Path
+    # Pumpkin's WebAssembly plugins, from the Pumpkin Market. The same as plugins_dir on other platforms.
+    wasm_plugins_dir: Path
 
     plugin_specs: list[PluginSpec]
     # (sigil, path relative to the runtime dir, raw content)
@@ -334,6 +336,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
     api_tokens = ApiTokens(
         github=env.get("GITHUB_TOKEN", "").strip() or None,
         curseforge=env.get("CURSEFORGE_API_KEY", "").strip() or None,
+        pumpkin_market=env.get("PUMPKIN_MARKET_TOKEN", "").strip() or None,
     )
 
     return Config(
@@ -344,6 +347,7 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         templates_dir=templates_dir,
         runtime_dir=runtime_dir,
         plugins_dir=plugins_dir,
+        wasm_plugins_dir=runtime_dir / "plugins",
         plugin_specs=plugin_specs,
         config_overrides=config_overrides,
         applied_templates=applied_templates,

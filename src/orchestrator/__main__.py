@@ -13,6 +13,7 @@ from orchestrator import __version__
 from orchestrator.cli import Config, load_config
 from orchestrator.constants import (
     PLUGIN_PLATFORMS,
+    PUMPKIN_CONFIG_FILENAME,
     SERVER_LOCK_FILENAME,
     SERVER_PLATFORMS,
     PlatformType,
@@ -33,6 +34,7 @@ from orchestrator.logging import (
 from orchestrator.merger import apply_config_overrides
 from orchestrator.plugins import download_plugins
 from orchestrator.plugins.check import check_plugin_updates
+from orchestrator.plugins.pumpkin_market import apply_permission_grants, permission_grants
 from orchestrator.providers import prepare_platform, resolve_platform
 from orchestrator.rcon import inject_rcon
 from orchestrator.runner import exec_server
@@ -154,7 +156,12 @@ async def _async_main() -> None:
             check_cache_seconds=config.plugins_check_cache_seconds,
             offline=offline,
             tokens=config.api_tokens,
+            wasm_plugins_dir=config.wasm_plugins_dir,
         )
+        if config.platform == PlatformType.PUMPKIN:
+            apply_permission_grants(
+                permission_grants(config.plugin_specs, lockfile), config.runtime_dir / PUMPKIN_CONFIG_FILENAME
+            )
 
     if config.world is not None:
         log_phase("World")
@@ -254,6 +261,7 @@ async def _async_update(target_plugin: str | None = None) -> None:
         check_cache_seconds=0,
         target_plugin=target_plugin,
         tokens=config.api_tokens,
+        wasm_plugins_dir=config.wasm_plugins_dir,
     )
 
     console.print()

@@ -51,6 +51,18 @@ async def test_long_retry_after_is_not_waited_for(httpx_mock: HTTPXMock) -> None
     assert len(httpx_mock.get_requests()) == 1
 
 
+async def test_server_error_with_long_retry_after_is_retried_with_backoff(httpx_mock: HTTPXMock) -> None:
+    # The Pumpkin Market answers 502 with `Retry-After: 60` during outages of a few seconds
+    httpx_mock.add_response(url=URL, status_code=502, headers={"Retry-After": "60"})
+    httpx_mock.add_response(url=URL, json={"ok": True})
+
+    async with create_http_client() as client:
+        resp = await client.get(URL)
+
+    assert resp.json() == {"ok": True}
+    assert len(httpx_mock.get_requests()) == 2
+
+
 async def test_retries_connection_errors(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_exception(httpx.ConnectError("boom"), url=URL)
     httpx_mock.add_response(url=URL, text="ok")

@@ -99,6 +99,7 @@ _ACTION_ICONS = {
     "updatable": "[yellow]⚠[/yellow]",
     "downloaded": "[success]✓[/success]",
     "skipped": "[dim]⊘[/dim]",
+    "granted": "[success]✓[/success]",
 }
 
 
