@@ -88,7 +88,7 @@ async def download_platform(
             )
             lockfile.save()
 
-        await provider.install_extras(runtime_dir, client, lockfile)
+        await provider.install_extras(resolved, runtime_dir, client, lockfile)
 
     lockfile.save()
     return jar_path

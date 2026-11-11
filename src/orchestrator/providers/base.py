@@ -45,9 +45,9 @@ class AbstractPlatformProvider(ABC):
         return target
 
     async def install_extras(  # noqa: B027
-        self, runtime_dir: Path, client: httpx.AsyncClient, lockfile: ServerLockfile
+        self, resolved: ResolvedVersion, runtime_dir: Path, client: httpx.AsyncClient, lockfile: ServerLockfile
     ) -> None:
         """Install or update additional files the platform needs, tracked in `lockfile.extras`.
 
-        Called on every start once the server executable is in place.
+        Called on every start once the server executable for *resolved* is in place.
         """

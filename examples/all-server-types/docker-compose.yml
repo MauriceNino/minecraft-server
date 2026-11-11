@@ -138,7 +138,7 @@ services:
     environment:
       TYPE: BUNGEECORD
       MEMORY: 512M
-    
+
   pumpkin:
     build:
       context: ../../
@@ -153,10 +153,10 @@ services:
     env_file: .env
     environment:
       TYPE: PUMPKIN
-      VERSION: experimental
+      VERSION: latest
       CONFIG_PATHS: |
-        features -> config/features.toml
-      CONFIG_features: |
+        pumpkin -> pumpkin.toml
+      CONFIG_pumpkin: |
         [logging]
         timestamp = false
 

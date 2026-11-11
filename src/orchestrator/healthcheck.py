@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from ruamel.yaml import YAML
 
 from orchestrator.cli import Config
-from orchestrator.constants import BUNGEE_PLATFORMS, PROXY_PLATFORMS, PlatformType
+from orchestrator.constants import BUNGEE_PLATFORMS, PROXY_PLATFORMS, PUMPKIN_CONFIG_FILENAME, PlatformType
 from orchestrator.merger.properties_merger import read_properties
 
 DEFAULT_SERVER_PORT = 25565
@@ -56,8 +56,9 @@ def server_address(config: Config) -> ServerAddress:
             listeners = data.get("listeners") or [{}]
             return _parse_address(listeners[0].get("host"), DEFAULT_PROXY_PORT)
         if config.platform == PlatformType.PUMPKIN:
-            data = tomllib.loads((runtime / "config" / "configuration.toml").read_text(encoding="utf-8"))
-            return _parse_address(data.get("java_edition_address"), DEFAULT_SERVER_PORT)
+            data = tomllib.loads((runtime / PUMPKIN_CONFIG_FILENAME).read_text(encoding="utf-8"))
+            java = data.get("networking", {}).get("java", {})
+            return _parse_address(java.get("address"), DEFAULT_SERVER_PORT)
         props = read_properties(runtime / "server.properties")
         port = props.get("server-port", "")
         return ServerAddress(

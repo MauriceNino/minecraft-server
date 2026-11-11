@@ -104,10 +104,11 @@ def test_check_health_without_status_only_connects(tmp_path: Path) -> None:
         ("BUNGEECORD", "config.yml", "listeners:\n- host: 0.0.0.0:25592\n", ServerAddress("127.0.0.1", 25592)),
         (
             "PUMPKIN",
-            "config/configuration.toml",
-            'java_edition_address = "0.0.0.0:25591"\n',
+            "pumpkin.toml",
+            'use_favicon = true\n\n[networking.java]\nenabled = true\naddress = "0.0.0.0:25591"\n',
             ServerAddress("127.0.0.1", 25591),
         ),
+        ("PUMPKIN", "pumpkin.toml", "use_favicon = true\n", ServerAddress("127.0.0.1", 25565)),
     ],
 )
 def test_server_address(

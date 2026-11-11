@@ -40,14 +40,18 @@ def test_every_platform_takes_an_icon() -> None:
 async def test_pumpkin_is_pointed_at_the_icon(tmp_path: Path) -> None:
     source = tmp_path / "logo.png"
     source.write_bytes(_image((64, 64), "PNG"))
-    config = tmp_path / "config" / "configuration.toml"
-    config.parent.mkdir()
-    config.write_text("java_edition = true\nuse_favicon = false\n")
+    config = tmp_path / "pumpkin.toml"
+    config.write_text("use_favicon = false\n\n[networking.java]\nenabled = true\n")
 
     await apply_icon(str(source), tmp_path, _lockfile(tmp_path), platform=PlatformType.PUMPKIN)
 
+    # The new top-level key has to stay out of the `[networking.java]` table
     data = tomllib.loads(config.read_text())
-    assert data == {"java_edition": True, "use_favicon": True, "favicon_path": ICON_FILENAME}
+    assert data == {
+        "use_favicon": True,
+        "favicon_path": ICON_FILENAME,
+        "networking": {"java": {"enabled": True}},
+    }
 
 
 async def test_pumpkin_config_is_untouched_without_an_icon(tmp_path: Path) -> None:
@@ -56,7 +60,7 @@ async def test_pumpkin_config_is_untouched_without_an_icon(tmp_path: Path) -> No
 
     await apply_icon(str(source), tmp_path, _lockfile(tmp_path), platform=PlatformType.PUMPKIN)
 
-    assert not (tmp_path / "config" / "configuration.toml").exists()
+    assert not (tmp_path / "pumpkin.toml").exists()
 
 
 async def test_url_is_only_downloaded_once(tmp_path: Path, httpx_mock: HTTPXMock) -> None:

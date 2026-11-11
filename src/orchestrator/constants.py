@@ -107,6 +107,8 @@ TEMPLATES_SUBDIR = "templates"
 RUNTIME_SUBDIR = "runtime"
 
 SERVER_LOCK_FILENAME = "server-lock.json"
+# Pumpkin's only config file, read from its working directory, the runtime directory
+PUMPKIN_CONFIG_FILENAME = "pumpkin.toml"
 # Written next to the server files so `mc-rcon` can connect when RCON_PASSWORD was auto-generated
 RCON_PASSWORD_FILENAME = ".rcon-password"  # noqa: S105
 

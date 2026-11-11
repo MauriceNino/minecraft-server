@@ -164,7 +164,8 @@ async def _async_main() -> None:
         log_phase("Server Icon")
         await apply_icon(config.icon, config.runtime_dir, lockfile, config.api_tokens, config.platform)
 
-    if config.rcon_enabled:
+    # Pumpkin has no RCON
+    if config.rcon_enabled and config.platform != PlatformType.PUMPKIN:
         log_phase("RCON")
         inject_rcon(
             platform=config.platform,

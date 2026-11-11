@@ -73,23 +73,21 @@ async def test_getbukkit_latest_and_404(tmp_path: Path, httpx_mock: HTTPXMock) -
             await provider.download(resolved, tmp_path, client)
 
 
-async def test_pumpkin_build_follows_asset_checksum(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch) -> None:
+def _pumpkin_release(tag: str, download_url: str) -> dict[str, object]:
+    return {
+        "tag_name": tag,
+        "draft": False,
+        "prerelease": tag == "nightly",
+        "assets": [{"name": "pumpkin-X64-Linux", "digest": "sha256:" + "c" * 64, "browser_download_url": download_url}],
+    }
+
+
+async def test_pumpkin_nightly_build_follows_asset_checksum(
+    httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(pumpkin, "_asset_names", lambda: ("pumpkin-X64-Linux", "libpatchbukkit-X64-Linux.so"))
-    httpx_mock.add_response(
-        url=pumpkin.PUMPKIN_RELEASE_URL,
-        json={
-            "tag_name": "nightly",
-            "draft": False,
-            "prerelease": True,
-            "assets": [
-                {
-                    "name": "pumpkin-X64-Linux",
-                    "digest": "sha256:" + "c" * 64,
-                    "browser_download_url": "https://gh.example/pumpkin",
-                }
-            ],
-        },
-    )
+    url = "https://github.com/Pumpkin-MC/Pumpkin/releases/download/nightly/pumpkin-X64-Linux"
+    httpx_mock.add_response(url=pumpkin.PUMPKIN_NIGHTLY_URL, json=_pumpkin_release("nightly", url))
     httpx_mock.add_response(url=MANIFEST_URL, json=MANIFEST)
 
     async with create_http_client() as client:
@@ -99,16 +97,36 @@ async def test_pumpkin_build_follows_asset_checksum(httpx_mock: HTTPXMock, monke
         project="pumpkin",
         version="1.21.4",
         build="c" * 12,
-        download_url="https://gh.example/pumpkin",
+        download_url=url,
         filename="pumpkin-X64-Linux",
         sha256="c" * 64,
     )
 
 
-async def test_pumpkin_requires_experimental() -> None:
+async def test_pumpkin_stable_takes_versions_from_the_tag(
+    httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pumpkin, "_asset_names", lambda: ("pumpkin-X64-Linux", "libpatchbukkit-X64-Linux.so"))
+    url = "https://github.com/Pumpkin-MC/Pumpkin/releases/download/0.2.2%2B26.3-26.60/pumpkin-X64-Linux"
+    httpx_mock.add_response(url=pumpkin.PUMPKIN_STABLE_URL, json=_pumpkin_release("0.2.2+26.3-26.60", url))
+
     async with create_http_client() as client:
-        with pytest.raises(ValueError, match="VERSION=experimental"):
-            await PumpkinProvider().resolve_version("latest", "latest", client)
+        resolved = await PumpkinProvider().resolve_version("latest", "latest", client)
+
+    assert resolved == ResolvedVersion(
+        project="pumpkin",
+        version="26.3",
+        build="0.2.2",
+        download_url=url,
+        filename="pumpkin-X64-Linux",
+        sha256="c" * 64,
+    )
+
+
+async def test_pumpkin_rejects_a_pinned_version() -> None:
+    async with create_http_client() as client:
+        with pytest.raises(ValueError, match="VERSION=latest"):
+            await PumpkinProvider().resolve_version("1.21.4", "latest", client)
 
 
 BUNGEE_JOB = "https://hub.spigotmc.org/jenkins/job/BungeeCord"

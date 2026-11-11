@@ -7,8 +7,8 @@ description: Rust-based high-performance Minecraft server
 extreme performance and stability, particularly for large-scale operations.
 
 <Callout title="Experimental" type="warning">
-  Pumpkin is under heavy development. Nightly builds are fetched directly from the [PumpkinMC
-  GitHub](https://github.com/Pumpkin-MC/Pumpkin).
+  Pumpkin is under heavy development. Builds are fetched directly from the [PumpkinMC GitHub
+  releases](https://github.com/Pumpkin-MC/Pumpkin/releases).
 </Callout>
 
 ## Configuration
@@ -18,40 +18,46 @@ Set `TYPE=PUMPKIN` to use this platform.
 ```yaml
 environment:
   TYPE: PUMPKIN
-  VERSION: experimental
 ```
 
-- **`VERSION`**: Currently **must** be set to `experimental` (or `beta`) to pull the latest nightly build from GitHub.
-  Pumpkin targets the latest Minecraft release, so plugins are checked against that version.
+- **`VERSION`**: `latest` (or `stable`, the default) pulls the latest stable release, `experimental` (or `beta`) the
+  nightly build. Other values aren't supported. A stable release names the Minecraft version it targets in its tag
+  (`0.2.2+26.3-26.60` targets 26.3), so plugins are checked against that version. For the nightly build, plugins are
+  checked against the latest Minecraft release.
 - **`MEMORY` / `JVM_FLAGS` / `JVM_EXTRA_FLAGS`**: As Pumpkin runs as a native Rust binary, these Java-specific variables
   are **ignored**.
-- **`GITHUB_TOKEN`**: Optional. The nightly builds are looked up with the GitHub API, see
+- **`GITHUB_TOKEN`**: Optional. The releases are looked up with the GitHub API, see
   [API Tokens](../../environment#api-tokens).
 
-The nightly release is published again under the same tag, so a new build is detected by its checksum. The binary is
-available for `amd64` and `arm64`.
+The lockfile records the Pumpkin version (e.g. `0.2.2`) as the build of a stable release. The nightly release is
+published again under the same tag, so a new nightly build is detected by its checksum. The binary is available for
+`amd64` and `arm64`.
 
 Pumpkin doesn't read `server.properties`, so the [shortcuts](../../environment#server-properties-shortcuts), `WORLD` and
-`ACCEPT_EULA` don't apply. Configure Pumpkin with [templates](../../templates) or [`CONFIG_PATHS`](../../config) in
-`config/configuration.toml` and `config/features.toml`.
+`ACCEPT_EULA` don't apply. Pumpkin reads all its settings from `pumpkin.toml` in the runtime directory. Configure it
+with [templates](../../templates) or [`CONFIG_PATHS`](../../config). Pumpkin adds any missing settings with their
+defaults on start.
 
 [`ICON`](../../environment#server-icon) works: besides writing `server-icon.png`, the orchestrator points `favicon_path`
-in `config/configuration.toml` at it.
+in `pumpkin.toml` at it. The [health check](../../docker#health-check) reads the Java address from `[networking.java]`.
 
 ## RCON Support
 
-Pumpkin is configured in `config/features.toml`. The orchestrator automatically configures the `[networking.rcon]`
-section to match your environment variables.
-
-See [RCON Variables](../../environment#rcon-variables) for configuration details.
+Pumpkin has no RCON, so the [RCON variables](../../environment#rcon-variables) don't apply and
+[`mc-rcon`](../../scripts#mc-rcon) only prints that RCON is not supported.
 
 ## Plugin Support
 
 When running Pumpkin, the orchestrator automatically:
 
-1. Downloads the latest **Pumpkin** native binary for your architecture.
-2. Injects the **PatchBukkit** compatibility layer into `plugins/`. It's tracked in `server-lock.json` and checked for a
-   new nightly build on every start, and downloaded again if the file is missing or was modified.
+1. Downloads the **Pumpkin** native binary for your architecture.
+2. Injects the **PatchBukkit** compatibility layer into `plugins/`, from the same channel as Pumpkin: its latest stable
+   release with `VERSION=latest`, its nightly build with `VERSION=experimental`. It's tracked in `server-lock.json`,
+   checked for a new build on every start, and downloaded again if the file is missing or was modified. Pumpkin and
+   PatchBukkit are updated independently, and Pumpkin only loads a native plugin built for its own plugin API version.
+   So when the PatchBukkit build was made for another version, the orchestrator keeps it as
+   `plugins/libpatchbukkit-<arch>-Linux.so.disabled` and logs a warning, and Bukkit plugins don't load. Once the
+   versions match again, through a new build of either, it's enabled on the next start.
 3. Redirects all defined `PLUGINS` to the specialized `patchbukkit/patchbukkit-plugins` directory, where PatchBukkit
    loads them.
 

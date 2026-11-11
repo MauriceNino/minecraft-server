@@ -4,7 +4,12 @@ import json
 import os
 from pathlib import Path
 
-from orchestrator.constants import BUNGEE_PLATFORMS, RCON_PASSWORD_FILENAME, SERVER_PLATFORMS, PlatformType
+from orchestrator.constants import (
+    BUNGEE_PLATFORMS,
+    RCON_PASSWORD_FILENAME,
+    SERVER_PLATFORMS,
+    PlatformType,
+)
 from orchestrator.logging import console
 from orchestrator.merger import merge_file_content
 from orchestrator.merger.properties_merger import escape_properties_value
@@ -21,12 +26,7 @@ def inject_rcon(
     # JSON strings are valid YAML and TOML strings, which keeps passwords with special characters intact
     password = json.dumps(rcon_password)
 
-    if platform == PlatformType.PUMPKIN:
-        merge_file_content(
-            runtime_dir / "config" / "features.toml",
-            f'[networking.rcon]\nenabled = true\naddress = "0.0.0.0:{rcon_port}"\npassword = {password}\n',
-        )
-    elif platform in SERVER_PLATFORMS:
+    if platform in SERVER_PLATFORMS:
         merge_file_content(
             runtime_dir / "server.properties",
             f"enable-rcon=true\nrcon.port={rcon_port}\nrcon.password={escape_properties_value(rcon_password)}\n",

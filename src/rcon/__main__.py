@@ -65,6 +65,12 @@ def _interactive(mcr: MCRcon, host: str, port: int) -> None:
 
 
 def main() -> None:
+    if os.environ.get("TYPE", "").strip().upper() == "PUMPKIN":
+        _print_error(
+            "RCON is not supported for Pumpkin: it only offers the Minecraft Server Management Protocol (MSMP)."
+        )
+        sys.exit(1)
+
     host = os.environ.get("RCON_HOST", "127.0.0.1")
     port = int(os.environ.get("RCON_PORT", "25575"))
     password = _read_password()

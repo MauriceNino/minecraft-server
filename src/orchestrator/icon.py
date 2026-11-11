@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from orchestrator.constants import PlatformType
+from orchestrator.constants import PUMPKIN_CONFIG_FILENAME, PlatformType
 from orchestrator.http import ApiTokens, create_http_client
 from orchestrator.lockfile import ServerLockfile, file_matches
 from orchestrator.logging import console, log_change
@@ -18,10 +18,6 @@ from orchestrator.merger import merge_file_content
 ICON_FILENAME = "server-icon.png"
 ICON_LOCK_KEY = "server-icon"
 ICON_SIZE = (64, 64)
-
-
-# Pumpkin only reads an icon from `favicon_path`, otherwise it shows its built-in one
-PUMPKIN_CONFIG = Path("config") / "configuration.toml"
 
 
 def _is_url(source: str) -> bool:
@@ -54,8 +50,11 @@ async def apply_icon(
     """Write `server-icon.png` from *source*. When *source* is unset, the icon is kept but no longer managed."""
     await _write_icon(source, runtime_dir, lockfile, tokens)
     if source is not None and platform == PlatformType.PUMPKIN and (runtime_dir / ICON_FILENAME).is_file():
-        # Relative to the working directory, the runtime directory. Kept when ICON is removed, like the icon itself.
-        merge_file_content(runtime_dir / PUMPKIN_CONFIG, f'use_favicon = true\nfavicon_path = "{ICON_FILENAME}"\n')
+        # Pumpkin only reads an icon from `favicon_path`, otherwise it shows its built-in one. The path is relative
+        # to the working directory, the runtime directory. Kept when ICON is removed, like the icon itself.
+        merge_file_content(
+            runtime_dir / PUMPKIN_CONFIG_FILENAME, f'use_favicon = true\nfavicon_path = "{ICON_FILENAME}"\n'
+        )
 
 
 async def _write_icon(

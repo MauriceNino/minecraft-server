@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
-import tomlkit
 from ruamel.yaml import YAML
 
 from orchestrator.constants import PlatformType
 from orchestrator.rcon import inject_rcon
+from rcon.__main__ import main as rcon_main
 
 
 class TestInjectRcon:
@@ -39,13 +40,6 @@ class TestInjectRcon:
         assert config["port"] == 25576
         assert config["colors"] is True
 
-    def test_pumpkin_toml_keeps_special_characters(self, tmp_path: Path) -> None:
-        inject_rcon(PlatformType.PUMPKIN, tmp_path, tmp_path / "plugins", 25575, self.TRICKY_VALUE)
-
-        config = tomlkit.loads((tmp_path / "config" / "features.toml").read_text())
-        assert config["networking"]["rcon"]["password"] == self.TRICKY_VALUE  # type: ignore[index]
-        assert config["networking"]["rcon"]["enabled"] is True  # type: ignore[index]
-
     @pytest.mark.parametrize("platform", [PlatformType.WATERFALL, PlatformType.BUNGEECORD])
     def test_bungee_yaml(self, tmp_path: Path, platform: PlatformType) -> None:
         inject_rcon(platform, tmp_path, tmp_path / "plugins", 25577, self.TRICKY_VALUE)
@@ -72,21 +66,6 @@ class TestInjectRcon:
         assert "enable-rcon=false" not in props
         assert "rcon.port=1234" not in props
 
-    def test_pumpkin_keeps_other_settings(self, tmp_path: Path) -> None:
-        (tmp_path / "config").mkdir()
-        (tmp_path / "config" / "features.toml").write_text(
-            "[networking.rcon]\nenabled = false\nmax_connections = 5\n\n[networking.query]\nenabled = true\n"
-        )
-
-        inject_rcon(PlatformType.PUMPKIN, tmp_path, tmp_path / "plugins", 25580, "secret")
-
-        config = tomlkit.loads((tmp_path / "config" / "features.toml").read_text())
-        rcon = config["networking"]["rcon"]  # type: ignore[index]
-        assert rcon["enabled"] is True  # type: ignore[index]
-        assert rcon["address"] == "0.0.0.0:25580"  # type: ignore[index]
-        assert rcon["max_connections"] == 5  # type: ignore[index]
-        assert config["networking"]["query"]["enabled"] is True  # type: ignore[index]
-
     def test_new_password_replaces_the_old_one(self, tmp_path: Path) -> None:
         inject_rcon(PlatformType.PAPER, tmp_path, tmp_path / "plugins", 25575, "a-much-longer-old-password")
         inject_rcon(PlatformType.PAPER, tmp_path, tmp_path / "plugins", 25575, "new")
@@ -95,3 +74,16 @@ class TestInjectRcon:
         assert [p for p in props if p.startswith("rcon.password=")] == ["rcon.password=new"]
         assert (tmp_path / ".rcon-password").read_text() == "new"
         assert (tmp_path / ".rcon-password").stat().st_mode & 0o777 == 0o600
+
+
+def test_mc_rcon_is_not_supported_for_pumpkin(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("TYPE", "pumpkin")
+    monkeypatch.setattr(sys, "argv", ["mc-rcon", "list"])
+
+    with pytest.raises(SystemExit) as exc:
+        rcon_main()
+
+    assert exc.value.code == 1
+    assert "RCON is not supported for Pumpkin" in capsys.readouterr().err
