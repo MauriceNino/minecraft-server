@@ -55,23 +55,65 @@ We use [pytest](https://docs.pytest.org/) for our test suite.
 
 ## Commit Message Guidelines
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This helps in generating changelogs and managing versions automatically.
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. The release notes are
+generated from the commit messages, grouped by type.
 
 ### Format
-`<type>(<scope>): <description>`
+
+`<type>(<scope>): <description>`, e.g. `feat(merger): add support for the !delete sigil in properties files`
 
 ### Types
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation only changes
-- `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc)
-- `refactor`: A code change that neither fixes a bug nor adds a feature
-- `perf`: A code change that improves performance
-- `test`: Adding missing tests or correcting existing tests
-- `chore`: Changes to the build process or auxiliary tools and libraries
 
-### Example
-`feat(merger): add support for !delete sigil in properties files`
+- `feat`: A new feature (listed under Features)
+- `fix`: A bug fix (Bug Fixes)
+- `perf`: A performance improvement (Performance)
+- `docs`: Documentation only changes (Documentation)
+- `refactor`: A code change that neither fixes a bug nor adds a feature (Maintenance)
+- `style`: Formatting and other changes that don't affect the meaning of the code (Maintenance)
+- `test`: Adding missing tests or correcting existing tests (Maintenance)
+- `build`: Changes to the Dockerfile, dependencies or packaging (Maintenance)
+- `ci`: Changes to the GitHub Actions workflows and scripts (Maintenance)
+- `chore`: Anything else that users don't notice, like tooling or contributor docs (Maintenance)
+
+Commits with other types aren't listed in the release notes.
+
+### Write for users
+
+The commit messages become the release notes: every `feat`, `fix`, `perf` and `docs` subject is listed as it is, so write
+it for someone who runs the image, not for a reviewer. Describe the feature or fix, not the code behind it, especially for
+`feat` commits: `feat: add support for Pumpkin Market plugins` rather than `feat: add Pumpkin Market provider`. Keep it
+a normal commit message, short and in the imperative.
+
+### Breaking changes
+
+Anything that can break an existing setup is a breaking change: a renamed or removed environment variable, a changed
+default, a different volume layout or a dropped platform. Mark it with `!` after the type and add a `BREAKING CHANGE:`
+footer that says what changed and what users have to do. The footer is shown under the commit in the release notes,
+which list breaking changes first, and it calls for a major version.
+
+```
+feat(env)!: rename MEMORY to MAX_MEMORY
+
+The old name was ambiguous next to the JVM's own flags.
+
+BREAKING CHANGE: MEMORY is now MAX_MEMORY. Rename it in your compose file;
+the old name is ignored and the server falls back to the default heap.
+```
+
+The body above the footer isn't part of the release notes.
+
+## Releases (maintainers)
+
+Releases follow [Semantic Versioning](https://semver.org) and are made by pushing a tag, nothing is released on its own.
+The version comes from the tag (via `hatch-vcs`), so there is nothing to bump in the code. Tag the commit on `main` and
+push the tag: `git tag v1.2.3 && git push origin v1.2.3`. Use a `-` suffix (`v1.3.0-rc.1`) for a prerelease, which gets
+no `latest` tag and no shorter version tags.
+
+The pipeline then builds every Java variant as `1.2.3-java<version>-<distribution>` (plus `1.2`, `1`, `latest` and the
+moving `java<version>-<distribution>` tags) and creates a GitHub release with notes grouped from the commits since the
+previous release. The docs site is only deployed for stable releases, so it always matches `latest`.
+
+Every push to `main` is built as `edge` and `sha-<commit>` (Java 25 Temurin only), which never touches `latest`.
 
 ## Project Structure
 

@@ -1,86 +1,127 @@
 #!/usr/bin/env python3
+"""Write the release notes for a `vMAJOR.MINOR.PATCH` tag to `notes.md`.
+
+Usage: release_notes.py <tag>
+
+The notes list the Conventional Commits between the previous release and <tag>, grouped by type. Fails if the tag
+isn't a SemVer tag.
+"""
+
 import os
 import re
 import subprocess
-from datetime import datetime
+import sys
+from pathlib import Path
+
+SEMVER_TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?$")
+COMMIT = re.compile(r"^(\w+)(?:\([^)]*\))?(!)?:\s*(.*)")
+# A `BREAKING CHANGE:` footer runs until the next footer (`Token: value` or `Token #123`) or the end of the message
+BREAKING_FOOTER = re.compile(
+    r"^BREAKING[ -]CHANGE:[ \t]*(.*?)(?=^[A-Za-z][A-Za-z-]*(?:: | #)|\Z)", re.MULTILINE | re.DOTALL
+)
+
+BREAKING = "⚠️ Breaking Changes"
+CATEGORIES = {
+    BREAKING: set(),
+    "🚀 Features": {"feat"},
+    "🐛 Bug Fixes": {"fix"},
+    "⚡ Performance": {"perf"},
+    "📚 Documentation": {"docs"},
+    "🧹 Maintenance": {"chore", "refactor", "style", "test", "ci", "build"},
+}
 
 
-def run_command(command: str) -> str:
-    result = subprocess.run(command, capture_output=True, text=True, shell=True)  # noqa: S602
+def git(*args: str) -> str:
+    result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)  # noqa: S603, S607
     return result.stdout.strip()
 
 
-def get_last_tag() -> str:
-    return run_command("git describe --tags --abbrev=0 2>/dev/null")
+def previous_tag(tag: str) -> str:
+    """The release before `tag`: the previous stable one for a stable release, any previous one for a prerelease."""
+    prerelease = "-" in tag
+    # Newest first, with `versionsort.suffix` making `v1.0.0-rc.1` sort before `v1.0.0`
+    tags = git("-c", "versionsort.suffix=-", "tag", "--list", "v*", "--sort=-version:refname").splitlines()
+    releases = [t for t in tags if SEMVER_TAG.match(t) and (prerelease or "-" not in t)]
+    if tag in releases and releases.index(tag) + 1 < len(releases):
+        return releases[releases.index(tag) + 1]
+    # The first release: continue from the last tag of the old date-based scheme, skipping prereleases
+    return git("describe", "--tags", "--abbrev=0", "--exclude", "v*-*", f"{tag}^")
 
 
-def get_commits(since_tag: str | None = None) -> list[str]:
-    range_str = f"{since_tag}..HEAD" if since_tag else ""
-
-    output = run_command(f'git log {range_str} --pretty=format:"%s _by @%cn_ (%h)"')
-    return output.splitlines() if output else []
+def github_logins(repository: str | None, previous: str, tag: str) -> dict[str, str]:
+    """GitHub usernames of the commit authors by short SHA, empty without `gh` or a GitHub repository."""
+    if not (repository and previous):
+        return {}
+    result = subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "gh",
+            "api",
+            "--paginate",
+            f"repos/{repository}/compare/{previous}...{tag}?per_page=100",
+            "--jq",
+            '.commits[] | [.sha, (.author.login // "")] | @tsv',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(f"Couldn't look up GitHub usernames, using the Git author names: {result.stderr.strip()}")  # noqa: T201
+        return {}
+    logins = (line.split("\t") for line in result.stdout.splitlines() if "\t" in line)
+    return {sha: login for sha, login in logins if login}
 
 
 def main() -> None:
-    last_tag = get_last_tag()
-    if last_tag:
-        print(f"Comparing changes from {last_tag} to HEAD...")  # noqa: T201
-    else:
-        print("No previous tag found. Grabbing all commits from the beginning.")  # noqa: T201
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    tag = sys.argv[1]
 
-    commits = get_commits(last_tag)
-    print(f"Found {len(commits)} commits.")  # noqa: T201
+    if not SEMVER_TAG.match(tag):
+        sys.exit(f"{tag} is not a SemVer tag (expected vMAJOR.MINOR.PATCH, optionally with a -prerelease suffix)")
 
-    categories = {
-        "feat": "🚀 Features",
-        "fix": "🐛 Bug Fixes",
-        "docs": "📚 Documentation",
-        "maintenance": "🧹 Maintenance",
-    }
-    maintenance_types = {"chore", "refactor", "style", "test", "ci"}
-    grouped: dict[str, list[str]] = {k: [] for k in categories}
+    previous = previous_tag(tag)
+    print(f"Collecting changes from {previous or 'the beginning'} to {tag}...")  # noqa: T201
+    repository = os.environ.get("GITHUB_REPOSITORY")
+    logins = github_logins(repository, previous, tag)
 
-    for commit in commits:
-        # "type(scope): description" or "type: description"
-        match = re.match(r"^(\w+)(?:\([^)]*\))?!?:\s*(.*)", commit)
+    log = git(
+        "log", f"{previous}..{tag}" if previous else tag, "--no-merges", "--pretty=format:%s%x1f%b%x1f%an%x1f%H%x1e"
+    )
+    grouped: dict[str, list[str]] = {title: [] for title in CATEGORIES}
+
+    for entry in filter(None, (e.strip() for e in log.split("\x1e"))):
+        subject, body, author, sha = entry.split("\x1f")
+        match = COMMIT.match(subject)
         if not match:
             continue
 
-        ctype, desc = match.groups()
-        group = "maintenance" if ctype in maintenance_types else ctype
-        if group in grouped:
-            grouped[group].append(desc)
+        ctype, bang, description = match.groups()
+        # A GitHub username becomes a mention, an author without a linked account keeps their Git name
+        by = f"@{logins[sha]}" if sha in logins else author
+        line = f"{description[:1].upper()}{description[1:]} _by {by}_ ({sha[:7]})"
+        footer = BREAKING_FOOTER.search(body)
+        if bang or footer:
+            # What users have to do goes under the entry, indented to stay part of the list item
+            details = footer.group(1).strip() if footer else ""
+            grouped[BREAKING].append(line + "".join(f"\n  {text}" for text in details.splitlines()))
+            continue
+        for title, types in CATEGORIES.items():
+            if ctype in types:
+                grouped[title].append(line)
+                break
 
-    # Compile the final Markdown release notes
-    notes = []
-    for key, title in categories.items():
-        if grouped[key]:
-            notes.append(f"### {title}")
-            for item in grouped[key]:
-                notes.append(f"- {item}")
-            notes.append("")
+    notes: list[str] = []
+    for title, items in grouped.items():
+        if items:
+            notes += [f"### {title}", *(f"- {item}" for item in items), ""]
 
-    # Write notes to file
-    with open("notes.txt", "w") as f:
-        f.write("\n".join(notes).strip() + "\n")
+    if previous and repository:
+        notes.append(f"**Full changelog**: https://github.com/{repository}/compare/{previous}...{tag}")
 
-    print("Generated Patchnotes Path: notes.txt")  # noqa: T201
-    if notes:
-        print("\n".join(notes))  # noqa: T201
-    else:
-        print("No grouped commits found.")  # noqa: T201
-
-    # Generate the unique tag name (YYYY.M.D-shortsha)
-    short_sha = run_command("git rev-parse --short HEAD")
-
-    date_str = datetime.now().strftime("%Y.%-m.%-d")
-    tag_name = f"{date_str}-{short_sha}"
-
-    print(f"Generated Tag: {tag_name}")  # noqa: T201
-
-    # Export variables for GitHub Actions
-    with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-        f.write(f"tag_name={tag_name}\n")
+    text = "\n".join(notes).strip() or "No notable changes."
+    Path("notes.md").write_text(text + "\n")
+    print(f"Wrote notes.md:\n\n{text}")  # noqa: T201
 
 
 if __name__ == "__main__":

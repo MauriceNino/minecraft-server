@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "minecraft-server"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Docker image that sets up and runs Minecraft servers and proxies from environment variables: server JAR, plugins, config templates and RCON."
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -37,6 +37,15 @@ dev = [
 mc-orchestrator = "orchestrator.__main__:main"
 mc-rcon = "rcon.__main__:main"
 mc-msmp = "msmp.__main__:main"
+
+# The version comes from the Git tag (vMAJOR.MINOR.PATCH). Without .git (the Docker build), set
+# SETUPTOOLS_SCM_PRETEND_VERSION instead.
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+# Only `v*` tags are versions, the old date-based tags aren't
+git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "v[0-9]*"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/orchestrator", "src/rcon", "src/msmp"]

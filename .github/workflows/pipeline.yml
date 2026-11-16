@@ -3,6 +3,8 @@ name: Pipeline
 on:
   push:
     branches: ["**"]
+    # A release: pushing a `vMAJOR.MINOR.PATCH` tag builds every Java variant and creates the GitHub release
+    tags: ["v*"]
   pull_request:
     branches: ["**"]
 
@@ -107,7 +109,7 @@ jobs:
         # 8, 11 and 17 are only built with Temurin, for Minecraft versions before 1.17
         java-version: [8, 11, 17, 21, 23, 25]
         java-flavor: [temurin, corretto, microsoft, azul, graalvm]
-        is-main: ["${{ github.ref == 'refs/heads/main' }}"]
+        is-release: ["${{ startsWith(github.ref, 'refs/tags/v') }}"]
         exclude:
           # Version 23 does not exist for microsoft
           - java-flavor: microsoft
@@ -124,24 +126,24 @@ jobs:
           - { java-version: 17, java-flavor: microsoft }
           - { java-version: 17, java-flavor: azul }
           - { java-version: 17, java-flavor: graalvm }
-          # On non-main branches, only build Java 25 Temurin to save resources
-          - is-main: false
+          # Outside of releases, only build Java 25 Temurin to save resources
+          - is-release: false
             java-version: 8
-          - is-main: false
+          - is-release: false
             java-version: 11
-          - is-main: false
+          - is-release: false
             java-version: 17
-          - is-main: false
+          - is-release: false
             java-version: 21
-          - is-main: false
+          - is-release: false
             java-version: 23
-          - is-main: false
+          - is-release: false
             java-flavor: corretto
-          - is-main: false
+          - is-release: false
             java-flavor: microsoft
-          - is-main: false
+          - is-release: false
             java-flavor: azul
-          - is-main: false
+          - is-release: false
             java-flavor: graalvm
 
     steps:
@@ -172,23 +174,55 @@ jobs:
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
+        env:
+          # A `v*` tag push is a release, and a tag with a `-` (e.g. `v1.0.0-rc.1`) a prerelease
+          IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          IS_STABLE: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
+          IS_DEFAULT: ${{ matrix.java-version == 25 && matrix.java-flavor == 'temurin' }}
+          SUFFIX: -java${{ matrix.java-version }}-${{ matrix.java-flavor }}
         with:
           images: |
             ${{ env.GHCR_IMAGE }}
             ${{ env.DOCKERHUB_IMAGE }}
+          # Otherwise every variant of a release would push latest, the rule below sets it for the default combo only
+          flavor: latest=false
+          # Prereleases only get the full version, the semver patterns skip the shorter ones for them
           tags: |
-            # Only on main: latest for Java 25 Temurin
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && matrix.java-version == 25 && matrix.java-flavor == 'temurin' }}
-            # Only on main: java${version}-${flavor}
-            type=raw,value=java${{ matrix.java-version }}-${{ matrix.java-flavor }},enable=${{ github.ref == 'refs/heads/main' }}
-            # On branches: branch name (for the default combo)
-            type=ref,event=branch,enable=${{ github.ref != 'refs/heads/main' }}
+            # Releases: <version>-java<version>-<flavor>, e.g. 1.2.3-java25-temurin, 1.2-java25-temurin, 1-java25-temurin
+            type=semver,pattern={{version}},suffix=${{ env.SUFFIX }},enable=${{ env.IS_RELEASE }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ env.SUFFIX }},enable=${{ env.IS_RELEASE }}
+            type=semver,pattern={{major}},suffix=${{ env.SUFFIX }},enable=${{ env.IS_RELEASE }}
+            # Stable releases: java<version>-<flavor> points to the newest release
+            type=raw,value=java${{ matrix.java-version }}-${{ matrix.java-flavor }},enable=${{ env.IS_STABLE }}
+            # Releases of the default combo (Java 25 Temurin): the plain version, e.g. 1.2.3, 1.2, 1
+            type=semver,pattern={{version}},enable=${{ env.IS_RELEASE == 'true' && env.IS_DEFAULT == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ env.IS_RELEASE == 'true' && env.IS_DEFAULT == 'true' }}
+            type=semver,pattern={{major}},enable=${{ env.IS_RELEASE == 'true' && env.IS_DEFAULT == 'true' }}
+            # Stable releases of the default combo: latest
+            type=raw,value=latest,enable=${{ env.IS_STABLE == 'true' && env.IS_DEFAULT == 'true' }}
+            # Every commit on main (default combo only): edge, and sha-<commit> to pin one
+            type=raw,value=edge,enable=${{ env.IS_MAIN }}
+            type=sha,prefix=sha-,enable=${{ env.IS_MAIN }}
+            # Other branches: the branch name
+            type=ref,event=branch,enable=${{ env.IS_MAIN != 'true' && env.IS_RELEASE != 'true' }}
+
+      # The version of a release comes from its tag, any other build gets a development version
+      - name: Get version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0.dev0+g${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
           build-args: |
+            VERSION=${{ steps.version.outputs.version }}
             JAVA_VERSION=${{ matrix.java-version }}
             JAVA_FLAVOR=${{ matrix.java-flavor }}
           platforms: linux/amd64,linux/arm64
@@ -201,7 +235,8 @@ jobs:
   deploy-docs:
     name: Build & Deploy Docs
     needs: deploy-image
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Only stable releases, so the docs always describe the image behind `latest`
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -243,8 +278,8 @@ jobs:
 
   release:
     name: Create Release
-    needs: [deploy-image, deploy-docs]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: deploy-image
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -255,18 +290,16 @@ jobs:
           fetch-depth: 0
 
       - name: Generate Grouped Release Notes
-        id: release_notes
-        run: python3 .github/scripts/release_notes.py
-
-      - name: Create and Push Tag
-        run: |
-          TAG_NAME=${{ steps.release_notes.outputs.tag_name }}
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
+        run: python3 .github/scripts/release_notes.py "$GITHUB_REF_NAME"
+        env:
+          # Looks up the GitHub usernames of the commit authors
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          TAG_NAME=${{ steps.release_notes.outputs.tag_name }}
-          gh release create $TAG_NAME --title "$TAG_NAME" --notes-file notes.txt
+          prerelease=()
+          [[ "$TAG_NAME" == *-* ]] && prerelease=(--prerelease)
+          gh release create "$TAG_NAME" --verify-tag --title "$TAG_NAME" --notes-file notes.md "${prerelease[@]}"

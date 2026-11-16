@@ -123,18 +123,30 @@ You can choose from several popular Java distributions:
 
 ### Tagging Scheme
 
-Tags follow the pattern `java<version>-<distribution>`, with the distribution in lowercase (`temurin`, `corretto`,
-`microsoft`, `azul`, `graalvm`).
+Releases follow [Semantic Versioning](https://semver.org). A major version changes behavior in a way that can break your
+setup (environment variables, volume layout, defaults), a minor version adds features, and a patch version fixes bugs.
+The changes of each release are listed on the [releases page](https://github.com/MauriceNino/minecraft-server/releases).
 
-| Feature          | Tag Example                 |
-| ---------------- | --------------------------- |
-| Latest Stable    | `latest` (Java 25, Temurin) |
-| Specific Version | `java21-temurin`            |
-| Different Flavor | `java25-graalvm`            |
+Tags follow the pattern `<version>-java<version>-<distribution>`, with the distribution in lowercase (`temurin`,
+`corretto`, `microsoft`, `azul`, `graalvm`). Leave out the Java part for Java 25 Temurin, and the release part to get
+the newest release.
+
+| Feature                           | Tag Example            |
+| --------------------------------- | ---------------------- |
+| Newest release (Java 25, Temurin) | `latest`               |
+| Pinned release                    | `1.2.3`                |
+| Newest `1.2.x` / `1.x` release    | `1.2` / `1`            |
+| Specific Java version             | `java21-temurin`       |
+| Pinned release, specific Java     | `1.2.3-java21-temurin` |
+| Different distribution            | `java25-graalvm`       |
 
 The image is published to the GitHub Container Registry (`ghcr.io/mauricenino/minecraft-server`) and to Docker Hub
 (`mauricenino/minecraft-server`) with the same tags, for `linux/amd64` and `linux/arm64`.
 
+Every commit on `main` is also published as `edge` (the newest one) and `sha-<commit>`, for Java 25 Temurin only. These
+builds are untested outside of CI and can change at any time, so don't use them for a server you care about.
+
 <Callout title="Hint" type="info">
-  If you are unsure which one to use, `latest` (Java 25 Temurin) is recommended for most users.
+  If you are unsure which one to use, `latest` (Java 25 Temurin) is recommended for most users. To only get updates that
+  don't break anything, use the major version, e.g. `1`.
 </Callout>

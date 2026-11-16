@@ -4,6 +4,12 @@ Setup, checks and the project layout are in [CONTRIBUTING.md](CONTRIBUTING.md). 
 `uv run ruff format .`, `uv run ruff check .`, `uv run pyright` and `uv run pytest`, and for docs changes
 `npm run test` in `docs/`.
 
+## Commits
+
+Follow the commit guidelines in [CONTRIBUTING.md](CONTRIBUTING.md#commit-message-guidelines). The commit messages are the
+release notes, so write each subject for the users of the image, and mark breaking changes with `!` and a
+`BREAKING CHANGE:` footer.
+
 ## Pumpkin
 
 Pumpkin is very experimental, and most users don't run it. Keep everything about it on its own pages,

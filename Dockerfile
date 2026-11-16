@@ -7,7 +7,10 @@ FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie-slim AS builder
 
 WORKDIR /build
 
-ENV UV_COMPILE_BYTECODE=1
+# The build has no .git to read the version from, so the pipeline passes it in
+ARG VERSION=0.0.0
+ENV UV_COMPILE_BYTECODE=1 \
+    SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
 
 COPY pyproject.toml uv.lock README.md ./
 COPY src/ src/
