@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
+import string
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +12,7 @@ from orchestrator.constants import (
     BUNGEE_PLATFORMS,
     BUNGEE_RCON_URL,
     DEFAULT_DATA_DIR,
+    DEFAULT_MSMP_PORT,
     PROXY_PLATFORMS,
     RUNTIME_SUBDIR,
     SERVER_PLATFORMS,
@@ -97,6 +100,10 @@ class Config:
     rcon_password: str
     rcon_port: int
 
+    msmp_enabled: bool
+    msmp_secret: str
+    msmp_port: int
+
     memory: str
     jvm_flags: list[str]
 
@@ -106,6 +113,8 @@ class Config:
     plugins_check_cache_seconds: int
     api_tokens: ApiTokens
 
+
+_MSMP_SECRET_CHARS = string.ascii_letters + string.digits
 
 _MEMORY_UNITS = {"": 1, "k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
 
@@ -303,6 +312,16 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         raise SystemExit(f"Invalid RCON_PORT={rcon_port_raw!r}: must be a port number between 1 and 65535")
     rcon_port = int(rcon_port_raw)
 
+    # The Minecraft Server Management Protocol, only servers offer it
+    msmp_enabled = _parse_bool(env.get("MSMP_ENABLED", "true"))
+    msmp_secret = env.get("MSMP_SECRET") or "".join(secrets.choice(_MSMP_SECRET_CHARS) for _ in range(40))
+    if not re.fullmatch(r"[A-Za-z0-9]{40}", msmp_secret):
+        raise SystemExit("Invalid MSMP_SECRET: must be exactly 40 letters (A-Z, a-z) and digits")
+    msmp_port_raw = env.get("MSMP_PORT", str(DEFAULT_MSMP_PORT))
+    if not msmp_port_raw.strip().isdigit() or not 0 < int(msmp_port_raw) < 65536:
+        raise SystemExit(f"Invalid MSMP_PORT={msmp_port_raw!r}: must be a port number between 1 and 65535")
+    msmp_port = int(msmp_port_raw)
+
     # Proxies have no built-in RCON, so a bridge plugin is installed for them
     if rcon_enabled:
         if platform == PlatformType.VELOCITY:
@@ -357,6 +376,9 @@ def load_config(environ: dict[str, str] | None = None) -> Config:
         rcon_enabled=rcon_enabled,
         rcon_password=rcon_password,
         rcon_port=rcon_port,
+        msmp_enabled=msmp_enabled,
+        msmp_secret=msmp_secret,
+        msmp_port=msmp_port,
         memory=memory,
         jvm_flags=jvm_flags,
         verbose=verbose,

@@ -112,6 +112,9 @@ SERVER_LOCK_FILENAME = "server-lock.json"
 PUMPKIN_CONFIG_FILENAME = "pumpkin.toml"
 # Written next to the server files so `mc-rcon` can connect when RCON_PASSWORD was auto-generated
 RCON_PASSWORD_FILENAME = ".rcon-password"  # noqa: S105
+# The same for `mc-msmp` and the Minecraft Server Management Protocol secret
+MSMP_SECRET_FILENAME = ".msmp-secret"  # noqa: S105
+DEFAULT_MSMP_PORT = 25585
 
 USER_AGENT = f"MauriceNino/minecraft-server/{__version__} (https://github.com/MauriceNino/minecraft-server)"
 

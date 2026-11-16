@@ -80,8 +80,9 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
   - `plugins/`: Plugin resolution and download (Modrinth, Hangar, etc.).
   - `fs_orchestrator/`: Applying template directories to the runtime directory.
   - `merger/`: Sigil-aware config file merging.
-  - `rcon/`: RCON config injection.
+  - `remote_access/`: RCON and management protocol config injection.
 - `src/rcon/`: The `mc-rcon` client.
+- `src/msmp/`: The `mc-msmp` client, with commands generated from the server's `rpc.discover` schema.
 - `tests/`: Test suite using `pytest`.
 - `examples/`: Docker Compose examples for different server types.
 - `docs/`: Documentation site (built with Next.js/Fumadocs).

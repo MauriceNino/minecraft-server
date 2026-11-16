@@ -9,7 +9,7 @@ import pytest
 from ruamel.yaml import YAML
 
 from orchestrator.constants import PlatformType
-from orchestrator.rcon import inject_rcon
+from orchestrator.remote_access import inject_rcon
 from rcon.__main__ import main as rcon_main
 
 
@@ -74,6 +74,21 @@ class TestInjectRcon:
         assert [p for p in props if p.startswith("rcon.password=")] == ["rcon.password=new"]
         assert (tmp_path / ".rcon-password").read_text() == "new"
         assert (tmp_path / ".rcon-password").stat().st_mode & 0o777 == 0o600
+
+    def test_disable_server_properties(self, tmp_path: Path) -> None:
+        inject_rcon(PlatformType.PAPER, tmp_path, tmp_path / "plugins", 25575, "secret")
+        inject_rcon(PlatformType.PAPER, tmp_path, tmp_path / "plugins", 25575, "secret", enabled=False)
+
+        props = (tmp_path / "server.properties").read_text().splitlines()
+        assert "enable-rcon=false" in props
+        assert "enable-rcon=true" not in props
+        assert not (tmp_path / ".rcon-password").exists()
+
+    @pytest.mark.parametrize("platform", [PlatformType.VELOCITY, PlatformType.WATERFALL])
+    def test_disable_leaves_proxies_alone(self, tmp_path: Path, platform: PlatformType) -> None:
+        inject_rcon(platform, tmp_path, tmp_path / "plugins", 25575, "secret", enabled=False)
+
+        assert list(tmp_path.iterdir()) == []
 
 
 def test_mc_rcon_is_not_supported_for_pumpkin(

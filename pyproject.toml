@@ -21,6 +21,7 @@ dependencies = [
     "mcrcon>=0.7",
     "pyhocon>=0.3.60",
     "pillow>=13.0.0",
+    "websockets>=14",
 ]
 
 [dependency-groups]
@@ -35,9 +36,10 @@ dev = [
 [project.scripts]
 mc-orchestrator = "orchestrator.__main__:main"
 mc-rcon = "rcon.__main__:main"
+mc-msmp = "msmp.__main__:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/orchestrator", "src/rcon"]
+packages = ["src/orchestrator", "src/rcon", "src/msmp"]
 
 [tool.ruff]
 line-length = 120
@@ -67,7 +69,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["orchestrator", "rcon"]
+known-first-party = ["orchestrator", "rcon", "msmp"]
 
 [tool.pyright]
 include = ["src"]

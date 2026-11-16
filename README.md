@@ -23,6 +23,7 @@ On every start, the container downloads the server JAR, installs and updates you
 - **Plugins**: from Modrinth, Hangar, Spiget, CurseForge, GitHub releases or direct URLs, with compatibility checks against your server version and a lockfile to track what's installed.
 - **Config merging**: deep-merge `YAML`, `JSON`, `TOML`, `HOCON` and `.properties` files from templates or environment variables, controlled with `!replace:`, `!force:` and `!delete:` sigils.
 - **RCON**: enabled automatically, use `docker exec -it <container> mc-rcon` to get a console.
+- **Management protocol**: the Minecraft Server Management Protocol (1.21.9+) is enabled automatically too, use `docker exec -it <container> mc-msmp` to manage players, bans and settings.
 
 ## Getting Started
 

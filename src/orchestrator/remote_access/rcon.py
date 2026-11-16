@@ -21,10 +21,24 @@ def inject_rcon(
     plugins_dir: Path,
     rcon_port: int,
     rcon_password: str,
+    *,
+    enabled: bool = True,
 ) -> None:
-    """Enable RCON in the platform's config files."""
+    """Turn RCON on or off in the platform's config files.
+
+    Turning it off matters as the config files persist, so an earlier start may have turned it on. Proxies are left
+    alone then: their RCON bridge plugin isn't installed without RCON.
+    """
     # JSON strings are valid YAML and TOML strings, which keeps passwords with special characters intact
     password = json.dumps(rcon_password)
+    password_file = runtime_dir / RCON_PASSWORD_FILENAME
+
+    if not enabled:
+        if platform in SERVER_PLATFORMS:
+            merge_file_content(runtime_dir / "server.properties", "enable-rcon=false\n")
+            password_file.unlink(missing_ok=True)
+            console.print("  [success]✓[/success] Disabled")
+        return
 
     if platform in SERVER_PLATFORMS:
         merge_file_content(
@@ -42,11 +56,11 @@ def inject_rcon(
             f"port: {rcon_port}\npassword: {password}\ncolored: true\n",
         )
 
-    _write_password_file(runtime_dir / RCON_PASSWORD_FILENAME, rcon_password)
+    write_secret_file(password_file, rcon_password)
     console.print(f"  [success]✓[/success] Enabled on port [label]{rcon_port}[/label]")
 
 
-def _write_password_file(path: Path, password: str) -> None:
+def write_secret_file(path: Path, password: str) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(password)

@@ -36,7 +36,7 @@ from orchestrator.plugins import download_plugins
 from orchestrator.plugins.check import check_plugin_updates
 from orchestrator.plugins.pumpkin_market import apply_permission_grants, permission_grants
 from orchestrator.providers import prepare_platform, resolve_platform
-from orchestrator.rcon import inject_rcon
+from orchestrator.remote_access import inject_msmp, inject_rcon
 from orchestrator.runner import exec_server
 from orchestrator.server_properties import apply_server_properties
 from orchestrator.world import import_world
@@ -172,7 +172,7 @@ async def _async_main() -> None:
         await apply_icon(config.icon, config.runtime_dir, lockfile, config.api_tokens, config.platform)
 
     # Pumpkin has no RCON
-    if config.rcon_enabled and config.platform != PlatformType.PUMPKIN:
+    if config.platform != PlatformType.PUMPKIN:
         log_phase("RCON")
         inject_rcon(
             platform=config.platform,
@@ -180,6 +180,17 @@ async def _async_main() -> None:
             plugins_dir=config.plugins_dir,
             rcon_port=config.rcon_port,
             rcon_password=config.rcon_password,
+            enabled=config.rcon_enabled,
+        )
+
+    if config.platform in SERVER_PLATFORMS:
+        log_phase("Management Protocol")
+        inject_msmp(
+            config.platform,
+            config.runtime_dir,
+            config.msmp_port,
+            config.msmp_secret,
+            enabled=config.msmp_enabled,
         )
 
     if config.platform in SERVER_PLATFORMS and config.platform != PlatformType.PUMPKIN:

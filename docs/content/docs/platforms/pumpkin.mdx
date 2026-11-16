@@ -41,10 +41,17 @@ defaults on start.
 [`ICON`](../../environment#server-icon) works: besides writing `server-icon.png`, the orchestrator points `favicon_path`
 in `pumpkin.toml` at it. The [health check](../../docker#health-check) reads the Java address from `[networking.java]`.
 
-## RCON Support
+## RCON and Management Protocol
 
 Pumpkin has no RCON, so the [RCON variables](../../environment#rcon-variables) don't apply and
-[`mc-rcon`](../../scripts#mc-rcon) only prints that RCON is not supported.
+[`mc-rcon`](../../scripts#mc-rcon) only prints that RCON is not supported. Use [`mc-msmp`](../../scripts#mc-msmp)
+instead: Pumpkin offers the management protocol, and the
+[management protocol variables](../../environment#management-protocol-variables) work as on other servers: by default,
+the protocol listens on port `25585` with a generated secret. The orchestrator writes these settings to
+`[networking.management]` in `pumpkin.toml` (`enabled`, `address` and `secret`).
+
+Pumpkin enables the protocol by itself, on port `25575` with the secret `1234`. With `MSMP_ENABLED=false`, the
+orchestrator sets `enabled = false` instead, so it is really off.
 
 ## Plugin Support
 

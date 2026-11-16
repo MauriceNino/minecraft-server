@@ -205,7 +205,8 @@ The tokens are only sent to the API they belong to, not to the hosts the files a
 If RCON is enabled, the orchestrator automatically configures the server files to expose RCON.
 
 - **`RCON_ENABLED`**
-  - **Description:** Toggles the automatic RCON injection process.
+  - **Description:** Turns RCON on or off. `false` also turns it off when an earlier start or a template enabled it.
+    Proxies get no RCON bridge plugin then.
   - **Default:** `true`
 
 - **`RCON_PORT`**
@@ -224,4 +225,40 @@ If RCON is enabled, the orchestrator automatically configures the server files t
 <Callout title="Security" type="warn">
   RCON is not encrypted and gives full console access. Don't publish the RCON port (`25575`) to the internet; use
   `mc-rcon` via `docker exec` instead, or only expose it on a private network.
+</Callout>
+
+## Management Protocol Variables
+
+The [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol) (MSMP) is a
+JSON-RPC API over WebSocket that servers offer since Minecraft 1.21.9, used by [`mc-msmp`](../scripts#mc-msmp). The
+orchestrator enables it in `server.properties` alongside RCON, listening on all interfaces without TLS. Older servers
+ignore these settings, and proxies don't support the protocol.
+
+- **`MSMP_ENABLED`**
+  - **Description:** Turns the management protocol on or off. `false` also turns it off when an earlier start or a
+    template enabled it.
+  - **Default:** `true`
+
+- **`MSMP_PORT`**
+  - **Description:** The port the management protocol listens on inside the container. `mc-msmp` connects to it as well.
+  - **Default:** `25585`
+
+- **`MSMP_SECRET`**
+  - **Description:** The secret clients authenticate with. It must be exactly 40 letters and digits.
+  - **Default:** Random, generated on every start. It is stored in `runtime/.msmp-secret`, so `mc-msmp` works inside the
+    container without you knowing the secret.
+
+- **`MSMP_HOST`**
+  - **Description:** Only read by [`mc-msmp`](../scripts#mc-msmp): the host it connects to.
+  - **Default:** `127.0.0.1`
+
+- **`MSMP_TLS`**
+  - **Description:** Only read by [`mc-msmp`](../scripts#mc-msmp): connect with TLS (`wss://`), for a server you
+    configured with a keystore yourself.
+  - **Default:** `false`
+
+<Callout title="Security" type="warn">
+  The management protocol can stop the server and change its operators, and the orchestrator enables it without TLS.
+  Don't publish its port (`25585`) to the internet; use `mc-msmp` via `docker exec` instead, or only expose it on a
+  private network.
 </Callout>

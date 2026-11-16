@@ -23,6 +23,57 @@ $ docker exec -it CONTAINER_NAME mc-rcon
 $ docker exec CONTAINER_NAME mc-rcon "say Hello from auto RCON!"
 ```
 
+## `mc-msmp`
+
+A client for the [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol)
+(MSMP), which servers offer since Minecraft 1.21.9. Unlike RCON, it can't run arbitrary commands, but it returns
+structured results and reports events like players joining as they happen. Proxies don't support it, use `mc-rcon`
+there.
+
+Like `mc-rcon`, it needs no setup: it reads the port and secret from the container's environment (`MSMP_PORT`,
+`MSMP_SECRET`), or from `runtime/.msmp-secret` when the secret was generated automatically. It connects to `127.0.0.1`
+unless `MSMP_HOST` is set, and uses TLS (`wss://`) when `MSMP_TLS=true`.
+
+The commands are generated from the schema the running server reports, so every method it offers is available, including
+those added by mods and plugins. A method name becomes the command: `minecraft:serversettings/motd/set` is
+`serversettings motd set`, and a method in another namespace keeps its prefix (`mymod:homes list`). Run `help` to list
+the commands of your server, or `help <command>` for the parameters of one.
+
+**Usage:**
+
+```bash
+# Interactive session, with tab completion and notifications shown as they arrive:
+$ docker exec -it CONTAINER_NAME mc-msmp
+
+# One-shot commands:
+$ docker exec CONTAINER_NAME mc-msmp players
+$ docker exec CONTAINER_NAME mc-msmp allowlist add jeb_ Notch
+$ docker exec CONTAINER_NAME mc-msmp bans add Griefer --reason "Griefing" --expires 2030-01-01T00:00:00Z
+$ docker exec CONTAINER_NAME mc-msmp operators add jeb_ --permission-level 3
+$ docker exec CONTAINER_NAME mc-msmp players kick jeb_ --message "Back in 5 minutes"
+$ docker exec CONTAINER_NAME mc-msmp server system-message "Restart in 5 minutes" --overlay
+$ docker exec CONTAINER_NAME mc-msmp serversettings difficulty set hard
+$ docker exec CONTAINER_NAME mc-msmp gamerules update keep_inventory true
+
+# Print notifications until Ctrl-C, optionally only some of them:
+$ docker exec CONTAINER_NAME mc-msmp watch players bans
+```
+
+- **Players** are names or UUIDs. Commands that take a list accept several of them, and the `--flags` apply to each,
+  e.g. the reason of every ban.
+- **List flags** take comma-separated values: `--receiving-players jeb_,Notch`. Spaces after the commas are fine when
+  the value is quoted, as one argument: `--receiving-players "jeb_, Notch"`.
+- **Switches** like `--overlay` are off unless you give them. `--overlay` turns one on and `--no-overlay` turns it off,
+  `--overlay true` and `--overlay false` work as well. A switch that a server turns on by default is listed by `help` as
+  `--no-<name>`.
+- **`--json`** before the command prints the raw JSON result, for scripts: `mc-msmp --json players`.
+- **`--params-json '<json>'`** after a command replaces all its arguments with the raw params object.
+- **`call <method> [params]`** calls any method with raw JSON params, `-` reads them from stdin:
+  `mc-msmp call minecraft:allowlist/add '{"add": [{"name": "jeb_"}]}'`. `call rpc.discover` prints the schema.
+
+In the interactive session, `watch <filter>...` limits the notifications shown, `watch off` hides them and `watch all`
+also shows the status heartbeat, which is hidden by default.
+
 ## `mc-orchestrator`
 
 Without a subcommand, this prepares and starts the server (it is the image entrypoint). The subcommands below are meant
