@@ -47,3 +47,9 @@ services:
 ```
 
 See the **[Documentation](https://mauricenino.github.io/minecraft-server/)** for all environment variables, templates and sigils.
+
+---
+
+> **AI usage:** Almost all of the code in this project is written by AI coding agents. I decide what gets built and how, the agents write the implementation. The initial draft was made with Antigravity, and later additions with Claude Code.
+>
+> I review every change before it goes in, and some parts I have rewritten completely myself. The code has to pass the linter, type checker and test suite, and I run the result myself. The exception are the tests: they are almost entirely AI generated and only checked very quickly, so don't treat them as carefully reviewed. The documentation is proofread by me.
